@@ -1,13 +1,13 @@
 ﻿using System.Collections.Generic;
 using ChartHelper;
 
-namespace ChartStatistics {
-    public class TapBeatDensity : Metric {
+namespace ChartMetrics {
+    internal class TapBeatDensity : Metric {
         public override string Name => "TapBeatDensity";
 
         public override string Description => "The density of taps, beats, liftoffs, and hard beat releases across the chart";
 
-        public override IList<Point> Calculate(ChartProcessor processor) {
+        internal override IList<Point> Calculate(ChartProcessor processor) {
             var notes = processor.Notes;
             var points = new List<Point>();
             int tapBeatsFound = -1;

@@ -4,7 +4,7 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using ChartHelper;
 
-namespace ChartStatistics {
+namespace ChartMetrics {
     public class ChartProcessor {
         private static readonly float MAX_MERGE_RATIO = 1.01f;
         private static readonly float MIN_PHRASE_LENGTH = 1f;
@@ -29,7 +29,7 @@ namespace ChartStatistics {
             
             public float Length { get; }
 
-            public Sample(float time, float value, float length) {
+            internal Sample(float time, float value, float length) {
                 Time = time;
                 Value = value;
                 Length = length;
@@ -47,7 +47,7 @@ namespace ChartStatistics {
 
             private readonly float[] cumulativeLengths;
 
-            public Result(string metricName, IList<Sample> samples) {
+            internal Result(string metricName, IList<Sample> samples) {
                 MetricName = metricName;
                 Samples = new ReadOnlyCollection<Sample>(samples);
                 

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using ChartHelper;
 
-namespace ChartStatistics {
+namespace ChartMetrics {
     public static class WheelPath {
         private static readonly int HOLD_RESOLUTION = 30;
         private static readonly int SIMPLIFY_ITERATIONS = 16;
@@ -19,15 +19,15 @@ namespace ChartStatistics {
             
             public NoteColor CurrentColor { get; }
 
-            public Point(float time, float lanePosition, float netPosition, NoteColor currentColor) {
+            internal Point(float time, float lanePosition, float netPosition, NoteColor currentColor) {
                 Time = time;
                 LanePosition = lanePosition;
                 NetPosition = netPosition;
                 CurrentColor = currentColor;
             }
         }
-        
-        public static List<List<Point>> GeneratePaths(IList<Note> notes, int startIndex, int endIndex) {
+
+        internal static List<List<Point>> GeneratePaths(IList<Note> notes, int startIndex, int endIndex) {
             var paths = new List<List<Point>>();
             var points = new List<Point>();
             bool holding = false;
@@ -270,7 +270,7 @@ namespace ChartStatistics {
             return paths;
         }
 
-        public static Point[] Simplify(IList<Point> path, int iterations = -1) {
+        internal static Point[] Simplify(IList<Point> path, int iterations = -1) {
             if (iterations < 1)
                 iterations = SIMPLIFY_ITERATIONS;
             

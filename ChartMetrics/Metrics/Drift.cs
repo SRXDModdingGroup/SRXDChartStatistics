@@ -2,13 +2,13 @@
 using System.Collections.Generic;
 using ChartHelper;
 
-namespace ChartStatistics {
-    public class RequiredMovement : Metric {
-        public override string Name => "RequiredMovement";
+namespace ChartMetrics {
+    internal class Drift : Metric {
+        public override string Name => "Drift";
 
-        public override string Description => "The minimum amount of movement required to hit every positional note in a pattern";
-        
-        public override IList<Point> Calculate(ChartProcessor processor) {
+        public override string Description => "The distance that a pattern strays from a centered position";
+
+        internal override IList<Point> Calculate(ChartProcessor processor) {
             var notes = processor.Notes;
             var paths = processor.GetSimplifiedPaths();
             var points = new List<Point>();
@@ -22,9 +22,13 @@ namespace ChartStatistics {
                 
                 float sum = 0f;
 
-                for (int i = 0; i < path.Count - 1; i++)
-                    sum += Math.Abs(path[i + 1].NetPosition - path[i].NetPosition);
-
+                for (int i = 0; i < path.Count - 1; i++) {
+                    var start = path[i];
+                    var end = path[i + 1];
+                    
+                    sum += Math.Abs(0.5f * (end.NetPosition + start.NetPosition)) * (end.Time - start.Time);
+                }
+                
                 points.Add(new Point(path[0].Time, sum));
                 lastPathEnd = path[path.Count - 1].Time;
             }
@@ -41,8 +45,11 @@ namespace ChartStatistics {
 
                 while (index < points.Count && time > points[index].Time)
                     index++;
+
+                if (index != 0 && points[index - 1].Value == 0f)
+                    continue;
                 
-                points.Insert(index, new Point(time, 4f));
+                points.Insert(index, new Point(time, 0f));
                 lastSpinTime = time;
             }
 

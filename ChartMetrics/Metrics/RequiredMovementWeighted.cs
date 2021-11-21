@@ -2,13 +2,13 @@
 using System.Collections.Generic;
 using ChartHelper;
 
-namespace ChartStatistics {
-    public class DriftWeighted : Metric {
-        public override string Name => "DriftWeighted";
+namespace ChartMetrics {
+    internal class RequiredMovementWeighted : Metric {
+        public override string Name => "RequiredMovementWeighted";
 
-        public override string Description => "The distance that a pattern strays from a centered position, with extra weight given to patterns with faster movements";
-        
-        public override IList<Point> Calculate(ChartProcessor processor) {
+        public override string Description => "The minimum amount of movement required to hit every positional note in a pattern, with extra weight given to faster movements";
+
+        internal override IList<Point> Calculate(ChartProcessor processor) {
             var notes = processor.Notes;
             var paths = processor.GetSimplifiedPaths();
             var points = new List<Point>();
@@ -23,12 +23,13 @@ namespace ChartStatistics {
                 float sum = 0f;
 
                 for (int i = 0; i < path.Count - 1; i++) {
-                    float startPosition = path[i].NetPosition;
-                    float endPosition = path[i + 1].NetPosition;
+                    var first = path[i];
+                    var second = path[i + 1];
+                    float distance = Math.Abs(path[i + 1].NetPosition - path[i].NetPosition);
                     
-                    sum += Math.Abs(0.5f * (endPosition + startPosition) * (endPosition - startPosition));
+                    sum += distance * distance / (second.Time - first.Time);
                 }
-                
+
                 points.Add(new Point(path[0].Time, sum));
                 lastPathEnd = path[path.Count - 1].Time;
             }
@@ -45,11 +46,8 @@ namespace ChartStatistics {
 
                 while (index < points.Count && time > points[index].Time)
                     index++;
-
-                if (index != 0 && points[index - 1].Value == 0f)
-                    continue;
                 
-                points.Insert(index, new Point(time, 0f));
+                points.Insert(index, new Point(time, 80f));
                 lastSpinTime = time;
             }
 

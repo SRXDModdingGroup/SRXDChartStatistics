@@ -1,8 +1,8 @@
 ﻿using System.Collections.Generic;
 
-namespace ChartStatistics {
+namespace ChartMetrics {
     public abstract class Metric {
-        public readonly struct Point {
+        internal readonly struct Point {
             public float Time { get; }
             public float Value { get; }
 
@@ -16,6 +16,6 @@ namespace ChartStatistics {
         
         public abstract string Description { get; }
 
-        public abstract IList<Point> Calculate(ChartProcessor processor);
+        internal abstract IList<Point> Calculate(ChartProcessor processor);
     }
 }

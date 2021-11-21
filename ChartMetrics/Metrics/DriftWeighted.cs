@@ -2,13 +2,13 @@
 using System.Collections.Generic;
 using ChartHelper;
 
-namespace ChartStatistics {
-    public class Drift : Metric {
-        public override string Name => "Drift";
+namespace ChartMetrics {
+    internal class DriftWeighted : Metric {
+        public override string Name => "DriftWeighted";
 
-        public override string Description => "The distance that a pattern strays from a centered position";
-        
-        public override IList<Point> Calculate(ChartProcessor processor) {
+        public override string Description => "The distance that a pattern strays from a centered position, with extra weight given to patterns with faster movements";
+
+        internal override IList<Point> Calculate(ChartProcessor processor) {
             var notes = processor.Notes;
             var paths = processor.GetSimplifiedPaths();
             var points = new List<Point>();
@@ -23,10 +23,10 @@ namespace ChartStatistics {
                 float sum = 0f;
 
                 for (int i = 0; i < path.Count - 1; i++) {
-                    var start = path[i];
-                    var end = path[i + 1];
+                    float startPosition = path[i].NetPosition;
+                    float endPosition = path[i + 1].NetPosition;
                     
-                    sum += Math.Abs(0.5f * (end.NetPosition + start.NetPosition)) * (end.Time - start.Time);
+                    sum += Math.Abs(0.5f * (endPosition + startPosition) * (endPosition - startPosition));
                 }
                 
                 points.Add(new Point(path[0].Time, sum));

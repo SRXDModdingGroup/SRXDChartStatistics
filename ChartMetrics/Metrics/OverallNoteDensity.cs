@@ -1,13 +1,13 @@
 ﻿using System.Collections.Generic;
 using ChartHelper;
 
-namespace ChartStatistics {
-    public class OverallNoteDensity : Metric {
+namespace ChartMetrics {
+    internal class OverallNoteDensity : Metric {
         public override string Name => "OverallNoteDensity";
 
         public override string Description => "The density of notes of any type across the chart";
 
-        public override IList<Point> Calculate(ChartProcessor processor) {
+        internal override IList<Point> Calculate(ChartProcessor processor) {
             var notes = processor.Notes;
             var points = new List<Point>();
             int lastIndex = 0;

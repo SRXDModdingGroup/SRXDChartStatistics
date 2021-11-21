@@ -4,6 +4,7 @@ using System.Collections.ObjectModel;
 using System.Drawing;
 using System.Linq;
 using ChartHelper;
+using ChartMetrics;
 
 namespace ChartStatistics {
     public class ChartView {

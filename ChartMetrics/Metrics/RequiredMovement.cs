@@ -2,13 +2,13 @@
 using System.Collections.Generic;
 using ChartHelper;
 
-namespace ChartStatistics {
-    public class Acceleration : Metric {
-        public override string Name => "Acceleration";
+namespace ChartMetrics {
+    internal class RequiredMovement : Metric {
+        public override string Name => "RequiredMovement";
 
-        public override string Description => "The total change in speed / direction over the course of a pattern";
-        
-        public override IList<Point> Calculate(ChartProcessor processor) {
+        public override string Description => "The minimum amount of movement required to hit every positional note in a pattern";
+
+        internal override IList<Point> Calculate(ChartProcessor processor) {
             var notes = processor.Notes;
             var paths = processor.GetSimplifiedPaths();
             var points = new List<Point>();
@@ -22,18 +22,9 @@ namespace ChartStatistics {
                 
                 float sum = 0f;
 
-                for (int i = 0; i < path.Count - 2; i++) {
-                    var start = path[i];
-                    var mid = path[i + 1];
-                    var end = path[i + 2];
-                    
-                    sum += Math.Abs((end.NetPosition - mid.NetPosition) / (end.Time - mid.Time) - (mid.NetPosition - start.NetPosition) / (mid.Time - start.Time));
-                }
+                for (int i = 0; i < path.Count - 1; i++)
+                    sum += Math.Abs(path[i + 1].NetPosition - path[i].NetPosition);
 
-                var last = path[path.Count - 1];
-                var secondToLast = path[path.Count - 2];
-
-                sum += Math.Abs((last.NetPosition - secondToLast.NetPosition) / (last.Time - secondToLast.Time));
                 points.Add(new Point(path[0].Time, sum));
                 lastPathEnd = path[path.Count - 1].Time;
             }
@@ -50,11 +41,8 @@ namespace ChartStatistics {
 
                 while (index < points.Count && time > points[index].Time)
                     index++;
-
-                if (index != 0 && points[index - 1].Value == 0f)
-                    continue;
                 
-                points.Insert(index, new Point(time, 0f));
+                points.Insert(index, new Point(time, 4f));
                 lastSpinTime = time;
             }
 
