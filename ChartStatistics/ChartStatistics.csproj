@@ -37,7 +37,7 @@
           <HintPath>libs\ChartHelper.dll</HintPath>
         </Reference>
         <Reference Include="ChartMetrics, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null">
-          <HintPath>libs\ChartMetrics.dll</HintPath>
+          <HintPath>..\ChartMetrics\bin\Release\ChartMetrics.dll</HintPath>
         </Reference>
         <Reference Include="System" />
         <Reference Include="System.Core" />

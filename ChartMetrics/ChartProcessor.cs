@@ -38,14 +38,14 @@ namespace ChartMetrics {
             public int CompareTo(Sample other) => Value.CompareTo(other.Value);
         }
 
-        public readonly struct Result {
+        public class Result {
             public string MetricName { get; }
             
             public ReadOnlyCollection<Sample> Samples { get; }
             
             public ReadOnlyCollection<Sample> Sorted { get; }
 
-            private readonly float[] cumulativeLengths;
+            private float[] sortedEndTimes;
 
             internal Result(string metricName, IList<Sample> samples) {
                 MetricName = metricName;
@@ -57,33 +57,44 @@ namespace ChartMetrics {
                     sorted[i] = samples[i];
 
                 Array.Sort(sorted);
-
                 Sorted = new ReadOnlyCollection<Sample>(sorted);
-                cumulativeLengths = new float[Samples.Count];
-                
-                float totalLength = 0f;
-
-                for (int i = 0; i < Sorted.Count; i++) {
-                    var sample = Sorted[i];
-                    
-                    totalLength += sample.Length;
-                    cumulativeLengths[i] = totalLength;
-                }
             }
 
-            public float GetQuantile(float quantile) {
+            public float GetMean() {
                 if (Samples.Count == 0)
                     return 0f;
 
                 if (Samples.Count == 1)
                     return Samples[0].Value;
+                
+                GetSortedEndTimes();
 
-                float totalLength = cumulativeLengths[cumulativeLengths.Length - 1];
+                float sum = 0f;
+
+                foreach (var sample in Samples)
+                    sum += sample.Value;
+
+                return sum / sortedEndTimes[sortedEndTimes.Length - 1];
+            }
+            
+            public float GetMedian() => GetQuantile(0.5f);
+
+            public float GetQuantile(float quantile) {
+                
+                if (Samples.Count == 0)
+                    return 0f;
+
+                if (Samples.Count == 1)
+                    return Samples[0].Value;
+                
+                GetSortedEndTimes();
+
+                float totalLength = sortedEndTimes[sortedEndTimes.Length - 1];
                 float targetTotal = quantile * totalLength;
                 var first = Sorted[0];
 
                 if (targetTotal < 0.5f * first.Length)
-                    return Sorted[0].Value;
+                    return first.Value;
 
                 var last = Sorted[Sorted.Count - 1];
 
@@ -91,17 +102,77 @@ namespace ChartMetrics {
                     return last.Value;
                 
                 for (int i = 0; i < Sorted.Count - 1; i++) {
-                    float end = cumulativeLengths[i] + 0.5f * Sorted[i + 1].Length;
+                    float end = sortedEndTimes[i] + 0.5f * Sorted[i + 1].Length;
                     
                     if (end < targetTotal)
                         continue;
 
-                    float start = cumulativeLengths[i] - 0.5f * Sorted[i].Length;
+                    float start = sortedEndTimes[i] - 0.5f * Sorted[i].Length;
                 
                     return Util.Remap(targetTotal, start, end, Sorted[i].Value, Sorted[i + 1].Value);
                 }
 
                 return Sorted[Sorted.Count - 1].Value;
+            }
+
+            public float GetClippedMean(float min, float max) {
+                if (Samples.Count == 0)
+                    return 0f;
+
+                if (Samples.Count == 1)
+                    return Samples[0].Value;
+                
+                GetSortedEndTimes();
+                
+                float totalLength = sortedEndTimes[sortedEndTimes.Length - 1];
+                int firstIndex = -1;
+
+                for (int i = 0; i < Sorted.Count; i++) {
+                    if (Sorted[i].Value < min)
+                        continue;
+
+                    firstIndex = i;
+                    
+                    break;
+                }
+
+                if (firstIndex < 0)
+                    return min;
+
+                float sum;
+
+                if (firstIndex > 0)
+                    sum = min * sortedEndTimes[firstIndex - 1];
+                else
+                    sum = 0f;
+
+                for (int i = firstIndex; i < Sorted.Count; i++) {
+                    var sample = Sorted[i];
+                    
+                    if (sample.Value > max) {
+                        sum += max * (totalLength - sortedEndTimes[i - 1]);
+
+                        break;
+                    }
+                    
+                    sum += sample.Value * sample.Length;
+                }
+
+                return sum / totalLength;
+            }
+            
+            private void GetSortedEndTimes() {
+                if (sortedEndTimes != null)
+                    return;
+
+                sortedEndTimes = new float[Samples.Count];
+                
+                float totalLength = 0f;
+
+                for (int i = 0; i < Sorted.Count; i++) {
+                    totalLength += Sorted[i].Length;
+                    sortedEndTimes[i] = totalLength;
+                }
             }
         }
         
@@ -132,7 +203,7 @@ namespace ChartMetrics {
             name = name.ToLowerInvariant();
             
             if (!METRICS_DICT.TryGetValue(name, out var metric)) {
-                result = new Result();
+                result = null;
                 
                 return false;
             }

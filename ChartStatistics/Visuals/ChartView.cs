@@ -36,18 +36,19 @@ namespace ChartStatistics {
             Command.AddListener("show", args => DisplayMetric(args[0]));
             Command.AddListener("path", args => DisplayPath(args[0], int.TryParse(args[1], out int val) ? val : -1));
             Command.SetPossibleValues("show", 0, ChartProcessor.Metrics.Select(metric => $"{metric.Name.ToLower()}: {metric.Description}").ToArray());
-            // LoadChart("spinshare_60c0753bac2db");
-            // DisplayMetric("DriftWeighted");
+            // LoadChart("spinshare_5fa8c29425859");
+            // DisplayMetric("overallnotedensity");
             // DisplayPath("Simplified", -1);
         }
 
         private void LoadChart(string path) {
-            if (!ChartProcessor.TryLoadChart(path, out chartProcessor)) {
+            if (!ChartProcessor.TryLoadChart(path, out var temp)) {
                 Console.WriteLine("Could not find this file");
                 
                 return;
             }
-            
+
+            chartProcessor = temp;
             DrawChart();
             Console.WriteLine("Loaded chart successfully");
             
@@ -105,11 +106,23 @@ namespace ChartStatistics {
             graphicsPanel.AddDrawable(metricGraph);
             metricDrawables.Add(metricGraph);
 
-            float median = result.GetQuantile(0.5f);
-            var medianLabel = new ValueLabel(Util.Lerp(graphBottom, graphTop, median / max), $"Med ({median})");
+            float lowerQuantile = result.GetQuantile(0.1f);
+            var valueLabel = new ValueLabel(Util.Lerp(graphBottom, graphTop, lowerQuantile / max), $"Low ({lowerQuantile:0.00})");
             
-            graphicsPanel.AddDrawable(medianLabel);
-            metricDrawables.Add(medianLabel);
+            graphicsPanel.AddDrawable(valueLabel);
+            metricDrawables.Add(valueLabel);
+            
+            float upperQuantile = result.GetQuantile(0.85f);
+            
+            valueLabel = new ValueLabel(Util.Lerp(graphBottom, graphTop, upperQuantile / max), $"High ({upperQuantile:0.00})");
+            graphicsPanel.AddDrawable(valueLabel);
+            metricDrawables.Add(valueLabel);
+            
+            float mean = result.GetClippedMean(lowerQuantile, upperQuantile);
+            
+            valueLabel = new ValueLabel(Util.Lerp(graphBottom, graphTop, mean / max), $"Mean ({mean:0.00})");
+            graphicsPanel.AddDrawable(valueLabel);
+            metricDrawables.Add(valueLabel);
 
             var metricLabel = new Label(0f, graphTop, result.MetricName);
             
@@ -234,16 +247,16 @@ namespace ChartStatistics {
                     case NoteType.Beat:
                         graphicsPanel.AddDrawable(new Beat(note.Time, chartTop, chartBottom));
 
-                        if (note.EndIndex > -1)
+                        if (note.EndIndex >= 0)
                             graphicsPanel.AddDrawable(new Zone(note.Time, notes[note.EndIndex].Time, Drawable.DrawLayer.BeatHold, Zone.ZoneType.BeatHold, chartTop, chartBottom));
 
                         break;
                     case NoteType.SpinRight:
-                        graphicsPanel.AddDrawable(new Zone(note.Time, notes[note.EndIndex].Time, Drawable.DrawLayer.Zone, Zone.ZoneType.RightSpin, chartTop, chartBottom));
+                        graphicsPanel.AddDrawable(new Zone(note.Time, note.EndIndex >= 0 ? notes[note.EndIndex].Time : note.Time + 1f, Drawable.DrawLayer.Zone, Zone.ZoneType.RightSpin, chartTop, chartBottom));
 
                         break;
                     case NoteType.SpinLeft:
-                        graphicsPanel.AddDrawable(new Zone(note.Time, notes[note.EndIndex].Time, Drawable.DrawLayer.Zone, Zone.ZoneType.LeftSpin, chartTop, chartBottom));
+                        graphicsPanel.AddDrawable(new Zone(note.Time, note.EndIndex >= 0 ? notes[note.EndIndex].Time : note.Time + 1f, Drawable.DrawLayer.Zone, Zone.ZoneType.LeftSpin, chartTop, chartBottom));
 
                         break;
                     case NoteType.HoldPoint:
@@ -260,7 +273,7 @@ namespace ChartStatistics {
 
                         break;
                     case NoteType.Scratch:
-                        graphicsPanel.AddDrawable(new Zone(note.Time, notes[note.EndIndex].Time, Drawable.DrawLayer.Zone, Zone.ZoneType.Scratch, chartTop, chartBottom));
+                        graphicsPanel.AddDrawable(new Zone(note.Time, note.EndIndex >= 0 ? notes[note.EndIndex].Time : note.Time + 1f, Drawable.DrawLayer.Zone, Zone.ZoneType.Scratch, chartTop, chartBottom));
 
                         break;
                 }
