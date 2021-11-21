@@ -111,7 +111,7 @@ namespace ChartStatistics {
             graphicsPanel.AddDrawable(medianLabel);
             metricDrawables.Add(medianLabel);
 
-            var metricLabel = new Label(0f, graphicsPanel.ValueToY(0.52f), result.MetricName);
+            var metricLabel = new Label(0f, graphTop, result.MetricName);
             
             graphicsPanel.AddDrawable(metricLabel);
             metricDrawables.Add(metricLabel);

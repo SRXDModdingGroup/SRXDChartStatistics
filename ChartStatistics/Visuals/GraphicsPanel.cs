@@ -33,6 +33,11 @@ namespace ChartStatistics {
         
         public float RightBound { get; private set; }
 
+        public int Width => panel.Width;
+
+        public int Height => panel.Height;
+
+        private bool needsNewBuffer = false;
         private float zoomFactor;
         private float horizontalScaleFactor;
         private SortedDictionary<Drawable.DrawLayer, HashSet<Drawable>> layers;
@@ -46,6 +51,7 @@ namespace ChartStatistics {
 
             panel.Paint += Panel_Paint;
             panel.MouseWheel += Panel_MouseWheel;
+            panel.Resize += Panel_Resize;
         }
 
         public void AddDrawable(Drawable drawable) {
@@ -85,8 +91,11 @@ namespace ChartStatistics {
         public float YToValue(float y) => y / panel.Height;
 
         private void Draw(Graphics graphics) {
-            if (buffer == null)
+            if (buffer == null || needsNewBuffer) {
+                buffer?.Dispose();
                 buffer = BufferedGraphicsManager.Current.Allocate(graphics, panel.Bounds);
+                needsNewBuffer = false;
+            }
             else {
                 buffer.Render(graphics);
                 buffer.Graphics.Clear(Color.Black);
@@ -113,6 +122,13 @@ namespace ChartStatistics {
             }
             else
                 Scroll = Math.Max(0f, Scroll + SCROLL_SENSITIVITY * Math.Sign(e.Delta) / zoomFactor);
+        }
+
+        private void Panel_Resize(object sender, EventArgs e) {
+            needsNewBuffer = true;
+            horizontalScaleFactor = panel.Height * zoomFactor;
+            RightBound = XToTime(panel.Width);
+            panel.Invalidate();
         }
     }
 }

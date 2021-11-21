@@ -18,7 +18,7 @@ namespace ChartStatistics {
         public void SetLabel(string label) => this.label = label;
         
         public override void Draw(GraphicsPanel panel, Graphics graphics) {
-            graphics.DrawString(label, FONT, BRUSH, x, y + 10f);
+            graphics.DrawString(label, FONT, BRUSH, x, panel.ValueToY(y) - 20f);
         }
     }
 }

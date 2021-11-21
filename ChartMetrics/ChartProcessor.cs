@@ -111,19 +111,19 @@ namespace ChartMetrics {
         private ReadOnlyCollection<ReadOnlyCollection<WheelPath.Point>> pathsExact;
         private ReadOnlyCollection<ReadOnlyCollection<WheelPath.Point>> pathsSimplified;
 
-        private ChartProcessor(ReadOnlyCollection<Note> notes) {
+        public ChartProcessor(ReadOnlyCollection<Note> notes) {
             Notes = notes;
             results = new Dictionary<string, Result>();
         }
 
-        public static bool TryLoadChart(string path, out ChartProcessor processor) {
+        public static bool TryLoadChart(string path, out ChartProcessor processor, Difficulty difficulty = Difficulty.XD) {
             if (!ChartData.TryCreateFromFile(path, out var chartData, Difficulty.XD)) {
                 processor = null;
                 
                 return false;
             }
 
-            processor = new ChartProcessor(chartData.TrackData[Difficulty.XD].Notes);
+            processor = new ChartProcessor(chartData.TrackData[difficulty].Notes);
 
             return true;
         }
@@ -245,8 +245,10 @@ namespace ChartMetrics {
                         ratio = first / second;
                     else
                         ratio = second / first;
+
+                    bool almostZero = Util.AlmostEquals(candidates[i].Value, 0f);
                     
-                    if (Util.AlmostEquals(candidates[i].Value, 0f) && (!bestIsAZero || ratio > bestRatio)) {
+                    if (almostZero && (!bestIsAZero || ratio > bestRatio)) {
                         bestIndex = i;
                         bestRatio = ratio;
                         bestIsAZero = true;
@@ -254,14 +256,14 @@ namespace ChartMetrics {
                         continue;
                     }
                     
-                    if (ratio <= bestRatio && !Util.AlmostEquals(candidates[i].Value, 0f))
+                    if (ratio <= bestRatio && !almostZero)
                         continue;
 
                     bestIndex = i;
                     bestRatio = ratio;
                 }
                 
-                if (bestIndex < 0 || bestRatio < MAX_MERGE_RATIO && startTime - endTime < MAX_PHRASE_LENGTH)
+                if (bestIndex < 0 || Util.AlmostEquals(bestRatio, 1f) || bestRatio < MAX_MERGE_RATIO && startTime - endTime < MAX_PHRASE_LENGTH)
                     return;
                 
                 Subdivide(start, bestIndex);

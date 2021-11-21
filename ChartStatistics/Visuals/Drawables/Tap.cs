@@ -18,7 +18,9 @@ namespace ChartStatistics {
         }
 
         public override void Draw(GraphicsPanel panel, Graphics graphics) {
-            graphics.FillRectangle(brush, panel.TimeToX(Start) - 1, panel.ValueToY(y) - 16, 2, 32);
+            float height = panel.ValueToY(0.08f);
+            
+            graphics.FillRectangle(brush, panel.TimeToX(Start) - 1, panel.ValueToY(y) - 0.5f * height, 2, height);
         }
     }
 }

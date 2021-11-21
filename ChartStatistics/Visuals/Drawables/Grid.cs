@@ -38,12 +38,11 @@ namespace ChartStatistics {
             PEN.Color = Color.FromArgb(255, 32, 32, 32);
 
             float spacing = (top - bottom) / (horizontalBars - 1);
-            float rightBound = panel.TimeToX(panel.RightBound);
             
             for (int i = 0; i < horizontalBars; i++) {
                 float y = panel.ValueToY(bottom + spacing * i);
                 
-                graphics.DrawLine(PEN, 0f, y, rightBound, y);
+                graphics.DrawLine(PEN, 0f, y, panel.Width, y);
             }
         }
     }
