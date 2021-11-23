@@ -34,7 +34,7 @@
     </PropertyGroup>
     <ItemGroup>
         <Reference Include="ChartHelper, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null">
-          <HintPath>libs\ChartHelper.dll</HintPath>
+          <HintPath>..\libs\ChartHelper.dll</HintPath>
         </Reference>
         <Reference Include="ChartMetrics, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null">
           <HintPath>..\ChartMetrics\bin\Release\ChartMetrics.dll</HintPath>

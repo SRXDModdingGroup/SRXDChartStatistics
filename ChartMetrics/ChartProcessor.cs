@@ -150,6 +150,9 @@ namespace ChartMetrics {
                     var sample = Sorted[i];
                     
                     if (sample.Value > max) {
+                        if (i == 0)
+                            return max;
+                        
                         sum += max * (totalLength - sortedEndTimes[i - 1]);
 
                         break;

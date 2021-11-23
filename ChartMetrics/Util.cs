@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 
 namespace ChartMetrics {
-    public static class Util {
+    internal static class Util {
         private static readonly float ALMOST_EQUALS_THRESHOLD = 0.00048828125f;
 
         public static bool AlmostEquals(float a, float b) => Math.Abs(a - b) < ALMOST_EQUALS_THRESHOLD;
