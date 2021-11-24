@@ -15,21 +15,21 @@ namespace ChartAutoRating {
             Size = samples.Length;
             Samples = samples;
             DifficultyComparisons = new Table(Size);
-            Table.GenerateComparisonTable(DifficultyComparisons, index => samples[index].DifficultyRating, Size);
+            Table.GenerateComparisonTable(DifficultyComparisons, samples.Select(sample => (double) sample.DifficultyRating).ToArray(), Size);
             MetricComparisons = new Table[Program.METRIC_COUNT];
 
             for (int i = 0; i < Program.METRIC_COUNT; i++) {
                 var table = new Table(Size);
                 int j = i;
                 
-                Table.GenerateComparisonTable(table, index => samples[index].Metrics[j], Size);
+                Table.GenerateComparisonTable(table, samples.Select(sample => sample.Metrics[j]).ToArray(), Size);
                 MetricComparisons[i] = table;
             }
         }
 
-        public static float[] Normalize(params DataSet[] dataSets) {
-            float[] baseCoefficients = new float[Program.METRIC_COUNT];
-            float[] values = new float[dataSets.Sum(dataSet => dataSet.Size)];
+        public static double[] Normalize(params DataSet[] dataSets) {
+            double[] baseCoefficients = new double[Program.METRIC_COUNT];
+            double[] values = new double[dataSets.Sum(dataSet => dataSet.Size)];
 
             for (int i = 0; i < Program.METRIC_COUNT; i++) {
                 int j = 0;
@@ -42,13 +42,13 @@ namespace ChartAutoRating {
                 }
                 
                 Array.Sort(values);
-                float baseCoefficient = 1f / values[values.Length * 9 / 10];
+                double baseCoefficient = 1d / values[values.Length * 9 / 10];
                 
                 baseCoefficients[i] = baseCoefficient;
                 
                 foreach (var dataSet in dataSets) {
                     foreach (var sample in dataSet.Samples)
-                        sample.Metrics[i] = Math.Min(sample.Metrics[i] * baseCoefficient, 1f);
+                        sample.Metrics[i] = Math.Min(sample.Metrics[i] * baseCoefficient, 1d);
                 }
             }
 

@@ -1,110 +1,199 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Linq;
 
 namespace ChartAutoRating {
-    public partial class Calculator {
-        private static readonly int MAX_NUDGE_REDUCTIONS = 16;
+    public class Calculator {
+        private static readonly Dictionary<int, Data> DATA_POOL = new Dictionary<int, Data>();
 
-        public Coefficients[] MetricCoefficients { get; private set; }
+        private class Data {
+            public Coefficients[] NormalizedCoefficients { get; }
+            public double[] Results { get; }
+            public double[] Magnitudes { get; }
+            public double[] NewMagnitudes { get; }
+            public double[] MagnitudeVectors { get; }
+            public Table ResultsTable { get; }
+            public Table VectorTable { get; }
+
+            public Data(int size) {
+                NormalizedCoefficients = new Coefficients[Program.METRIC_COUNT];
+                Results = new double[size];
+                Magnitudes = new double[Program.METRIC_COUNT];
+                NewMagnitudes = new double[Program.METRIC_COUNT];
+                MagnitudeVectors = new double[Program.METRIC_COUNT];
+                ResultsTable = new Table(size);
+                VectorTable = new Table(size);
+            }
+        }
         
-        private float[] cachedResults;
-        private Table cachedResultsTable;
+        private static readonly int MAXIMIZE_ITERATIONS = 8;
+        private static readonly int MAX_NUDGE_DIVISIONS = 8;
+        private static readonly double MUTATION_CHANCE = 0.0625d;
 
-        public Calculator(int size) {
-            MetricCoefficients = new Coefficients[Program.METRIC_COUNT];
-            cachedResults = new float[size];
-            cachedResultsTable = new Table(size);
+        public ReadOnlyCollection<CurveWeights> MetricCurveWeights => new ReadOnlyCollection<CurveWeights>(metricCurveWeights);
+
+        private CurveWeights[] metricCurveWeights;
+        private Coefficients[] metricCoefficients;
+        private Data data;
+
+        public Calculator(int size, int threadIndex) {
+            metricCurveWeights = new CurveWeights[Program.METRIC_COUNT];
+            metricCoefficients = new Coefficients[Program.METRIC_COUNT];
+
+            if (DATA_POOL.TryGetValue(size + threadIndex << 16, out data))
+                return;
+            
+            data = new Data(size);
+            DATA_POOL.Add(size + threadIndex << 16, data);
         }
-
-        public void ApplyWeights(CurveWeights[] weights) {
+        
+        public void Randomize(Random random, double magnitude) {
             for (int i = 0; i < Program.METRIC_COUNT; i++)
-                MetricCoefficients[i] = new Coefficients(weights[i]);
+                metricCurveWeights[i] = CurveWeights.Random(random, magnitude);
+            
+            NormalizeCurveWeights();
+            ApplyWeights();
         }
 
-        public void Maximize(DataSet dataSet) {
-            float[] magnitudeVectors = new float[Program.METRIC_COUNT];
-            float[] magnitudes = MetricCoefficients.Select(c => c.Magnitude).ToArray();
-            float[] newMagnitudes = new float[Program.METRIC_COUNT];
-            var normalizedCoefficients = MetricCoefficients.Select(Coefficients.Normalize).ToArray();
-            var vectorTable = new Table(dataSet.Size);
-            float correlation = 0f;
-            float nudge = 0.125f;
-            int nudgeReductions = 0;
+        public void SetWeights(CurveWeights[] weights) {
+            for (int i = 0; i < Program.METRIC_COUNT; i++)
+                metricCurveWeights[i] = weights[i];
+            
+            NormalizeCurveWeights();
+            ApplyWeights();
+        }
+
+        public double Maximize(DataSet dataSet) {
+            double[] magnitudes = data.Magnitudes;
+            double[] newMagnitudes = data.NewMagnitudes;
+            
+            for (int i = 0; i < Program.METRIC_COUNT; i++) {
+                double magnitude = metricCoefficients[i].Magnitude;
+                
+                magnitudes[i] = metricCoefficients[i].Magnitude;
+                data.NormalizedCoefficients[i] = metricCoefficients[i] / magnitude;
+            }
+
+            double correlation = CalculateCorrelation(dataSet);
             
             CacheResults(dataSet);
-            Table.GenerateComparisonTable(cachedResultsTable, index => cachedResults[index], dataSet.Size);
+            Table.GenerateComparisonTable(data.ResultsTable, data.Results, dataSet.Size);
 
-            for (int i = 0; i < 65536; i++) {
-                Table.Compare(vectorTable, dataSet.DifficultyComparisons, cachedResultsTable, dataSet.Size);
+            for (int i = 0; i < MAXIMIZE_ITERATIONS; i++) {
+                Table.Compare(data.VectorTable, dataSet.DifficultyComparisons, data.ResultsTable, dataSet.Size);
                 
                 for (int j = 0; j < Program.METRIC_COUNT; j++)
-                    magnitudeVectors[j] = Table.Correlation(dataSet.MetricComparisons[j], vectorTable, dataSet.Size);
+                    data.MagnitudeVectors[j] = Table.Correlation(dataSet.MetricComparisons[j], data.VectorTable, dataSet.Size);
 
-                float newCorrelation;
+                double newCorrelation = 0d;
+                bool nudgeSuccess = false;
+                double nudge = 0.00390625d;
+                int nudgeDivisions = 0;
 
-                do {
+                while (nudgeDivisions < MAX_NUDGE_DIVISIONS) {
+                    bool success = true;
+                    
                     for (int j = 0; j < Program.METRIC_COUNT; j++) {
-                        float newMagnitude = magnitudes[j] + nudge * magnitudeVectors[j];
+                        double newMagnitude = magnitudes[j] + nudge * data.MagnitudeVectors[j];
+
+                        if (newMagnitude < 0d) {
+                            success = false;
+                            
+                            break;
+                        }
                         
                         newMagnitudes[j] = newMagnitude;
-                        MetricCoefficients[j] = newMagnitude * normalizedCoefficients[j];
+                        metricCoefficients[j] = newMagnitude * data.NormalizedCoefficients[j];
                     }
-                    
-                    CacheResults(dataSet);
-                    Table.GenerateComparisonTable(cachedResultsTable, index => cachedResults[index], dataSet.Size);
-                    newCorrelation = Table.Correlation(cachedResultsTable, dataSet.DifficultyComparisons, dataSet.Size);
 
-                    if (newCorrelation > correlation)
-                        break;
-                    
-                    nudge /= 2f;
-                    nudgeReductions++;
-                } while (nudgeReductions < MAX_NUDGE_REDUCTIONS);
-                
-                if (nudgeReductions >= MAX_NUDGE_REDUCTIONS)
+                    if (success) {
+                        CacheResults(dataSet);
+                        Table.GenerateComparisonTable(data.ResultsTable, data.Results, dataSet.Size);
+                        newCorrelation = Table.Correlation(data.ResultsTable, dataSet.DifficultyComparisons, dataSet.Size);
+                        nudgeSuccess = true;
+
+                        if (newCorrelation > correlation)
+                            break;
+                    }
+
+                    nudge /= 2d;
+                    nudgeDivisions++;
+                }
+
+                if (nudgeSuccess) {
+                    (magnitudes, newMagnitudes) = (newMagnitudes, magnitudes);
+                    correlation = newCorrelation;
+                }
+                else
                     break;
-
-                (magnitudes, newMagnitudes) = (newMagnitudes, magnitudes);
-                correlation = newCorrelation;
             }
+
+            for (int i = 0; i < Program.METRIC_COUNT; i++)
+                metricCurveWeights[i] = magnitudes[i] * CurveWeights.Normalize(metricCurveWeights[i]);
+
+            NormalizeCurveWeights();
+            ApplyWeights();
             
-            Normalize();
+            return correlation;
         }
 
-        public void CalculateResults(DataSet dataSet, float[] results, out float correlation) {
+        public double CalculateCorrelation(DataSet dataSet) {
             CacheResults(dataSet);
-            Table.GenerateComparisonTable(cachedResultsTable, index => cachedResults[index], dataSet.Size);
-            correlation = Table.Correlation(cachedResultsTable, dataSet.DifficultyComparisons, dataSet.Size);
+            Table.GenerateComparisonTable(data.ResultsTable, data.Results, dataSet.Size);
             
-            if (results != null)
-                Array.Copy(cachedResults, results, dataSet.Size);
+            return Table.Correlation(data.ResultsTable, dataSet.DifficultyComparisons, dataSet.Size);
+        }
+
+        private void ApplyWeights() {
+            for (int i = 0; i < Program.METRIC_COUNT; i++)
+                metricCoefficients[i] = new Coefficients(metricCurveWeights[i]);
+        }
+
+        private void NormalizeCurveWeights() {
+            double sum = 0d;
+
+            foreach (var curveWeights in metricCurveWeights)
+                sum += curveWeights.Magnitude;
+
+            for (int i = 0; i < metricCurveWeights.Length; i++)
+                metricCurveWeights[i] /= sum;
         }
 
         private void CacheResults(DataSet dataSet) {
             for (int i = 0; i < dataSet.Size; i++) {
-                float[] metricResults = dataSet.Samples[i].Metrics;
-                float sum = 0;
+                double[] metricResults = dataSet.Samples[i].Metrics;
+                double sum = 0;
 
                 for (int j = 0; j < Program.METRIC_COUNT; j++) {
-                    float result = metricResults[j];
-                    var coefficients = MetricCoefficients[j];
+                    double result = metricResults[j];
+                    var coefficients = metricCoefficients[j];
                     
                     sum += result * (coefficients.X1 + result * (coefficients.X2 + result * coefficients.X3));
                 }
 
-                cachedResults[i] = sum;
+                data.Results[i] = sum;
             }
         }
 
-        private void Normalize() {
-            float sum = 0f;
-
-            foreach (var coefficients in MetricCoefficients)
-                sum += coefficients.Magnitude;
-
-            for (int i = 0; i < MetricCoefficients.Length; i++)
-                MetricCoefficients[i] /= sum;
+        public static void Cross(Random random, Calculator parent1, Calculator parent2, Calculator child) {
+            for (int i = 0; i < Program.METRIC_COUNT; i++) {
+                if (random.NextDouble() < MUTATION_CHANCE) {
+                    child.metricCurveWeights[i] = random.NextDouble() * CurveWeights.Normalize(new CurveWeights(
+                        random.NextDouble(),
+                        random.NextDouble(),
+                        random.NextDouble()));
+                }
+                else {
+                    if (random.NextDouble() > 0.5d)
+                        child.metricCurveWeights[i] = parent1.metricCurveWeights[i];
+                    else
+                        child.metricCurveWeights[i] = parent2.metricCurveWeights[i];
+                }
+            }
+            
+            child.NormalizeCurveWeights();
+            child.ApplyWeights();
         }
     }
 }
