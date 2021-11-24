@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
+using System.Windows.Forms;
 using ChartHelper;
 using ChartMetrics;
 
@@ -14,7 +15,7 @@ namespace ChartAutoRating {
 
         private static readonly int CALCULATOR_COUNT = 32;
         private static readonly int GROUP_COUNT = 8;
-        private static readonly int CROSSOVERS = 8;
+        private static readonly int CROSSOVERS = 4;
         private static readonly string[] METRIC_NAMES = ChartProcessor.Metrics.Select(metric => metric.Name).ToArray();
 
         private class CalculatorInfo : IComparable<CalculatorInfo> {
@@ -57,12 +58,29 @@ namespace ChartAutoRating {
             var groups = GetInitialGroups(dataSet, random);
             var threadInfo = groups.Select(group => new ThreadInfo(group)).ToArray();
 
-            Parallel.Invoke(() => ConsoleLoop(threadInfo), () => TrainGroups(threadInfo, dataSet, random));
+            Parallel.Invoke(() => MainThread(threadInfo), () => TrainGroups(threadInfo, dataSet, random));
             SaveGroups(groups);
             OutputDetailedInfo(groups);
+            Console.WriteLine("Press any key to exit");
+            Console.ReadKey(true);
         }
 
-        private static void ConsoleLoop(ThreadInfo[] threadInfo) {
+        [STAThread]
+        private static void MainThread(ThreadInfo[] threadInfo) {
+            Console.WriteLine("Begin Main Thread");
+            Application.EnableVisualStyles();
+            Application.SetCompatibleTextRenderingDefault(false);
+
+            var form = new Form1();
+            
+            Task.Run(() => MainLoop(threadInfo, form));
+            Application.Run(form);
+        }
+
+        private static void MainLoop(ThreadInfo[] threadInfo, Form form) {
+            Console.WriteLine("Begin Main Loop");
+            
+            double[] bestHistory = new double[GROUP_COUNT];
             var stopwatch = new Stopwatch();
             
             stopwatch.Start();
@@ -70,28 +88,38 @@ namespace ChartAutoRating {
             while (!Console.KeyAvailable || Console.ReadKey(true).Key != ConsoleKey.Enter) {
                 if (stopwatch.ElapsedMilliseconds < 1000)
                     continue;
+
+                bool anyNew = false;
                 
                 for (int i = 0; i < GROUP_COUNT; i++) {
                     var thread = threadInfo[i];
                     
                     lock (thread.Lock) {
                         var group = thread.Group;
-                        var best = group[0];
-                        var worst = group[0];
                         
-                        foreach (var info in group) {
-                            if (info.Fitness > best.Fitness)
-                                best = info;
+                        Array.Sort(group);
+                        
+                        
+                        
+                        var best = group[0];
+                        var worst = group[CALCULATOR_COUNT - 1];
+                        
+                        if (best.Fitness <= bestHistory[i])
+                            continue;
 
-                            if (info.Fitness < worst.Fitness)
-                                worst = info;
+                        if (!anyNew) {
+                            Console.WriteLine(DateTime.Now.ToString("HH:mm:ss"));
+                            anyNew = true;
                         }
                         
-                        Console.WriteLine($"Group {i}: Generation {threadInfo[i].Generation} {best.Fitness:0.00000000} - {worst.Fitness:0.00000000}");
+                        Console.WriteLine($"Group {i}: Generation {threadInfo[i].Generation}: {best.Fitness:0.00000000} - {worst.Fitness:0.00000000}");
+                        bestHistory[i] = best.Fitness;
                     }
                 }
+
+                if (anyNew)
+                    Console.WriteLine();
                 
-                Console.WriteLine();
                 stopwatch.Restart();
             }
 
@@ -103,30 +131,40 @@ namespace ChartAutoRating {
             Parallel.ForEach(threadInfo, info => TrainGroup(info, dataSet, new Random(random.Next() % (2 << 16))));
 
         private static void TrainGroup(ThreadInfo threadInfo, DataSet dataSet, Random random) {
+            Console.WriteLine("Begin Training Thread");
+            
             var group = threadInfo.Group;
+            var crossGroups = new CalculatorInfo[CROSSOVERS, 3];
 
             while (threadInfo.Active) {
                 lock (threadInfo.Lock) {
-                    CrossCalculators(group, dataSet, random);
+                    CrossCalculators(group, dataSet, random, crossGroups);
                     threadInfo.Generation++;
                 }
             }
         }
 
-        private static void CrossCalculators(CalculatorInfo[] group, DataSet dataSet, Random random) {
+        private static void CrossCalculators(CalculatorInfo[] group, DataSet dataSet, Random random, CalculatorInfo[,] crossGroups) {
+            int remainingCount = CALCULATOR_COUNT;
             CalculatorInfo remainingStart;
             double sumCross;
-            double sumKill;
 
             InitLinkedList();
 
-            for (int j = 0; j < CROSSOVERS; j++) {
-                var firstInfo = PopRandomFit();
-                var secondInfo = PopRandomFit();
-                var childInfo = PopRandomUnfit();
+            for (int i = 0; i < CROSSOVERS; i++)
+                crossGroups[i, 0] = PopBest();
+            
+            for (int i = 0; i < CROSSOVERS; i++)
+                crossGroups[i, 1] = PopRandomFit();
+            
+            for (int i = 0; i < CROSSOVERS; i++)
+                crossGroups[i, 2] = PopRandom();
+
+            for (int i = 0; i < CROSSOVERS; i++) {
+                var childInfo = crossGroups[i, 2];
                 var childCalculator = childInfo.Calculator;
 
-                Calculator.Cross(random, firstInfo.Calculator, secondInfo.Calculator, childCalculator);
+                Calculator.Cross(random, crossGroups[i, 0].Calculator, crossGroups[i, 1].Calculator, childCalculator);
                 childInfo.Fitness = 0.5d * (childCalculator.CalculateCorrelation(dataSet) + 1d);
             }
             
@@ -136,8 +174,8 @@ namespace ChartAutoRating {
 
                     remainingStart = group[0];
 
-                    for (int j = 0; j < CALCULATOR_COUNT; j++) {
-                        var info = group[j];
+                    for (int i = 0; i < CALCULATOR_COUNT; i++) {
+                        var info = group[i];
                         double fitness = info.Fitness;
 
                         if (fitness < min)
@@ -146,14 +184,13 @@ namespace ChartAutoRating {
                         if (fitness > max)
                             max = fitness;
 
-                        if (j < CALCULATOR_COUNT - 1)
-                            info.Next = group[j + 1];
+                        if (i < CALCULATOR_COUNT - 1)
+                            info.Next = group[i + 1];
                         else
                             info.Next = null;
                     }
 
                     sumCross = 0d;
-                    sumKill = 0d;
 
                     double scale = 1d / (max - min);
 
@@ -163,66 +200,83 @@ namespace ChartAutoRating {
                         info.CrossChance = crossChance;
                         sumCross += crossChance;
                     }
+            }
 
-                    sumKill = CALCULATOR_COUNT - sumCross;
-                }
+            CalculatorInfo PopBest() {
+                var current = remainingStart;
+                var best = current;
+                CalculatorInfo previous = null;
+                CalculatorInfo bestPrevious = null;
 
-                CalculatorInfo PopRandomFit() {
-                    double position = sumCross * random.NextDouble();
-                    var current = remainingStart;
-                    CalculatorInfo previous = null;
-
-                    while (current != null) {
-                        double crossChance = current.CrossChance;
-
-                        if (position <= crossChance) {
-                            sumCross -= crossChance;
-                            sumKill -= 1d - crossChance;
-
-                            if (previous == null)
-                                remainingStart = current.Next;
-                            else
-                                previous.Next = current.Next;
-
-                            return current;
-                        }
-
-                        position -= crossChance;
-                        previous = current;
-                        current = current.Next;
+                while (current != null) {
+                    if (current.Fitness > best.Fitness) {
+                        best = current;
+                        bestPrevious = previous;
                     }
 
-                    return previous;
+                    previous = current;
+                    current = current.Next;
                 }
+                
+                sumCross -= best.CrossChance;
+                remainingCount--;
 
-                CalculatorInfo PopRandomUnfit() {
-                    double position = sumKill * random.NextDouble();
-                    var current = remainingStart;
-                    CalculatorInfo previous = null;
+                if (bestPrevious == null)
+                    remainingStart = best.Next;
+                else
+                    bestPrevious.Next = best.Next;
 
-                    while (current != null) {
-                        double crossChance = current.CrossChance;
-                        double killChance = 1d - crossChance;
+                return best;
+            }
 
-                        if (position <= killChance) {
-                            sumCross -= crossChance;
-                            sumKill -= killChance;
+            CalculatorInfo PopRandomFit() {
+                double position = sumCross * random.NextDouble();
+                var current = remainingStart;
+                CalculatorInfo previous = null;
 
-                            if (previous == null)
-                                remainingStart = current.Next;
-                            else
-                                previous.Next = current.Next;
+                while (current != null) {
+                    double crossChance = current.CrossChance;
 
-                            return current;
-                        }
+                    if (position <= crossChance) {
+                        sumCross -= crossChance;
+                        remainingCount--;
 
-                        position -= killChance;
-                        previous = current;
-                        current = current.Next;
+                        if (previous == null)
+                            remainingStart = current.Next;
+                        else
+                            previous.Next = current.Next;
+
+                        return current;
                     }
 
-                    return previous;
+                    position -= crossChance;
+                    previous = current;
+                    current = current.Next;
                 }
+
+                return null;
+            }
+
+            CalculatorInfo PopRandom() {
+                int position = random.Next(0, remainingCount);
+                var current = remainingStart;
+                CalculatorInfo previous = null;
+
+                for (int i = 0; i < position; i++) {
+                    previous = current;
+                    current = current.Next;
+                }
+                
+                sumCross -= current.CrossChance;
+                remainingCount--;
+
+                if (previous == null)
+                    remainingStart = current.Next;
+                else
+                    previous.Next = current.Next;
+
+                return current;
+            }
         }
 
         private static void SaveGroups(CalculatorInfo[][] groups) {
