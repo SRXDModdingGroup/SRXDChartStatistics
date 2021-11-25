@@ -76,7 +76,7 @@ namespace ChartAutoRating {
             var form = new Form1();
 
             Parallel.Invoke(() => MainThread(threadInfo, form), () => FormThread(form), () => TrainGroups(threadInfo, dataSet, random));
-            SaveGroups(groups);
+            SaveGroups(threadInfo);
             OutputDetailedInfo(groups);
             Console.WriteLine("Press any key to exit");
             Console.ReadKey(true);
@@ -91,9 +91,6 @@ namespace ChartAutoRating {
                 lastBestTime[i] = DateTime.Now;
             }
 
-            int[] generationHistory = new int[GROUP_COUNT];
-            var drawWatch = new Stopwatch();
-            var checkWatch = new Stopwatch();
             var drawInfo = new DrawInfoItem[GROUP_COUNT][];
 
             for (int i = 0; i < GROUP_COUNT; i++) {
@@ -105,8 +102,13 @@ namespace ChartAutoRating {
                 drawInfo[i] = group;
             }
 
+            var drawWatch = new Stopwatch();
+            var checkWatch = new Stopwatch();
+            var autoSaveWatch = new Stopwatch();
+
             drawWatch.Start();
             checkWatch.Start();
+            autoSaveWatch.Start();
 
             while (!Console.KeyAvailable || Console.ReadKey(true).Key != ConsoleKey.Enter) {
                 if (Form.ActiveForm == form && drawWatch.ElapsedMilliseconds > 66) {
@@ -166,6 +168,11 @@ namespace ChartAutoRating {
                         Console.WriteLine();
                     
                     checkWatch.Restart();
+                }
+
+                if (autoSaveWatch.ElapsedMilliseconds > 300000) {
+                    SaveGroups(threadInfo);
+                    autoSaveWatch.Restart();
                 }
             }
 
@@ -324,18 +331,23 @@ namespace ChartAutoRating {
             }
         }
 
-        private static void SaveGroups(CalculatorInfo[][] groups) {
+        private static void SaveGroups(ThreadInfo[] threadInfo) {
             using (var writer = new BinaryWriter(File.Open(Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "results.dat"), FileMode.Create))) {
-                foreach (var calculatorInfo in groups) {
-                    foreach (var info in calculatorInfo) {
-                        foreach (var curveWeights in info.Calculator.MetricCurveWeights) {
-                            writer.Write(curveWeights.W0);
-                            writer.Write(curveWeights.W1);
-                            writer.Write(curveWeights.W2);
+                foreach (var thread in threadInfo) {
+                    lock (thread.Lock) {
+                        foreach (var info in thread.Group) {
+                            foreach (var curveWeights in info.Calculator.MetricCurveWeights) {
+                                writer.Write(curveWeights.W0);
+                                writer.Write(curveWeights.W1);
+                                writer.Write(curveWeights.W2);
+                            }
                         }
                     }
                 }
             }
+            
+            Console.WriteLine("Saved file successfully");
+            Console.WriteLine();
         }
 
         private static void OutputDetailedInfo(CalculatorInfo[][] groups) {

@@ -32,7 +32,7 @@ namespace ChartAutoRating {
         private static readonly double MUTATION_CHANCE = 0.5d;
         private static readonly double MAX_MUTATION_AMOUNT = 0.125d;
         private static readonly double OVERWEIGHT_THRESHOLD = 0.35d;
-        private static readonly double OVERWEIGHT_BIAS = 0.5d;
+        private static readonly double OVERWEIGHT_BIAS = 0.0625d;
 
         public ReadOnlyCollection<CurveWeights> MetricCurveWeights { get; }
 
@@ -153,7 +153,7 @@ namespace ChartAutoRating {
             double correlation = CalculateCorrelation(dataSet);
             double overWeight = 0d;
 
-            for (int i = 1; i < Program.METRIC_COUNT; i++) {
+            for (int i = 0; i < Program.METRIC_COUNT; i++) {
                 double magnitude = metricCurveWeights[i].Magnitude;
 
                 if (magnitude > OVERWEIGHT_THRESHOLD)
