@@ -10,20 +10,24 @@ using ChartHelper;
 using ChartMetrics;
 
 namespace ChartAutoRating {
-    internal class Program {
+    public class Program {
         public static readonly int METRIC_COUNT = ChartProcessor.Metrics.Count;
-
-        private static readonly int CALCULATOR_COUNT = 32;
-        private static readonly int GROUP_COUNT = 8;
+        public static readonly int CALCULATOR_COUNT = 32;
+        public static readonly int GROUP_COUNT = 8;
+        
         private static readonly int CROSSOVERS = 4;
+        private static readonly double MIN_CROSS_CHANCE = 0.25f;
+        private static readonly double MIN_KILL_CHANCE = 0.125f;
         private static readonly string[] METRIC_NAMES = ChartProcessor.Metrics.Select(metric => metric.Name).ToArray();
 
-        private class CalculatorInfo : IComparable<CalculatorInfo> {
+        public class CalculatorInfo : IComparable<CalculatorInfo> {
             public Calculator Calculator { get; }
             
             public double Fitness { get; set; }
             
             public double CrossChance { get; set; }
+            
+            public double KillChance { get; set; }
             
             public CalculatorInfo Next { get; set; }
 
@@ -51,90 +55,138 @@ namespace ChartAutoRating {
             }
         }
 
+        public class DrawInfoItem {
+            public double Fitness { get; set; }
+                
+            public CurveWeights[] CurveWeights { get; }
+
+            public DrawInfoItem() => CurveWeights = new CurveWeights[METRIC_COUNT];
+        }
+
         public static void Main(string[] args) {
             var random = new Random();
             var dataSet = new DataSet(GetDataSamples());
             double[] baseCoefficients = DataSet.Normalize(dataSet);
             var groups = GetInitialGroups(dataSet, random);
             var threadInfo = groups.Select(group => new ThreadInfo(group)).ToArray();
+            var form = new Form1();
 
-            Parallel.Invoke(() => MainThread(threadInfo), () => TrainGroups(threadInfo, dataSet, random));
+            Parallel.Invoke(() => MainThread(threadInfo, form), () => FormThread(form), () => TrainGroups(threadInfo, dataSet, random));
             SaveGroups(groups);
             OutputDetailedInfo(groups);
             Console.WriteLine("Press any key to exit");
             Console.ReadKey(true);
         }
 
-        [STAThread]
-        private static void MainThread(ThreadInfo[] threadInfo) {
-            Console.WriteLine("Begin Main Thread");
-            Application.EnableVisualStyles();
-            Application.SetCompatibleTextRenderingDefault(false);
-
-            var form = new Form1();
-            
-            Task.Run(() => MainLoop(threadInfo, form));
-            Application.Run(form);
-        }
-
-        private static void MainLoop(ThreadInfo[] threadInfo, Form form) {
-            Console.WriteLine("Begin Main Loop");
-            
+        private static void MainThread(ThreadInfo[] threadInfo, Form1 form) {
             double[] bestHistory = new double[GROUP_COUNT];
-            var stopwatch = new Stopwatch();
-            
-            stopwatch.Start();
+            int[] generationHistory = new int[GROUP_COUNT];
+            var drawWatch = new Stopwatch();
+            var checkWatch = new Stopwatch();
+            var drawInfo = new DrawInfoItem[GROUP_COUNT][];
+
+            for (int i = 0; i < GROUP_COUNT; i++) {
+                var group = new DrawInfoItem[CALCULATOR_COUNT];
+                
+                for (int j = 0; j < CALCULATOR_COUNT; j++)
+                    group[j] = new DrawInfoItem();
+
+                drawInfo[i] = group;
+            }
+
+            drawWatch.Start();
+            checkWatch.Start();
 
             while (!Console.KeyAvailable || Console.ReadKey(true).Key != ConsoleKey.Enter) {
-                if (stopwatch.ElapsedMilliseconds < 1000)
-                    continue;
-
-                bool anyNew = false;
-                
-                for (int i = 0; i < GROUP_COUNT; i++) {
-                    var thread = threadInfo[i];
+                if (drawWatch.ElapsedMilliseconds > 66) {
+                    double best = 0d;
+                    double worst = 1d;
                     
-                    lock (thread.Lock) {
+                    for (int i = 0; i < GROUP_COUNT; i++) {
+                        var thread = threadInfo[i];
                         var group = thread.Group;
-                        
-                        Array.Sort(group);
-                        
-                        
-                        
-                        var best = group[0];
-                        var worst = group[CALCULATOR_COUNT - 1];
-                        
-                        if (best.Fitness <= bestHistory[i])
+                        var drawGroup = drawInfo[i];
+
+                        lock (thread.Lock) {
+                            for (int j = 0; j < CALCULATOR_COUNT; j++) {
+                                var info = group[j];
+                                var item = drawGroup[j];
+                                var weights = info.Calculator.MetricCurveWeights;
+                                double fitness = info.Fitness;
+
+                                item.Fitness = fitness;
+
+                                if (fitness > best)
+                                    best = fitness;
+
+                                if (fitness < worst)
+                                    worst = fitness;
+
+                                for (int k = 0; k < METRIC_COUNT; k++)
+                                    item.CurveWeights[k] = weights[k];
+                            }
+                        }
+                    }
+                    
+                    form.Draw(drawInfo, best, worst);
+                    drawWatch.Restart();
+                }
+
+                if (checkWatch.ElapsedMilliseconds > 10000) {
+                    bool anyNew = false;
+                    
+                    for (int i = 0; i < GROUP_COUNT; i++) {
+                        var thread = threadInfo[i];
+                        double best;
+                        double worst;
+
+                        lock (thread.Lock) {
+                            var group = thread.Group;
+                            
+                            best = group[0].Fitness;
+                            worst = group[CALCULATOR_COUNT - 1].Fitness;
+                        }
+
+                        if (best <= bestHistory[i])
                             continue;
 
                         if (!anyNew) {
                             Console.WriteLine(DateTime.Now.ToString("HH:mm:ss"));
                             anyNew = true;
                         }
-                        
-                        Console.WriteLine($"Group {i}: Generation {threadInfo[i].Generation}: {best.Fitness:0.00000000} - {worst.Fitness:0.00000000}");
-                        bestHistory[i] = best.Fitness;
-                    }
-                }
 
-                if (anyNew)
-                    Console.WriteLine();
-                
-                stopwatch.Restart();
+                        Console.WriteLine($"Group {i}: Generation {threadInfo[i].Generation}: {best:0.00000000} - {worst:0.00000000}");
+                        bestHistory[i] = best;
+                    }
+                    
+                    if (anyNew)
+                        Console.WriteLine();
+                    
+                    checkWatch.Restart();
+                }
             }
 
             foreach (var info in threadInfo)
                 info.Active = false;
+
+            form.Invoke((MethodInvoker) form.Close);
+        }
+
+        [STAThread]
+        private static void FormThread(Form1 form) {
+            Application.EnableVisualStyles();
+            Application.SetCompatibleTextRenderingDefault(false);
+            Application.Run(form);
         }
         
         private static void TrainGroups(ThreadInfo[] threadInfo, DataSet dataSet, Random random) =>
             Parallel.ForEach(threadInfo, info => TrainGroup(info, dataSet, new Random(random.Next() % (2 << 16))));
 
         private static void TrainGroup(ThreadInfo threadInfo, DataSet dataSet, Random random) {
-            Console.WriteLine("Begin Training Thread");
-            
             var group = threadInfo.Group;
             var crossGroups = new CalculatorInfo[CROSSOVERS, 3];
+            
+            Array.Sort(group);
 
             while (threadInfo.Active) {
                 lock (threadInfo.Lock) {
@@ -148,17 +200,22 @@ namespace ChartAutoRating {
             int remainingCount = CALCULATOR_COUNT;
             CalculatorInfo remainingStart;
             double sumCross;
+            double sumKill;
 
             InitLinkedList();
 
-            for (int i = 0; i < CROSSOVERS; i++)
-                crossGroups[i, 0] = PopBest();
+            for (int i = 0; i < CROSSOVERS; i++) {
+                if (i == 0)
+                    crossGroups[i, 0] = PopBest();
+                else
+                    crossGroups[i, 0] = PopRandomFit();
+            }
             
             for (int i = 0; i < CROSSOVERS; i++)
                 crossGroups[i, 1] = PopRandomFit();
             
             for (int i = 0; i < CROSSOVERS; i++)
-                crossGroups[i, 2] = PopRandom();
+                crossGroups[i, 2] = PopRandomUnfit();
 
             for (int i = 0; i < CROSSOVERS; i++) {
                 var childInfo = crossGroups[i, 2];
@@ -168,38 +225,43 @@ namespace ChartAutoRating {
                 childInfo.Fitness = 0.5d * (childCalculator.CalculateCorrelation(dataSet) + 1d);
             }
             
+            Array.Sort(group);
+
             void InitLinkedList() {
-                    double min = double.PositiveInfinity;
-                    double max = 0d;
+                remainingStart = group[0];
 
-                    remainingStart = group[0];
+                for (int i = 0; i < CALCULATOR_COUNT; i++) {
+                    var info = group[i];
+                    
+                    if (i < CALCULATOR_COUNT - 1)
+                        info.Next = group[i + 1];
+                    else
+                        info.Next = null;
+                }
 
-                    for (int i = 0; i < CALCULATOR_COUNT; i++) {
-                        var info = group[i];
-                        double fitness = info.Fitness;
+                sumCross = 0d;
+                sumKill = 0d;
 
-                        if (fitness < min)
-                            min = fitness;
-
-                        if (fitness > max)
-                            max = fitness;
-
-                        if (i < CALCULATOR_COUNT - 1)
-                            info.Next = group[i + 1];
-                        else
-                            info.Next = null;
+                for (int i = 0; i < CALCULATOR_COUNT; i++) {
+                    var info = group[i];
+                    
+                    if (i == 0) {
+                        info.CrossChance = 1d;
+                        info.KillChance = 0d;
+                        sumCross++;
+                        
+                        continue;
                     }
 
-                    sumCross = 0d;
+                    double interp = (double) (CALCULATOR_COUNT - 1 - i) / (CALCULATOR_COUNT - 1);
+                    double crossChance = (1d - interp) * MIN_CROSS_CHANCE + interp;
+                    double killChance = 1d - interp + interp * MIN_KILL_CHANCE;
 
-                    double scale = 1d / (max - min);
-
-                    foreach (var info in group) {
-                        double crossChance = scale * (info.Fitness - min);
-
-                        info.CrossChance = crossChance;
-                        sumCross += crossChance;
-                    }
+                    info.CrossChance = crossChance;
+                    info.KillChance = killChance;
+                    sumCross += crossChance;
+                    sumKill += killChance;
+                }
             }
 
             CalculatorInfo PopBest() {
@@ -219,6 +281,7 @@ namespace ChartAutoRating {
                 }
                 
                 sumCross -= best.CrossChance;
+                sumKill -= best.KillChance;
                 remainingCount--;
 
                 if (bestPrevious == null)
@@ -239,6 +302,7 @@ namespace ChartAutoRating {
 
                     if (position <= crossChance) {
                         sumCross -= crossChance;
+                        sumKill -= current.KillChance;
                         remainingCount--;
 
                         if (previous == null)
@@ -257,6 +321,35 @@ namespace ChartAutoRating {
                 return null;
             }
 
+            CalculatorInfo PopRandomUnfit() {
+                double position = sumKill * random.NextDouble();
+                var current = remainingStart;
+                CalculatorInfo previous = null;
+
+                while (current != null) {
+                    double killChance = current.KillChance;
+
+                    if (position <= killChance) {
+                        sumCross -= current.CrossChance;
+                        sumKill -= killChance;
+                        remainingCount--;
+
+                        if (previous == null)
+                            remainingStart = current.Next;
+                        else
+                            previous.Next = current.Next;
+
+                        return current;
+                    }
+
+                    position -= killChance;
+                    previous = current;
+                    current = current.Next;
+                }
+
+                return null;
+            }
+
             CalculatorInfo PopRandom() {
                 int position = random.Next(0, remainingCount);
                 var current = remainingStart;
@@ -268,6 +361,7 @@ namespace ChartAutoRating {
                 }
                 
                 sumCross -= current.CrossChance;
+                sumKill -= current.KillChance;
                 remainingCount--;
 
                 if (previous == null)

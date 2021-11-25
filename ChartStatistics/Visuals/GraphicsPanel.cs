@@ -37,7 +37,7 @@ namespace ChartStatistics {
 
         public int Height => panel.Height;
 
-        private bool needsNewBuffer = false;
+        private bool needsNewBuffer;
         private float zoomFactor;
         private float horizontalScaleFactor;
         private SortedDictionary<Drawable.DrawLayer, HashSet<Drawable>> layers;

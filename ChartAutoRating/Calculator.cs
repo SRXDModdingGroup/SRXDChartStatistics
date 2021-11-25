@@ -29,9 +29,9 @@ namespace ChartAutoRating {
         
         private static readonly int MAXIMIZE_ITERATIONS = 8;
         private static readonly int MAX_NUDGE_DIVISIONS = 8;
-        private static readonly double MUTATION_CHANCE = 0.0625d;
+        private static readonly double MUTATION_CHANCE = 0.125d;
 
-        public ReadOnlyCollection<CurveWeights> MetricCurveWeights => new ReadOnlyCollection<CurveWeights>(metricCurveWeights);
+        public ReadOnlyCollection<CurveWeights> MetricCurveWeights { get; }
 
         private CurveWeights[] metricCurveWeights;
         private Coefficients[] metricCoefficients;
@@ -40,6 +40,7 @@ namespace ChartAutoRating {
         public Calculator(int size, int threadIndex) {
             metricCurveWeights = new CurveWeights[Program.METRIC_COUNT];
             metricCoefficients = new Coefficients[Program.METRIC_COUNT];
+            MetricCurveWeights = new ReadOnlyCollection<CurveWeights>(metricCurveWeights);
 
             if (DATA_POOL.TryGetValue(size + threadIndex << 16, out data))
                 return;
@@ -178,18 +179,20 @@ namespace ChartAutoRating {
 
         public static void Cross(Random random, Calculator parent1, Calculator parent2, Calculator child) {
             for (int i = 0; i < Program.METRIC_COUNT; i++) {
-                if (random.NextDouble() < MUTATION_CHANCE) {
-                    child.metricCurveWeights[i] = random.NextDouble() * CurveWeights.Normalize(new CurveWeights(
-                        random.NextDouble(),
-                        random.NextDouble(),
-                        random.NextDouble()));
-                }
-                else {
-                    if (random.NextDouble() > 0.5d)
-                        child.metricCurveWeights[i] = parent1.metricCurveWeights[i];
-                    else
-                        child.metricCurveWeights[i] = parent2.metricCurveWeights[i];
-                }
+                bool mutateMagnitude = random.NextDouble() < MUTATION_CHANCE;
+                bool mutateCurve = random.NextDouble() < MUTATION_CHANCE;
+                
+                if (mutateMagnitude && mutateCurve)
+                    child.metricCurveWeights[i] = CurveWeights.Random(random, random.NextDouble());
+                else if (random.NextDouble() > 0.5d)
+                    child.metricCurveWeights[i] = parent1.metricCurveWeights[i];
+                else
+                    child.metricCurveWeights[i] = parent2.metricCurveWeights[i];
+
+                if (mutateMagnitude && !mutateCurve)
+                    child.metricCurveWeights[i] = random.NextDouble() * CurveWeights.Normalize(child.metricCurveWeights[i]);
+                else if (mutateCurve && !mutateMagnitude)
+                    child.metricCurveWeights[i] = CurveWeights.Random(random, child.metricCurveWeights[i].Magnitude);
             }
             
             child.NormalizeCurveWeights();
