@@ -36,7 +36,14 @@ namespace ChartAutoRating {
                     var info = group[j];
                     int y = PADDING + j * BOX_SIZE;
                     double interp = (info.Fitness - worst) / (best - worst);
-                    int value = (int) (255d * interp * interp * interp);
+
+                    if (interp < 0d)
+                        interp = 0d;
+
+                    if (interp > 1d)
+                        interp = 1d;
+                    
+                    int value = (int) (255d * interp);
 
                     DrawBox(0, Color.FromArgb(value, value, value));
 

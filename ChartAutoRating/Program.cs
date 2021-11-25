@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using ChartHelper;
@@ -15,9 +16,10 @@ namespace ChartAutoRating {
         public static readonly int CALCULATOR_COUNT = 32;
         public static readonly int GROUP_COUNT = 8;
         
-        private static readonly int CROSSOVERS = 4;
-        private static readonly double MIN_CROSS_CHANCE = 0.25f;
-        private static readonly double MIN_KILL_CHANCE = 0.125f;
+        private static readonly int CROSSOVERS = 8;
+        private static readonly int KEEP_N = 4;
+        private static readonly double MIN_CROSS_CHANCE = 0.125f;
+        private static readonly double MIN_KILL_CHANCE = 0.0625f;
         private static readonly string[] METRIC_NAMES = ChartProcessor.Metrics.Select(metric => metric.Name).ToArray();
 
         public class CalculatorInfo : IComparable<CalculatorInfo> {
@@ -28,6 +30,8 @@ namespace ChartAutoRating {
             public double CrossChance { get; set; }
             
             public double KillChance { get; set; }
+            
+            public bool Keep { get; set; }
             
             public CalculatorInfo Next { get; set; }
 
@@ -80,6 +84,13 @@ namespace ChartAutoRating {
 
         private static void MainThread(ThreadInfo[] threadInfo, Form1 form) {
             double[] bestHistory = new double[GROUP_COUNT];
+            var lastBestTime = new DateTime[GROUP_COUNT];
+
+            for (int i = 0; i < GROUP_COUNT; i++) {
+                bestHistory[i] = threadInfo[i].Group[0].Fitness;
+                lastBestTime[i] = DateTime.Now;
+            }
+
             int[] generationHistory = new int[GROUP_COUNT];
             var drawWatch = new Stopwatch();
             var checkWatch = new Stopwatch();
@@ -136,16 +147,7 @@ namespace ChartAutoRating {
                     bool anyNew = false;
                     
                     for (int i = 0; i < GROUP_COUNT; i++) {
-                        var thread = threadInfo[i];
-                        double best;
-                        double worst;
-
-                        lock (thread.Lock) {
-                            var group = thread.Group;
-                            
-                            best = group[0].Fitness;
-                            worst = group[CALCULATOR_COUNT - 1].Fitness;
-                        }
+                        double best = threadInfo[i].Group[0].Fitness;
 
                         if (best <= bestHistory[i])
                             continue;
@@ -155,8 +157,9 @@ namespace ChartAutoRating {
                             anyNew = true;
                         }
 
-                        Console.WriteLine($"Group {i}: Generation {threadInfo[i].Generation}: {best:0.00000000} - {worst:0.00000000}");
+                        Console.WriteLine($"Group {i}: Generation {threadInfo[i].Generation}: {best:0.00000000} (+{best - bestHistory[i]:0.00000000} in {(DateTime.Now - lastBestTime[i]):hh\\:mm\\:ss})");
                         bestHistory[i] = best;
+                        lastBestTime[i] = DateTime.Now;
                     }
                     
                     if (anyNew)
@@ -204,13 +207,9 @@ namespace ChartAutoRating {
 
             InitLinkedList();
 
-            for (int i = 0; i < CROSSOVERS; i++) {
-                if (i == 0)
-                    crossGroups[i, 0] = PopBest();
-                else
-                    crossGroups[i, 0] = PopRandomFit();
-            }
-            
+            for (int i = 0; i < CROSSOVERS; i++)
+                crossGroups[i, 0] = PopRandomFit();
+
             for (int i = 0; i < CROSSOVERS; i++)
                 crossGroups[i, 1] = PopRandomFit();
             
@@ -222,7 +221,7 @@ namespace ChartAutoRating {
                 var childCalculator = childInfo.Calculator;
 
                 Calculator.Cross(random, crossGroups[i, 0].Calculator, crossGroups[i, 1].Calculator, childCalculator);
-                childInfo.Fitness = 0.5d * (childCalculator.CalculateCorrelation(dataSet) + 1d);
+                childInfo.Fitness = childCalculator.CalculateFitness(dataSet);
             }
             
             Array.Sort(group);
@@ -244,52 +243,26 @@ namespace ChartAutoRating {
 
                 for (int i = 0; i < CALCULATOR_COUNT; i++) {
                     var info = group[i];
-                    
-                    if (i == 0) {
-                        info.CrossChance = 1d;
-                        info.KillChance = 0d;
-                        sumCross++;
-                        
-                        continue;
-                    }
 
-                    double interp = (double) (CALCULATOR_COUNT - 1 - i) / (CALCULATOR_COUNT - 1);
-                    double crossChance = (1d - interp) * MIN_CROSS_CHANCE + interp;
-                    double killChance = 1d - interp + interp * MIN_KILL_CHANCE;
+                    double interp = (double) i / (CALCULATOR_COUNT - 1);
+                    double crossChance = 1d - interp + interp * MIN_CROSS_CHANCE;
+                    double killChance;
+
+                    if (i < KEEP_N) {
+                        killChance = 0d;
+                        info.Keep = true;
+                    }
+                    else {
+                        interp = (double) (i - KEEP_N) / (CALCULATOR_COUNT - 1 - KEEP_N);
+                        killChance = (1d - interp) * MIN_KILL_CHANCE + interp;
+                        info.Keep = false;
+                    }
 
                     info.CrossChance = crossChance;
                     info.KillChance = killChance;
                     sumCross += crossChance;
                     sumKill += killChance;
                 }
-            }
-
-            CalculatorInfo PopBest() {
-                var current = remainingStart;
-                var best = current;
-                CalculatorInfo previous = null;
-                CalculatorInfo bestPrevious = null;
-
-                while (current != null) {
-                    if (current.Fitness > best.Fitness) {
-                        best = current;
-                        bestPrevious = previous;
-                    }
-
-                    previous = current;
-                    current = current.Next;
-                }
-                
-                sumCross -= best.CrossChance;
-                sumKill -= best.KillChance;
-                remainingCount--;
-
-                if (bestPrevious == null)
-                    remainingStart = best.Next;
-                else
-                    bestPrevious.Next = best.Next;
-
-                return best;
             }
 
             CalculatorInfo PopRandomFit() {
@@ -300,7 +273,7 @@ namespace ChartAutoRating {
                 while (current != null) {
                     double crossChance = current.CrossChance;
 
-                    if (position <= crossChance) {
+                    if (position < crossChance) {
                         sumCross -= crossChance;
                         sumKill -= current.KillChance;
                         remainingCount--;
@@ -329,7 +302,7 @@ namespace ChartAutoRating {
                 while (current != null) {
                     double killChance = current.KillChance;
 
-                    if (position <= killChance) {
+                    if (!current.Keep && position < killChance) {
                         sumCross -= current.CrossChance;
                         sumKill -= killChance;
                         remainingCount--;
@@ -348,28 +321,6 @@ namespace ChartAutoRating {
                 }
 
                 return null;
-            }
-
-            CalculatorInfo PopRandom() {
-                int position = random.Next(0, remainingCount);
-                var current = remainingStart;
-                CalculatorInfo previous = null;
-
-                for (int i = 0; i < position; i++) {
-                    previous = current;
-                    current = current.Next;
-                }
-                
-                sumCross -= current.CrossChance;
-                sumKill -= current.KillChance;
-                remainingCount--;
-
-                if (previous == null)
-                    remainingStart = current.Next;
-                else
-                    previous.Next = current.Next;
-
-                return current;
             }
         }
 
@@ -393,13 +344,8 @@ namespace ChartAutoRating {
             Console.WriteLine("Best calculators");
             Console.WriteLine();
             
-            foreach (var calculatorInfo in groups) {
-                var best = calculatorInfo[0];
-
-                foreach (var info in calculatorInfo) {
-                    if (info.Fitness > best.Fitness)
-                        best = info;
-                }
+            foreach (var group in groups.OrderBy(group => group[0].Fitness)) {
+                var best = group[0];
 
                 Console.WriteLine($"Fitness: {best.Fitness}");
 
@@ -443,6 +389,19 @@ namespace ChartAutoRating {
                 }
             }
 
+            var ratings = new Dictionary<string, int>();
+            var regex = new Regex(@"(\d+)\t(.*)");
+
+            using (var reader = new StreamReader(Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "Ratings.txt"))) {
+                while (!reader.EndOfStream) {
+                    string line = reader.ReadLine();
+                    var match = regex.Match(line);
+
+                    if (match.Success)
+                        ratings.Add(match.Groups[2].ToString(), int.Parse(match.Groups[1].ToString()));
+                }
+            }
+
             var dataSamples = new List<DataSample>();
             var ids = new List<string>();
 
@@ -468,10 +427,8 @@ namespace ChartAutoRating {
 
                     metricResults[i] = result.GetClippedMean(result.GetQuantile(0.1f), result.GetQuantile(0.85f));
                 }
-
-                int difficultyRating = chartData.TrackData[Difficulty.XD].DifficultyRating;
-
-                dataSamples.Add(new DataSample(difficultyRating, metricResults));
+                
+                dataSamples.Add(new DataSample(ratings[chartData.Title], metricResults));
                 ids.Add(id);
             }
 
@@ -533,7 +490,7 @@ namespace ChartAutoRating {
                         var info = new CalculatorInfo(calculator);
 
                         calculator.Randomize(random, 1d);
-                        info.Fitness = 0.5d * (calculator.CalculateCorrelation(dataSet) + 1d);
+                        info.Fitness = calculator.CalculateFitness(dataSet);
                         calculatorInfo[j] = info;
                     }
 
