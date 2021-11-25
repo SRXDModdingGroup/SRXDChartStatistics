@@ -31,7 +31,8 @@ namespace ChartAutoRating {
         private static readonly int MAX_NUDGE_DIVISIONS = 8;
         private static readonly double MUTATION_CHANCE = 0.5d;
         private static readonly double MAX_MUTATION_AMOUNT = 0.125d;
-        private static readonly double WELL_SPREAD_BIAS = 0.005d;
+        private static readonly double OVERWEIGHT_THRESHOLD = 0.35d;
+        private static readonly double OVERWEIGHT_BIAS = 0.5d;
 
         public ReadOnlyCollection<CurveWeights> MetricCurveWeights { get; }
 
@@ -150,16 +151,16 @@ namespace ChartAutoRating {
 
         public double CalculateFitness(DataSet dataSet) {
             double correlation = CalculateCorrelation(dataSet);
-            double maxMagnitude = metricCurveWeights[0].Magnitude;
+            double overWeight = 0d;
 
             for (int i = 1; i < Program.METRIC_COUNT; i++) {
                 double magnitude = metricCurveWeights[i].Magnitude;
 
-                if (magnitude > maxMagnitude)
-                    maxMagnitude = magnitude;
+                if (magnitude > OVERWEIGHT_THRESHOLD)
+                    overWeight += magnitude - OVERWEIGHT_THRESHOLD;
             }
 
-            return 0.5d * (correlation + 1d) + WELL_SPREAD_BIAS * (1d - maxMagnitude);
+            return 0.5d * (correlation + 1d) - OVERWEIGHT_BIAS * overWeight;
         }
 
         private void ApplyWeights() {

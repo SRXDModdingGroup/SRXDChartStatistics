@@ -109,7 +109,7 @@ namespace ChartAutoRating {
             checkWatch.Start();
 
             while (!Console.KeyAvailable || Console.ReadKey(true).Key != ConsoleKey.Enter) {
-                if (drawWatch.ElapsedMilliseconds > 66) {
+                if (Form.ActiveForm == form && drawWatch.ElapsedMilliseconds > 66) {
                     double best = 0d;
                     double worst = 1d;
                     
@@ -328,8 +328,6 @@ namespace ChartAutoRating {
             using (var writer = new BinaryWriter(File.Open(Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "results.dat"), FileMode.Create))) {
                 foreach (var calculatorInfo in groups) {
                     foreach (var info in calculatorInfo) {
-                        writer.Write(info.Fitness);
-
                         foreach (var curveWeights in info.Calculator.MetricCurveWeights) {
                             writer.Write(curveWeights.W0);
                             writer.Write(curveWeights.W1);
@@ -463,8 +461,6 @@ namespace ChartAutoRating {
                             var info = new CalculatorInfo(calculator);
                             var weights = new CurveWeights[METRIC_COUNT];
 
-                            info.Fitness = reader.ReadDouble();
-
                             for (int k = 0; k < METRIC_COUNT; k++) {
                                 double w0 = reader.ReadDouble();
                                 double w1 = reader.ReadDouble();
@@ -474,6 +470,7 @@ namespace ChartAutoRating {
                             }
 
                             calculator.SetWeights(weights);
+                            info.Fitness = calculator.CalculateFitness(dataSet);
                             calculatorInfo[j] = info;
                         }
 
