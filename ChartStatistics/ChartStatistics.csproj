@@ -36,9 +36,6 @@
         <Reference Include="ChartHelper, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null">
           <HintPath>..\libs\ChartHelper.dll</HintPath>
         </Reference>
-        <Reference Include="ChartMetrics, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null">
-          <HintPath>..\ChartMetrics\bin\Release\ChartMetrics.dll</HintPath>
-        </Reference>
         <Reference Include="System" />
         <Reference Include="System.Core" />
         <Reference Include="System.Xml.Linq" />
@@ -100,6 +97,12 @@
     </ItemGroup>
     <ItemGroup>
         <None Include="App.config" />
+    </ItemGroup>
+    <ItemGroup>
+      <ProjectReference Include="..\ChartMetrics\ChartMetrics.csproj">
+        <Project>{c08a389f-34e7-45ed-b770-1f171679636a}</Project>
+        <Name>ChartMetrics</Name>
+      </ProjectReference>
     </ItemGroup>
     <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

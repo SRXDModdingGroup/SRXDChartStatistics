@@ -30,6 +30,20 @@ namespace ChartRatingTrainer {
                     target[i, j] = data[i].CompareTo(data[j]);
             }
         }
+        
+        public static void CorrelationComponents(Table a, Table b, int size, out double sum, out double absSum) {
+            sum = 0d;
+            absSum = 0d;
+            
+            for (int i = 0; i < size - 1; i++) {
+                for (int j = i + 1; j < size; j++) {
+                    double product = Math.Sign(a[i, j] * b[i, j]);
+
+                    sum += product;
+                    absSum += Math.Abs(product);
+                }
+            }
+        }
 
         public static double Correlation(Table a, Table b, int size) {
             double sum = 0d;

@@ -1,4 +1,5 @@
 ﻿using System;
+using ChartAutoRating;
 
 namespace ChartRatingTrainer {
     public readonly struct CurveWeights {
@@ -18,6 +19,8 @@ namespace ChartRatingTrainer {
         }
 
         public CurveWeights(CurveWeights cw) : this(cw.W0, cw.W1, cw.W2) { }
+
+        public Coefficients ToCoefficients() => new Coefficients(3d * W0, 3d * (W2 - W0), W0 + W1 - 2d * W2);
 
         public static CurveWeights Random(Random random, double magnitude) {
             double w0 = random.NextDouble();

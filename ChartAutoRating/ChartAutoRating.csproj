@@ -4,11 +4,11 @@
     <PropertyGroup>
         <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
         <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-        <ProjectGuid>{16859F1C-59BF-41FA-BA46-7FB227AF5D3F}</ProjectGuid>
-        <OutputType>Exe</OutputType>
+        <ProjectGuid>{A826CE3B-8722-418F-BEC2-CE1A4D5EBAE6}</ProjectGuid>
+        <OutputType>Library</OutputType>
         <AppDesignerFolder>Properties</AppDesignerFolder>
-        <RootNamespace>ChartRatingTrainer</RootNamespace>
-        <AssemblyName>ChartRatingTrainer</AssemblyName>
+        <RootNamespace>ChartAutoRating</RootNamespace>
+        <AssemblyName>ChartAutoRating</AssemblyName>
         <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
         <FileAlignment>512</FileAlignment>
     </PropertyGroup>
@@ -38,39 +38,16 @@
         <Reference Include="System" />
         <Reference Include="System.Core" />
         <Reference Include="System.Data" />
-        <Reference Include="System.Drawing" />
-        <Reference Include="System.Drawing.Design" />
-        <Reference Include="System.Windows.Forms" />
         <Reference Include="System.Xml" />
     </ItemGroup>
     <ItemGroup>
-        <Compile Include="CacheInfo.cs" />
-        <Compile Include="Calculator.cs" />
-        <Compile Include="CalculatorInfo.cs" />
-        <Compile Include="CurveWeights.cs" />
-        <Compile Include="DrawInfoItem.cs" />
-        <Compile Include="RelevantChartInfo.cs" />
-        <Compile Include="DataSet.cs" />
-        <Compile Include="Form1.cs">
-          <SubType>Form</SubType>
-        </Compile>
-        <Compile Include="Form1.Designer.cs">
-          <DependentUpon>Form1.cs</DependentUpon>
-        </Compile>
-        <Compile Include="Program.cs" />
+        <Compile Include="Coefficients.cs" />
+        <Compile Include="DataSample.cs" />
+        <Compile Include="Data.cs" />
+        <Compile Include="Network.cs" />
         <Compile Include="Properties\AssemblyInfo.cs" />
-        <Compile Include="Table.cs" />
     </ItemGroup>
     <ItemGroup>
-      <EmbeddedResource Include="Form1.resx">
-        <DependentUpon>Form1.cs</DependentUpon>
-      </EmbeddedResource>
-    </ItemGroup>
-    <ItemGroup>
-      <ProjectReference Include="..\ChartAutoRating\ChartAutoRating.csproj">
-        <Project>{a826ce3b-8722-418f-bec2-ce1a4d5ebae6}</Project>
-        <Name>ChartAutoRating</Name>
-      </ProjectReference>
       <ProjectReference Include="..\ChartMetrics\ChartMetrics.csproj">
         <Project>{c08a389f-34e7-45ed-b770-1f171679636a}</Project>
         <Name>ChartMetrics</Name>
