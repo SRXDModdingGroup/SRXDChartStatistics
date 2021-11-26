@@ -1,11 +1,26 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Linq;
 
 namespace ChartAutoRating {
     public class Calculator {
         private static readonly Dictionary<int, Data> DATA_POOL = new Dictionary<int, Data>();
+        
+        public readonly struct Anchor : IComparable<Anchor> {
+            public double From { get; }
+            
+            public int To { get; }
+            
+            public double Correlation { get; }
+
+            public Anchor(double from, int to, double correlation) {
+                From = from;
+                To = to;
+                Correlation = correlation;
+            }
+
+            public int CompareTo(Anchor other) => -Correlation.CompareTo(other.Correlation);
+        }
 
         private class Data {
             public Coefficients[] NormalizedCoefficients { get; }
@@ -142,6 +157,19 @@ namespace ChartAutoRating {
             return correlation;
         }
 
+        public double CalculateValue(double[] metrics) {
+            double sum = 0;
+
+            for (int j = 0; j < Program.METRIC_COUNT; j++) {
+                double result = metrics[j];
+                var coefficients = metricCoefficients[j];
+                    
+                sum += result * (coefficients.X1 + result * (coefficients.X2 + result * coefficients.X3));
+            }
+
+            return sum;
+        }
+
         public double CalculateCorrelation(DataSet dataSet) {
             CacheResults(dataSet);
             Table.GenerateComparisonTable(data.ResultsTable, data.Results, dataSet.Size);
@@ -163,6 +191,23 @@ namespace ChartAutoRating {
             return 0.5d * (correlation + 1d) - OVERWEIGHT_BIAS * overWeight;
         }
 
+        public Anchor[] CalculateAnchors(DataSet dataSet) {
+            CacheResults(dataSet);
+            Table.GenerateComparisonTable(data.ResultsTable, data.Results, dataSet.Size);
+
+            var anchors = new Anchor[dataSet.Size];
+
+            for (int i = 0; i < dataSet.Size; i++) {
+                double correlation = Table.SimilarityForRow(data.ResultsTable, dataSet.DifficultyComparisons, i, dataSet.Size);
+
+                anchors[i] = new Anchor(CalculateValue(dataSet.Metrics[i]), dataSet.RelevantChartInfo[i].DifficultyRating, correlation);
+            }
+            
+            Array.Sort(anchors);
+
+            return anchors;
+        }
+
         private void ApplyWeights() {
             for (int i = 0; i < Program.METRIC_COUNT; i++)
                 metricCoefficients[i] = new Coefficients(metricCurveWeights[i]);
@@ -179,19 +224,8 @@ namespace ChartAutoRating {
         }
 
         private void CacheResults(DataSet dataSet) {
-            for (int i = 0; i < dataSet.Size; i++) {
-                double[] metricResults = dataSet.Samples[i].Metrics;
-                double sum = 0;
-
-                for (int j = 0; j < Program.METRIC_COUNT; j++) {
-                    double result = metricResults[j];
-                    var coefficients = metricCoefficients[j];
-                    
-                    sum += result * (coefficients.X1 + result * (coefficients.X2 + result * coefficients.X3));
-                }
-
-                data.Results[i] = sum;
-            }
+            for (int i = 0; i < dataSet.Size; i++)
+                data.Results[i] = CalculateValue(dataSet.Metrics[i]);
         }
 
         public static void Cross(Random random, Calculator parent1, Calculator parent2, Calculator child) {

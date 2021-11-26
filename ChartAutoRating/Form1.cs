@@ -18,7 +18,7 @@ namespace ChartAutoRating {
                 2 * PADDING + Program.CALCULATOR_COUNT * BOX_SIZE + 38);
         }
 
-        public void Draw(Program.DrawInfoItem[][] drawInfo, double best, double worst) {
+        public void Draw(DrawInfoItem[][] drawInfo, double best, double worst) {
             if (buffer == null) {
                 buffer?.Dispose();
                 buffer = BufferedGraphicsManager.Current.Allocate(panel1.CreateGraphics(), panel1.Bounds);

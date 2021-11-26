@@ -17,7 +17,11 @@ namespace ChartStatistics {
                 new ArgDescription("type", "The type of path to show", 
                     "exact: The precise path through the notes",
                     "simplified: A simplified path with less movement",
-                    "none: Do not show a path"))
+                    "none: Do not show a path")),
+            new CommandInternal("rate", "Calculates a difficulty rating for the chart based on the measured metrics",
+                new ArgDescription("path", "The file name (with or without extension) or full path of the chart to rate. Leave empty to rate the currently open chart")),
+            new CommandInternal("rateall", "Calculates a difficulty rating for every chart in a folder",
+                new ArgDescription("path", "The path to the folder you want to use. Leave empty to use the default customs location"))
         };
         
         private static readonly Dictionary<string, CommandInternal> COMMANDS_DICT = COMMANDS.ToDictionary(command => command.Name, command => command);

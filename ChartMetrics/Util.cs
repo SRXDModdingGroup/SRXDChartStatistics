@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 
 namespace ChartMetrics {
     internal static class Util {
@@ -10,6 +9,8 @@ namespace ChartMetrics {
         public static float Lerp(float a, float b, float t) => (1f - t) * a + t * b;
 
         public static float Remap(float value, float fromStart, float fromEnd, float toStart, float toEnd) => toStart + (toEnd - toStart) * (value - fromStart) / (fromEnd - fromStart);
+        
+        public static double Remap(double value, double fromStart, double fromEnd, double toStart, double toEnd) => toStart + (toEnd - toStart) * (value - fromStart) / (fromEnd - fromStart);
 
         public static float Clamp(float value, float min, float max) => Math.Max(min, Math.Min(value, max));
     }

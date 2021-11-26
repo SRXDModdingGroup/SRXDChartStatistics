@@ -49,5 +49,59 @@ namespace ChartAutoRating {
 
             return sum / absSum;
         }
+
+        public static double SimilarityForRow(Table a, Table b, int row, int size) {
+            double sum = 0d;
+            double absSum = 0d;
+            
+            for (int column = 0; column < size; column++) {
+                if (column == row)
+                    continue;
+
+                double value;
+
+                if (column > row)
+                    value = a[row, column];
+                else
+                    value = -a[column, row];
+
+                sum += value;
+                absSum += Math.Abs(value);
+            }
+
+            double averageA;
+
+            if (absSum == 0d)
+                averageA = 0d;
+            else
+                averageA = sum / absSum;
+
+            sum = 0d;
+            absSum = 0d;
+            
+            for (int column = 0; column < size; column++) {
+                if (column == row)
+                    continue;
+
+                double value;
+
+                if (column > row)
+                    value = b[row, column];
+                else
+                    value = -b[column, row];
+
+                sum += value;
+                absSum += Math.Abs(value);
+            }
+
+            double averageB;
+
+            if (absSum == 0d)
+                averageB = 0d;
+            else
+                averageB = sum / absSum;
+
+            return 1d - Math.Abs(averageB - averageA);
+        }
     }
 }

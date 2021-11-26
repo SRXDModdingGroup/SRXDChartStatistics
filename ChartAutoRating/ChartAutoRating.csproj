@@ -47,9 +47,11 @@
         <Reference Include="System.Xml" />
     </ItemGroup>
     <ItemGroup>
+        <Compile Include="CalculatorInfo.cs" />
         <Compile Include="Coefficients.cs" />
         <Compile Include="CurveWeights.cs" />
-        <Compile Include="DataSample.cs" />
+        <Compile Include="DrawInfoItem.cs" />
+        <Compile Include="RelevantChartInfo.cs" />
         <Compile Include="DataSet.cs" />
         <Compile Include="Calculator.cs" />
         <Compile Include="Form1.cs">

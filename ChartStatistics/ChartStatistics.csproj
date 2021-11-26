@@ -70,7 +70,7 @@
         <Compile Include="Visuals\Drawables\HoldSegment.cs" />
         <Compile Include="Visuals\Drawables\Label.cs" />
         <Compile Include="Visuals\Drawables\LineGraph.cs" />
-        <Compile Include="Visuals\Drawables\Match.cs" />
+        <Compile Include="Visuals\Drawables\MatchNote.cs" />
         <Compile Include="Visuals\Drawables\PhraseMarker.cs" />
         <Compile Include="Visuals\Drawables\Tap.cs" />
         <Compile Include="Visuals\Drawables\ValueLabel.cs" />

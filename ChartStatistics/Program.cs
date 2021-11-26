@@ -1,12 +1,12 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Security;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace ChartStatistics {
     public static class Program {
         private static readonly object LOCK = new object();
+        private static readonly Regex MATCH_PARAM = new Regex(@"(""(.+?)""|(\w+)?)\s?");
 
         /// <summary>
         /// The main entry point for the application.
@@ -29,7 +29,8 @@ namespace ChartStatistics {
             Console.WriteLine("Type \"help\" for a list of commands");
             Console.WriteLine();
             
-            string[] split;
+            string name = string.Empty;
+            string[] args = new string[8];
 
             do {
                 Console.Write("> ");
@@ -37,25 +38,41 @@ namespace ChartStatistics {
                 string line = Console.ReadLine();
 
                 if (string.IsNullOrWhiteSpace(line)) {
-                    split = null;
+                    name = string.Empty;
                     
                     continue;
                 }
-                
-                split = line.Split(' ');
 
-                string name = split[0].ToLowerInvariant();
-                string[] args = new string[8];
+                var matches = MATCH_PARAM.Matches(line);
 
-                for (int i = 0; i < args.Length; i++) {
-                    if (i < split.Length - 1)
-                        args[i] = split[i + 1];
+                int i = 0;
+
+                foreach (Match match in matches) {
+                    string result;
+                    var groupA = match.Groups[2];
+                    var groupB = match.Groups[3];
+
+                    if (groupA.Success)
+                        result = groupA.ToString();
+                    else if (groupB.Success)
+                        result = groupB.ToString();
                     else
+                        result = string.Empty;
+
+                    if (i == 0)
+                        name = result;
+                    else if (i < matches.Count && i - 1 < args.Length)
+                        args[i - 1] = result;
+                    else if (i - 1 < args.Length)
                         args[i] = string.Empty;
+
+                    i++;
                 }
+
+                string name1 = name;
                 
-                Execute(() => TryRunCommand(name, args));
-            } while (split == null || split[0] != "exit");
+                Execute(() => TryRunCommand(name1, args));
+            } while (name != "exit");
         }
 
         private static void TryRunCommand(string name, string[] args) {

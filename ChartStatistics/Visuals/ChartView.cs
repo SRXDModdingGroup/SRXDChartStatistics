@@ -35,8 +35,10 @@ namespace ChartStatistics {
             Command.AddListener("load", args => LoadChart(args[0]));
             Command.AddListener("show", args => DisplayMetric(args[0]));
             Command.AddListener("path", args => DisplayPath(args[0], int.TryParse(args[1], out int val) ? val : -1));
+            Command.AddListener("rate", args => RateChart(args[0], string.IsNullOrWhiteSpace(args[0])));
+            Command.AddListener("rateall", args => RateAllCharts());
             Command.SetPossibleValues("show", 0, ChartProcessor.Metrics.Select(metric => $"{metric.Name.ToLower()}: {metric.Description}").ToArray());
-            // LoadChart("spinshare_5fa8c29425859");
+            LoadChart("spinshare_6099b4b03a490");
             // DisplayMetric("overallnotedensity");
             // DisplayPath("Simplified", -1);
         }
@@ -106,13 +108,13 @@ namespace ChartStatistics {
             graphicsPanel.AddDrawable(metricGraph);
             metricDrawables.Add(metricGraph);
 
-            float lowerQuantile = result.GetQuantile(0.1f);
+            float lowerQuantile = result.GetQuantile(ChartProcessor.LOWER_QUANTILE);
             var valueLabel = new ValueLabel(Util.Lerp(graphBottom, graphTop, lowerQuantile / max), $"Low ({lowerQuantile:0.00})");
             
             graphicsPanel.AddDrawable(valueLabel);
             metricDrawables.Add(valueLabel);
             
-            float upperQuantile = result.GetQuantile(0.85f);
+            float upperQuantile = result.GetQuantile(ChartProcessor.UPPER_QUANTILE);
             
             valueLabel = new ValueLabel(Util.Lerp(graphBottom, graphTop, upperQuantile / max), $"High ({upperQuantile:0.00})");
             graphicsPanel.AddDrawable(valueLabel);
@@ -229,6 +231,42 @@ namespace ChartStatistics {
             graphicsPanel.Redraw();
         }
 
+        private void RateChart(string path, bool rateThis) {
+            ChartProcessor processor;
+
+            if (rateThis)
+                processor = chartProcessor;
+            else if (!ChartProcessor.TryLoadChart(path, out processor)) {
+                Console.WriteLine("Could not find this file");
+                
+                return;
+            }
+
+            var info = processor.GetDifficultyRatingDetailed();
+            
+            Console.WriteLine($"Difficulty: {info.DifficultyRating}");
+
+            for (int i = 0; i < ChartProcessor.Metrics.Count; i++)
+                Console.WriteLine($"{ChartProcessor.Metrics[i].Name}: {info.MeasuredValues[i]:0.0000} ({info.ContributedValues[i]:0.0000})");
+        }
+
+        private void RateAllCharts() {
+            var data = new List<KeyValuePair<string, int>>();
+            
+            foreach (string path in FileHelper.GetAllSrtbs()) {
+                if (!ChartProcessor.TryLoadChart(path, out var processor))
+                    continue;
+                
+                data.Add(new KeyValuePair<string, int>(processor.ChartTitle, processor.GetDifficultyRating()));
+            }
+            
+            Console.WriteLine();
+            data.Sort((a, b) => a.Value.CompareTo(b.Value));
+
+            foreach (var pair in data)
+                Console.WriteLine($"{pair.Value} - {pair.Key}");
+        }
+
         private void DrawChart() {
             graphicsPanel.Clear();
             graphicsPanel.AddDrawable(new Grid(chartTop, chartBottom, 9, 10));
@@ -241,7 +279,7 @@ namespace ChartStatistics {
             foreach (var note in notes) {
                 switch (note.Type) {
                     case NoteType.Match:
-                        graphicsPanel.AddDrawable(new Match(note.Time, ColumnToY(note.Column), note.Color == NoteColor.Red));
+                        graphicsPanel.AddDrawable(new MatchNote(note.Time, ColumnToY(note.Column), note.Color == NoteColor.Red));
 
                         break;
                     case NoteType.Beat:

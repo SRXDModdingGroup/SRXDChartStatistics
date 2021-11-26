@@ -1,14 +1,14 @@
 ﻿using System.Drawing;
 
 namespace ChartStatistics {
-    public class Match : Drawable {
+    public class MatchNote : Drawable {
         private static readonly Brush BRUSH_BLUE = new SolidBrush(Color.Cyan);
         private static readonly Brush BRUSH_RED = new SolidBrush(Color.Red);
 
         private Brush brush;
         private float y;
         
-        public Match(float start, float y, bool isRed) : base(start, start, DrawLayer.Match) {
+        public MatchNote(float start, float y, bool isRed) : base(start, start, DrawLayer.Match) {
             if (isRed)
                 brush = BRUSH_RED;
             else

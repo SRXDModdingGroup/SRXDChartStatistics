@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-
-namespace ChartStatistics {
+﻿namespace ChartStatistics {
     public static class Util {
         public static float Lerp(float a, float b, float t) => (1f - t) * a + t * b;
 

@@ -22,26 +22,6 @@ namespace ChartAutoRating {
         private static readonly double MIN_KILL_CHANCE = 0.0625f;
         private static readonly string[] METRIC_NAMES = ChartProcessor.Metrics.Select(metric => metric.Name).ToArray();
 
-        public class CalculatorInfo : IComparable<CalculatorInfo> {
-            public Calculator Calculator { get; }
-            
-            public double Fitness { get; set; }
-            
-            public double CrossChance { get; set; }
-            
-            public double KillChance { get; set; }
-            
-            public bool Keep { get; set; }
-            
-            public CalculatorInfo Next { get; set; }
-
-            public CalculatorInfo(Calculator calculator) {
-                Calculator = calculator;
-            }
-
-            public int CompareTo(CalculatorInfo other) => -Fitness.CompareTo(other.Fitness);
-        }
-
         private class ThreadInfo {
             public CalculatorInfo[] Group { get; }
             
@@ -59,17 +39,20 @@ namespace ChartAutoRating {
             }
         }
 
-        public class DrawInfoItem {
-            public double Fitness { get; set; }
-                
-            public CurveWeights[] CurveWeights { get; }
+        private readonly struct CacheInfo {
+            public RelevantChartInfo ChartInfo { get; }
+            
+            public double[] Metrics { get; }
 
-            public DrawInfoItem() => CurveWeights = new CurveWeights[METRIC_COUNT];
+            public CacheInfo(RelevantChartInfo chartInfo, double[] metrics) {
+                ChartInfo = chartInfo;
+                Metrics = metrics;
+            }
         }
 
         public static void Main(string[] args) {
             var random = new Random();
-            var dataSet = new DataSet(GetDataSamples());
+            var dataSet = GetDataSet();
             double[] baseCoefficients = DataSet.Normalize(dataSet);
             var groups = GetInitialGroups(dataSet, random);
             var threadInfo = groups.Select(group => new ThreadInfo(group)).ToArray();
@@ -78,6 +61,7 @@ namespace ChartAutoRating {
             Parallel.Invoke(() => MainThread(threadInfo, form), () => FormThread(form), () => TrainGroups(threadInfo, dataSet, random));
             SaveGroups(threadInfo);
             OutputDetailedInfo(groups);
+            SaveParameters(groups, dataSet, baseCoefficients);
             Console.WriteLine("Press any key to exit");
             Console.ReadKey(true);
         }
@@ -207,7 +191,6 @@ namespace ChartAutoRating {
         }
 
         private static void CrossCalculators(CalculatorInfo[] group, DataSet dataSet, Random random, CalculatorInfo[,] crossGroups) {
-            int remainingCount = CALCULATOR_COUNT;
             CalculatorInfo remainingStart;
             double sumCross;
             double sumKill;
@@ -283,7 +266,6 @@ namespace ChartAutoRating {
                     if (position < crossChance) {
                         sumCross -= crossChance;
                         sumKill -= current.KillChance;
-                        remainingCount--;
 
                         if (previous == null)
                             remainingStart = current.Next;
@@ -312,7 +294,6 @@ namespace ChartAutoRating {
                     if (!current.Keep && position < killChance) {
                         sumCross -= current.CrossChance;
                         sumKill -= killChance;
-                        remainingCount--;
 
                         if (previous == null)
                             remainingStart = current.Next;
@@ -350,6 +331,49 @@ namespace ChartAutoRating {
             Console.WriteLine();
         }
 
+        private static void SaveParameters(CalculatorInfo[][] groups, DataSet dataSet, double[] baseCoefficients) {
+            var best = groups[0][0];
+
+            for (int i = 1; i < groups.Length; i++) {
+                var info = groups[i][0];
+
+                if (info.Fitness > best.Fitness)
+                    best = info;
+            }
+
+            var calculator = best.Calculator;
+            
+            Console.WriteLine("Anchors:");
+            Console.WriteLine();
+
+            foreach (var group in calculator.CalculateAnchors(dataSet).GroupBy(a => a.To / 5).OrderBy(g => g.Key)) {
+                foreach (var anchor in group)
+                    Console.WriteLine($"{anchor.From} -> {anchor.To} ({anchor.Correlation:0.0000})");
+                
+                Console.WriteLine();
+            }
+
+            var metricCurveWeights = calculator.MetricCurveWeights;
+            
+            using (var writer = new BinaryWriter(File.Open(Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "parameters.dat"), FileMode.Create))) {
+                for (int i = 0; i < METRIC_COUNT; i++) {
+                    var coefficients = new Coefficients(metricCurveWeights[i]);
+
+                    writer.Write(baseCoefficients[i]);
+                    writer.Write(coefficients.X1);
+                    writer.Write(coefficients.X2);
+                    writer.Write(coefficients.X3);
+                    
+                    Console.WriteLine($"{METRIC_NAMES[i]}: Base {baseCoefficients[i]:0.000000} ({coefficients.X1:0.000000}, {coefficients.X2:0.000000}, {coefficients.X3:0.000000}) {coefficients.Magnitude:0.000000}");
+                }
+                
+                Console.WriteLine();
+            }
+
+            Console.WriteLine("Saved parameters successfully");
+            Console.WriteLine();
+        }
+
         private static void OutputDetailedInfo(CalculatorInfo[][] groups) {
             Console.WriteLine("Best calculators");
             Console.WriteLine();
@@ -371,14 +395,15 @@ namespace ChartAutoRating {
             }
         }
 
-        private static DataSample[] GetDataSamples() {
-            var cache = new Dictionary<string, DataSample>();
+        private static DataSet GetDataSet() {
+            var cache = new Dictionary<string, CacheInfo>();
             string cachePath = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "cache.txt");
 
             if (File.Exists(cachePath)) {
                 using (var reader = new StreamReader(cachePath)) {
                     while (!reader.EndOfStream) {
                         string id = reader.ReadLine();
+                        string title = reader.ReadLine();
                         int difficultyRating = int.Parse(reader.ReadLine());
                         double[] metrics = new double[METRIC_COUNT];
                         int i = 0;
@@ -394,7 +419,7 @@ namespace ChartAutoRating {
                         }
 
                         if (i == METRIC_COUNT)
-                            cache.Add(id, new DataSample(difficultyRating, metrics));
+                            cache.Add(id, new CacheInfo(new RelevantChartInfo(title, difficultyRating), metrics));
                     }
                 }
             }
@@ -412,51 +437,57 @@ namespace ChartAutoRating {
                 }
             }
 
-            var dataSamples = new List<DataSample>();
+            var chartInfo = new List<RelevantChartInfo>();
+            var metricList = new List<double[]>();
             var ids = new List<string>();
 
             foreach (string path in FileHelper.GetAllSrtbs()) {
                 string id = $"{path}_{File.GetLastWriteTime(path)}";
+                RelevantChartInfo newChartInfo;
+                double[] metrics;
 
                 if (cache.TryGetValue(id, out var data)) {
-                    dataSamples.Add(data);
-                    ids.Add(id);
-
+                    newChartInfo = data.ChartInfo;
+                    metrics = data.Metrics;
+                }
+                else if (!ChartData.TryCreateFromFile(path, out var chartData, Difficulty.XD) && chartData.TrackData.ContainsKey(Difficulty.XD))
                     continue;
+                else {
+                    var processor = new ChartProcessor(chartData.Title, chartData.TrackData[Difficulty.XD].Notes);
+
+                    metrics = new double[METRIC_COUNT];
+
+                    for (int i = 0; i < METRIC_COUNT; i++) {
+                        if (!processor.TryGetMetric(METRIC_NAMES[i], out var result))
+                            continue;
+
+                        metrics[i] = result.GetClippedMean(result.GetQuantile(0.1f), result.GetQuantile(0.85f));
+                    }
+
+                    newChartInfo = new RelevantChartInfo(chartData.Title, ratings[chartData.Title]);
                 }
 
-                if (!ChartData.TryCreateFromFile(path, out var chartData, Difficulty.XD) || !chartData.TrackData.ContainsKey(Difficulty.XD))
-                    continue;
-
-                var processor = new ChartProcessor(chartData.TrackData[Difficulty.XD].Notes);
-                double[] metricResults = new double[METRIC_COUNT];
-
-                for (int i = 0; i < METRIC_COUNT; i++) {
-                    if (!processor.TryGetMetric(METRIC_NAMES[i], out var result))
-                        continue;
-
-                    metricResults[i] = result.GetClippedMean(result.GetQuantile(0.1f), result.GetQuantile(0.85f));
-                }
-                
-                dataSamples.Add(new DataSample(ratings[chartData.Title], metricResults));
+                chartInfo.Add(newChartInfo);
+                metricList.Add(metrics);
                 ids.Add(id);
             }
 
             using (var writer = new StreamWriter(cachePath)) {
-                for (int i = 0; i < dataSamples.Count; i++) {
-                    var sample = dataSamples[i];
+                for (int i = 0; i < chartInfo.Count; i++) {
+                    var info = chartInfo[i];
 
                     writer.WriteLine(ids[i]);
-                    writer.WriteLine(sample.DifficultyRating);
+                    writer.WriteLine(info.Title);
+                    writer.WriteLine(info.DifficultyRating);
 
-                    foreach (double value in sample.Metrics)
+                    foreach (double value in metricList[i])
                         writer.WriteLine(value);
 
                     writer.WriteLine();
                 }
             }
 
-            return dataSamples.ToArray();
+            return new DataSet(chartInfo.ToArray(), metricList.ToArray());
         }
 
         private static CalculatorInfo[][] GetInitialGroups(DataSet dataSet, Random random) {
