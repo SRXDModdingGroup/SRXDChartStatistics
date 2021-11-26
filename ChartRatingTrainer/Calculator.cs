@@ -28,10 +28,12 @@ namespace ChartRatingTrainer {
 
         public ReadOnlyCollection<CurveWeights> MetricCurveWeights { get; }
 
+        private int threadIndex;
         private Network network;
         private CurveWeights[] curveWeights;
 
-        public Calculator() {
+        public Calculator(int threadIndex) {
+            this.threadIndex = threadIndex;
             network = new Network(Program.METRIC_COUNT);
             curveWeights = new CurveWeights[Program.METRIC_COUNT];
             MetricCurveWeights = new ReadOnlyCollection<CurveWeights>(curveWeights);
@@ -60,10 +62,10 @@ namespace ChartRatingTrainer {
             double totalAbsSum = 0d;
             
             foreach (var dataSet in dataSets) {
-                var resultsTable = dataSet.ResultsTable;
+                var resultsTable = dataSet.ResultsTables[threadIndex];
 
                 CacheResults(dataSet);
-                Table.GenerateComparisonTable(resultsTable, dataSet.ResultsArray, dataSet.Size);
+                Table.GenerateComparisonTable(resultsTable, dataSet.ResultsArrays[threadIndex], dataSet.Size);
                 Table.CorrelationComponents(resultsTable, dataSet.DifficultyComparisons, dataSet.Size, out double sum, out double absSum);
                 totalSum += sum;
                 totalAbsSum += absSum;
@@ -90,10 +92,10 @@ namespace ChartRatingTrainer {
             var anchors = new List<Anchor>();
             
             foreach (var dataSet in dataSets) {
-                var resultsTable = dataSet.ResultsTable;
+                var resultsTable = dataSet.ResultsTables[threadIndex];
 
                 CacheResults(dataSet);
-                Table.GenerateComparisonTable(resultsTable, dataSet.ResultsArray, dataSet.Size);
+                Table.GenerateComparisonTable(resultsTable, dataSet.ResultsArrays[threadIndex], dataSet.Size);
 
                 for (int i = 0; i < dataSet.Size; i++) {
                     double correlation = Table.SimilarityForRow(resultsTable, dataSet.DifficultyComparisons, i, dataSet.Size);
@@ -123,7 +125,7 @@ namespace ChartRatingTrainer {
         }
 
         private void CacheResults(DataSet dataSet) {
-            double[] resultsArray = dataSet.ResultsArray;
+            double[] resultsArray = dataSet.ResultsArrays[threadIndex];
             
             for (int i = 0; i < dataSet.Size; i++)
                 resultsArray[i] = CalculateValue(dataSet.Datas[i]);

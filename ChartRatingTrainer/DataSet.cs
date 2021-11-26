@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -17,9 +18,9 @@ namespace ChartRatingTrainer {
 
         public Table DifficultyComparisons { get; }
         
-        public double[] ResultsArray { get; }
+        public double[][] ResultsArrays { get; }
         
-        public Table ResultsTable { get; }
+        public Table[] ResultsTables { get; }
 
         public DataSet(string path) {
             var ratings = new Dictionary<string, int>();
@@ -57,8 +58,10 @@ namespace ChartRatingTrainer {
                                 double value = reader.ReadDouble();
                                 double weight = reader.ReadDouble();
 
-                                metricDataSamples[i] = new DataSample(value, weight);
+                                metricDataSamples[j] = new DataSample(value, weight);
                             }
+
+                            dataSamples[i] = metricDataSamples;
                         }
 
                         cache.Add(id, new CacheInfo(new RelevantChartInfo(title, difficultyRating), new Data(dataSamples)));
@@ -124,30 +127,42 @@ namespace ChartRatingTrainer {
             Datas = dataList.ToArray();
             DifficultyComparisons = new Table(Size);
             Table.GenerateComparisonTable(DifficultyComparisons, RelevantChartInfo.Select(sample => (double) sample.DifficultyRating).ToArray(), Size);
-            ResultsArray = new double[Size];
-            ResultsTable = new Table(Size);
+            ResultsArrays = new double[Program.GROUP_COUNT][];
+            ResultsTables = new Table[Program.GROUP_COUNT];
+
+            for (int i = 0; i < Program.GROUP_COUNT; i++) {
+                ResultsArrays[i] = new double[Size];
+                ResultsTables[i] = new Table(Size);
+            }
         }
 
-        public static double[] GetBaseCoefficients(params DataSet[] dataSets) {
+        public static double[] Normalize(params DataSet[] dataSets) {
             double[] baseCoefficients = new double[Program.METRIC_COUNT];
 
             for (int i = 0; i < Program.METRIC_COUNT; i++) {
-                double max = 0d;
+                var values = new List<double>();
 
                 foreach (var dataSet in dataSets) {
                     foreach (var data in dataSet.Datas) {
-                        foreach (var sample in data.DataSamples[i]) {
-                            double value = sample.Value;
-
-                            if (value > max)
-                                max = value;
-                        }
+                        foreach (var sample in data.DataSamples[i])
+                            values.Add(sample.Value);
                     }
                 }
                 
-                double baseCoefficient = 1d / max;
+                values.Sort();
+
+                double baseCoefficient = 1d / values[values.Count - 16];
                 
                 baseCoefficients[i] = baseCoefficient;
+                
+                foreach (var dataSet in dataSets) {
+                    foreach (var data in dataSet.Datas) {
+                        var samples = data.DataSamples[i];
+
+                        for (int j = 0; j < samples.Length; j++)
+                            samples[j] = new DataSample(Math.Min(baseCoefficient * samples[j].Value, 1d), samples[j].Weight);
+                    }
+                }
             }
 
             return baseCoefficients;

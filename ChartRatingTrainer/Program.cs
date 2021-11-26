@@ -43,7 +43,7 @@ namespace ChartRatingTrainer {
         public static void Main(string[] args) {
             var random = new Random();
             var dataSets = GetDataSets();
-            double[] baseCoefficients = DataSet.GetBaseCoefficients(dataSets);
+            double[] baseCoefficients = DataSet.Normalize(dataSets);
             var groups = GetInitialGroups(dataSets, random);
             var threadInfo = groups.Select(group => new ThreadInfo(group)).ToArray();
             var form = new Form1();
@@ -387,8 +387,12 @@ namespace ChartRatingTrainer {
 
         private static DataSet[] GetDataSets() {
             var paths = new List<string>();
+            string pathsPath = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "Paths.txt");
+
+            if (!Directory.Exists(pathsPath))
+                return new[] { new DataSet(FileHelper.CustomPath) };
             
-            using (var reader = new StreamReader(Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "Paths.txt"))) {
+            using (var reader = new StreamReader(pathsPath)) {
                 while (!reader.EndOfStream)
                     paths.Add(reader.ReadLine());
             }
@@ -411,7 +415,7 @@ namespace ChartRatingTrainer {
                         var calculatorInfo = new CalculatorInfo[CALCULATOR_COUNT];
                         
                         for (int j = 0; j < CALCULATOR_COUNT; j++) {
-                            var calculator = new Calculator();
+                            var calculator = new Calculator(i);
                             var info = new CalculatorInfo(calculator);
                             var weights = new CurveWeights[METRIC_COUNT];
 
@@ -437,7 +441,7 @@ namespace ChartRatingTrainer {
                     var calculatorInfo = new CalculatorInfo[CALCULATOR_COUNT];
                     
                     for (int j = 0; j < CALCULATOR_COUNT; j++) {
-                        var calculator = new Calculator();
+                        var calculator = new Calculator(i);
                         var info = new CalculatorInfo(calculator);
 
                         calculator.Randomize(random, 1d);
