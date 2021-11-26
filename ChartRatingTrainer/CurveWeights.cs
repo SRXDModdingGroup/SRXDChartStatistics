@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace ChartAutoRating {
+namespace ChartRatingTrainer {
     public readonly struct CurveWeights {
         public double W0 { get; }
             

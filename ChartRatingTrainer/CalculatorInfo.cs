@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace ChartAutoRating {
+namespace ChartRatingTrainer {
     public class CalculatorInfo : IComparable<CalculatorInfo> {
         public Calculator Calculator { get; }
             

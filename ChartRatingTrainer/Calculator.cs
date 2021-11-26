@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 
-namespace ChartAutoRating {
+namespace ChartRatingTrainer {
     public class Calculator {
         private static readonly Dictionary<int, Data> DATA_POOL = new Dictionary<int, Data>();
         

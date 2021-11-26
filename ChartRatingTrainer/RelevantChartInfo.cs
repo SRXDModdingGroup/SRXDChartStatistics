@@ -1,4 +1,4 @@
-﻿namespace ChartAutoRating {
+﻿namespace ChartRatingTrainer {
     public readonly struct RelevantChartInfo {
         public string Title { get; }
         

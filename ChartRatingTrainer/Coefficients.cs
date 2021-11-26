@@ -1,4 +1,4 @@
-﻿namespace ChartAutoRating {
+﻿namespace ChartRatingTrainer {
     public readonly struct Coefficients {
         public double X1 { get; }
             

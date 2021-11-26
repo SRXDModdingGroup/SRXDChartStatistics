@@ -1,4 +1,4 @@
-﻿namespace ChartAutoRating {
+﻿namespace ChartRatingTrainer {
     public class DrawInfoItem {
         public double Fitness { get; set; }
                 

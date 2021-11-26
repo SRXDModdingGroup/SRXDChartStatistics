@@ -7,8 +7,8 @@
         <ProjectGuid>{16859F1C-59BF-41FA-BA46-7FB227AF5D3F}</ProjectGuid>
         <OutputType>Exe</OutputType>
         <AppDesignerFolder>Properties</AppDesignerFolder>
-        <RootNamespace>ChartAutoRating</RootNamespace>
-        <AssemblyName>ChartAutoRating</AssemblyName>
+        <RootNamespace>ChartRatingTrainer</RootNamespace>
+        <AssemblyName>ChartRatingTrainer</AssemblyName>
         <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
         <FileAlignment>512</FileAlignment>
     </PropertyGroup>

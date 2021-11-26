@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Linq;
 
-namespace ChartAutoRating {
+namespace ChartRatingTrainer {
     public class DataSet {
         public int Size { get; }
         

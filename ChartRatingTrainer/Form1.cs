@@ -2,7 +2,7 @@
 using System.Drawing;
 using System.Windows.Forms;
 
-namespace ChartAutoRating {
+namespace ChartRatingTrainer {
     public partial class Form1 : Form {
         private static readonly int SPACING = 80;
         private static readonly int PADDING = 8;

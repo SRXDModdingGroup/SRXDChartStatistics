@@ -10,7 +10,7 @@ using System.Windows.Forms;
 using ChartHelper;
 using ChartMetrics;
 
-namespace ChartAutoRating {
+namespace ChartRatingTrainer {
     public class Program {
         public static readonly int METRIC_COUNT = ChartProcessor.Metrics.Count;
         public static readonly int CALCULATOR_COUNT = 32;

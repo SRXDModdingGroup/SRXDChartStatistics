@@ -4,7 +4,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ChartStatistics", "ChartSta
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ChartMetrics", "ChartMetrics\ChartMetrics.csproj", "{C08A389F-34E7-45ED-B770-1F171679636A}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ChartAutoRating", "ChartAutoRating\ChartAutoRating.csproj", "{16859F1C-59BF-41FA-BA46-7FB227AF5D3F}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ChartRatingTrainer", "ChartRatingTrainer\ChartRatingTrainer.csproj", "{16859F1C-59BF-41FA-BA46-7FB227AF5D3F}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

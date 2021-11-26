@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace ChartAutoRating {
+namespace ChartRatingTrainer {
     public class Table {
         private double[,] data;
 
