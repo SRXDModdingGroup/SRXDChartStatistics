@@ -22,7 +22,7 @@ namespace ChartRatingTrainer {
         }
         
         private static readonly double MUTATION_CHANCE = 0.5d;
-        private static readonly double MAX_MUTATION_AMOUNT = 0.125d;
+        private static readonly double MAX_MUTATION_AMOUNT = 0.0625d;
         private static readonly double OVERWEIGHT_THRESHOLD = 0.35d;
         private static readonly double OVERWEIGHT_BIAS = 0.0625d;
 
@@ -111,7 +111,7 @@ namespace ChartRatingTrainer {
 
         private void ApplyWeights() {
             for (int i = 0; i < Program.METRIC_COUNT; i++)
-                network.Coefficients[i] = curveWeights[i].ToCoefficients();
+                network.SetCoefficients(i, curveWeights[i].ToCoefficients());
         }
 
         private void NormalizeCurveWeights() {
@@ -135,13 +135,8 @@ namespace ChartRatingTrainer {
             for (int i = 0; i < Program.METRIC_COUNT; i++) {
                 bool mutateMagnitude = random.NextDouble() < MUTATION_CHANCE;
                 bool mutateCurve = random.NextDouble() < MUTATION_CHANCE;
-                CurveWeights newWeights;
-                
-                if (random.NextDouble() > 0.5d)
-                    newWeights = parent1.curveWeights[i];
-                else
-                    newWeights = parent2.curveWeights[i];
-
+                double interp = random.NextDouble();
+                var newWeights = (1d - interp) * parent1.curveWeights[i] + interp * parent2.curveWeights[i];
                 CurveWeights mutatedWeights;
 
                 if (mutateMagnitude && mutateCurve)
@@ -156,8 +151,7 @@ namespace ChartRatingTrainer {
                     continue;
                 }
 
-                double interp = MAX_MUTATION_AMOUNT * random.NextDouble();
-
+                interp = MAX_MUTATION_AMOUNT * random.NextDouble();
                 child.curveWeights[i] = (1d - interp) * newWeights + interp * mutatedWeights;
             }
             

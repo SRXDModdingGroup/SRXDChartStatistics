@@ -1,5 +1,7 @@
-﻿namespace ChartAutoRating {
-    public readonly struct DataSample {
+﻿using System;
+
+namespace ChartAutoRating {
+    internal readonly struct DataSample : IComparable<DataSample> {
         public double Value { get; }
         
         public double Weight { get; }
@@ -8,5 +10,7 @@
             Value = value;
             Weight = weight;
         }
+
+        public int CompareTo(DataSample other) => Value.CompareTo(other.Value);
     }
 }

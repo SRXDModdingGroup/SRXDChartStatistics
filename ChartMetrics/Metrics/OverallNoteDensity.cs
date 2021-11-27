@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using ChartHelper;
+using Util;
 
 namespace ChartMetrics {
     internal class OverallNoteDensity : Metric {
@@ -16,7 +17,7 @@ namespace ChartMetrics {
             for (int i = 1; i < notes.Count; i++) {
                 var note = notes[i];
                 
-                if (Util.AlmostEquals(note.Time, lastTime) || note.TypeRaw == NoteTypeRaw.HoldPoint || note.TypeRaw == NoteTypeRaw.BeatRelease)
+                if (MathU.AlmostEquals(note.Time, lastTime) || note.TypeRaw == NoteTypeRaw.HoldPoint || note.TypeRaw == NoteTypeRaw.BeatRelease)
                     continue;
 
                 points.Add(new Point(lastTime, i - lastIndex));

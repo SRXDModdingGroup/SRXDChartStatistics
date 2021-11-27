@@ -5,12 +5,12 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using ChartHelper;
+using Util;
 
 namespace ChartMetrics {
     public class ChartProcessor {
-        private static readonly float MAX_MERGE_RATIO = 1.01f;
+        private static readonly float SIMPLIFY_RATIO = 1.005f;
         private static readonly float MIN_PHRASE_LENGTH = 1f;
-        private static readonly float MAX_PHRASE_LENGTH = 5f;
         private static readonly Metric[] METRICS = {
             new OverallNoteDensity(),
             new TapBeatDensity(),
@@ -114,7 +114,6 @@ namespace ChartMetrics {
             public float GetMedian() => GetQuantile(0.5f);
 
             public float GetQuantile(float quantile) {
-                
                 if (Samples.Count == 0)
                     return 0f;
 
@@ -143,7 +142,7 @@ namespace ChartMetrics {
 
                     float start = sortedEndTimes[i] - 0.5f * Sorted[i].Length;
                 
-                    return Util.Remap(targetTotal, start, end, Sorted[i].Value, Sorted[i + 1].Value);
+                    return MathU.Remap(targetTotal, start, end, Sorted[i].Value, Sorted[i + 1].Value);
                 }
 
                 return Sorted[Sorted.Count - 1].Value;
@@ -304,7 +303,7 @@ namespace ChartMetrics {
                 var next = ANCHORS[i + 1];
 
                 if (sum < next.From)
-                    return (int) Util.Remap(sum, anchor.From, next.From, anchor.To, next.To);
+                    return (int) MathU.Remap(sum, anchor.From, next.From, anchor.To, next.To);
             }
 
             return 80;
@@ -337,7 +336,7 @@ namespace ChartMetrics {
                 var next = ANCHORS[i + 1];
 
                 if (sum < next.From)
-                    return new DetailedRatingInfo(ChartTitle, (int) Util.Remap(sum, anchor.From, next.From, anchor.To, next.To), measuredValues, contributedValues);
+                    return new DetailedRatingInfo(ChartTitle, (int) MathU.Remap(sum, anchor.From, next.From, anchor.To, next.To), measuredValues, contributedValues);
             }
 
             return new DetailedRatingInfo(ChartTitle, 80, measuredValues, contributedValues);
@@ -398,10 +397,29 @@ namespace ChartMetrics {
             var indices = new List<int>() { 0 };
             
             Subdivide(0, candidates.Count - 1);
-
-            var samples = new Sample[indices.Count];
-            
             indices.Add(candidates.Count - 1);
+
+            for (int i = 1; i < indices.Count - 1; i++) {
+                int firstIndex = indices[i - 1];
+                int midIndex = indices[i];
+                int lastIndex = indices[i + 1];
+                float first = (cumulativeValues[midIndex] - cumulativeValues[firstIndex]) / (candidates[midIndex].Time - candidates[firstIndex].Time);
+                float second = (cumulativeValues[lastIndex] - cumulativeValues[midIndex]) / (candidates[lastIndex].Time - candidates[midIndex].Time);
+                float ratio;
+
+                if (first > second)
+                    ratio = first / second;
+                else
+                    ratio = second / first;
+
+                if (ratio >= SIMPLIFY_RATIO)
+                    continue;
+                
+                indices.RemoveAt(i);
+                i--;
+            }
+
+            var samples = new Sample[indices.Count - 1];
 
             for (int i = 0; i < samples.Length; i++) {
                 int startIndex = indices[i];
@@ -426,7 +444,7 @@ namespace ChartMetrics {
                 bool bestIsAZero = false;
                 
                 for (int i = start + 1; i < end; i++) {
-                    if (Util.AlmostEquals(candidates[i].Value, candidates[i - 1].Value))
+                    if (MathU.AlmostEquals(candidates[i].Value, candidates[i - 1].Value))
                         continue;
                     
                     float midTime = candidates[i].Time;
@@ -443,7 +461,7 @@ namespace ChartMetrics {
                     else
                         ratio = second / first;
 
-                    bool almostZero = Util.AlmostEquals(candidates[i].Value, 0f);
+                    bool almostZero = MathU.AlmostEquals(candidates[i].Value, 0f);
                     
                     if (almostZero && (!bestIsAZero || ratio > bestRatio)) {
                         bestIndex = i;
@@ -460,7 +478,7 @@ namespace ChartMetrics {
                     bestRatio = ratio;
                 }
                 
-                if (bestIndex < 0 || Util.AlmostEquals(bestRatio, 1f) || bestRatio < MAX_MERGE_RATIO && startTime - endTime < MAX_PHRASE_LENGTH)
+                if (bestIndex < 0)
                     return;
                 
                 Subdivide(start, bestIndex);

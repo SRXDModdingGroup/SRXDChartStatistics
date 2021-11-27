@@ -43,17 +43,25 @@ namespace ChartRatingTrainer {
         public static void Main(string[] args) {
             var random = new Random();
             var dataSets = GetDataSets();
-            double[] baseCoefficients = DataSet.Normalize(dataSets);
+
+            foreach (var dataSet in dataSets)
+                dataSet.Trim(0.1d, 0.9d);
+
+            double[] baseCoefficients = DataSet.GetBaseCoefficients(dataSets);
+
+            foreach (var dataSet in dataSets)
+                dataSet.Normalize(baseCoefficients);
+
             var groups = GetInitialGroups(dataSets, random);
             var threadInfo = groups.Select(group => new ThreadInfo(group)).ToArray();
             var form = new Form1();
 
-            Parallel.Invoke(() => MainThread(threadInfo, form), () => FormThread(form), () => TrainGroups(threadInfo, dataSets, random));
-            SaveGroups(threadInfo);
-            OutputDetailedInfo(groups);
-            SaveParameters(groups, dataSets, baseCoefficients);
-            Console.WriteLine("Press any key to exit");
-            Console.ReadKey(true);
+            // Parallel.Invoke(() => MainThread(threadInfo, form), () => FormThread(form), () => TrainGroups(threadInfo, dataSets, random));
+            // SaveGroups(threadInfo);
+            // OutputDetailedInfo(groups);
+            // SaveParameters(groups, dataSets, baseCoefficients);
+            // Console.WriteLine("Press any key to exit");
+            // Console.ReadKey(true);
         }
 
         private static void MainThread(ThreadInfo[] threadInfo, Form1 form) {

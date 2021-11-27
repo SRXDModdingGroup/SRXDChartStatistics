@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using System.Linq;
 using ChartHelper;
+using Util;
+using Math = System.Math;
 
 namespace ChartMetrics {
     public static class WheelPath {
@@ -51,7 +53,7 @@ namespace ChartMetrics {
                 var note = notes[i];
                 var type = note.Type;
                 
-                if (!Util.AlmostEquals(note.Time, stackTime) || i == endIndex) {
+                if (!MathU.AlmostEquals(note.Time, stackTime) || i == endIndex) {
                     if (!targetNoteFound && matchesInStack.Count > 0) {
                         bool anyInCurrentColor = false;
                         int columnSum = 0;
@@ -133,7 +135,7 @@ namespace ChartMetrics {
                                         break;
                                 }
 
-                                float pointPosition = Util.Lerp(startPosition, targetLanePosition, interpValue);
+                                float pointPosition = MathU.Lerp(startPosition, targetLanePosition, interpValue);
                                 
                                 points.Add(new Point(pointTime, pointPosition, netPosition + pointPosition - startPosition, currentColor));
                             }
@@ -148,7 +150,7 @@ namespace ChartMetrics {
 
                             if (targetColor == currentColor)
                                 netPosition += laneDifference;
-                            else if (Util.AlmostEquals(laneDifference, 0f)) {
+                            else if (MathU.AlmostEquals(laneDifference, 0f)) {
                                 if (netPosition > 4.5f)
                                     netPosition -= 4f;
                                 else if (netPosition < -4.5f)
@@ -292,9 +294,9 @@ namespace ChartMetrics {
                         continue;
                     }
 
-                    float targetPosition = Util.Lerp(pointPosition, Util.Remap(point.Time, previous.Time, next.Time, previous.NetPosition, next.NetPosition), SIMPLIFY_APPROACH_RATE);
+                    float targetPosition = MathU.Lerp(pointPosition, MathU.Remap(point.Time, previous.Time, next.Time, previous.NetPosition, next.NetPosition), SIMPLIFY_APPROACH_RATE);
                     
-                    targetPosition = Util.Clamp(targetPosition, path[j].NetPosition - 1f, path[j].NetPosition + 1f);
+                    targetPosition = MathU.Clamp(targetPosition, path[j].NetPosition - 1f, path[j].NetPosition + 1f);
                     newPath[j] = new Point(point.Time, point.LanePosition + targetPosition - pointPosition, targetPosition, point.CurrentColor);
                 }
 

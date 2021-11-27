@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using ChartHelper;
+using Util;
 
 namespace ChartMetrics {
     internal class TapBeatDensity : Metric {
@@ -21,7 +22,7 @@ namespace ChartMetrics {
                     && type != NoteType.Liftoff && type != NoteType.BeatReleaseHard)
                     continue;
 
-                if (tapBeatsFound < 0 || !Util.AlmostEquals(note.Time, lastTime)) {
+                if (tapBeatsFound < 0 || !MathU.AlmostEquals(note.Time, lastTime)) {
                     if (tapBeatsFound >= 0)
                         points.Add(new Point(lastTime, tapBeatsFound));
 

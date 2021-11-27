@@ -50,7 +50,6 @@
     </ItemGroup>
     <ItemGroup>
         <Compile Include="Command.cs" />
-        <Compile Include="Util.cs" />
         <Compile Include="Form1.cs">
             <SubType>Form</SubType>
         </Compile>
@@ -102,6 +101,10 @@
       <ProjectReference Include="..\ChartMetrics\ChartMetrics.csproj">
         <Project>{c08a389f-34e7-45ed-b770-1f171679636a}</Project>
         <Name>ChartMetrics</Name>
+      </ProjectReference>
+      <ProjectReference Include="..\Util\Util.csproj">
+        <Project>{5f1de6d7-64af-47fa-b183-84d451f7f90f}</Project>
+        <Name>Util</Name>
       </ProjectReference>
     </ItemGroup>
     <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

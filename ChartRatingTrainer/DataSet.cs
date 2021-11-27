@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Reflection;
 using System.Text.RegularExpressions;
 using ChartAutoRating;
 using ChartHelper;
@@ -48,23 +47,8 @@ namespace ChartRatingTrainer {
                         string id = reader.ReadString();
                         string title = reader.ReadString();
                         int difficultyRating = reader.ReadInt32();
-                        var dataSamples = new DataSample[metricCount][];
-
-                        for (int i = 0; i < metricCount; i++) {
-                            int count = reader.ReadInt32();
-                            var metricDataSamples = new DataSample[count];
-
-                            for (int j = 0; j < count; j++) {
-                                double value = reader.ReadDouble();
-                                double weight = reader.ReadDouble();
-
-                                metricDataSamples[j] = new DataSample(value, weight);
-                            }
-
-                            dataSamples[i] = metricDataSamples;
-                        }
-
-                        cache.Add(id, new CacheInfo(new RelevantChartInfo(title, difficultyRating), new Data(dataSamples)));
+                        
+                        cache.Add(id, new CacheInfo(new RelevantChartInfo(title, difficultyRating), Data.Deserialize(reader)));
                     }
                 }
             }
@@ -87,7 +71,7 @@ namespace ChartRatingTrainer {
                 else {
                     var processor = new ChartProcessor(chartData.Title, trackData.Notes);
 
-                    data = new Data(processor);
+                    data = Data.Create(processor);
 
                     if (!ratings.TryGetValue(chartData.Title, out int rating))
                         rating = trackData.DifficultyRating;
@@ -103,22 +87,11 @@ namespace ChartRatingTrainer {
             using (var writer = new BinaryWriter(File.Open(cachePath, FileMode.Create))) {
                 for (int i = 0; i < chartInfo.Count; i++) {
                     var info = chartInfo[i];
-                    var data = dataList[i];
 
                     writer.Write(ids[i]);
                     writer.Write(info.Title);
                     writer.Write(info.DifficultyRating);
-
-                    for (int j = 0; j < metricCount; j++) {
-                        var metricDataSamples = data.DataSamples[j];
-                        
-                        writer.Write(metricDataSamples.Length);
-
-                        foreach (var sample in metricDataSamples) {
-                            writer.Write(sample.Value);
-                            writer.Write(sample.Weight);
-                        }
-                    }
+                    dataList[i].Serialize(writer);
                 }
             }
             
@@ -136,33 +109,34 @@ namespace ChartRatingTrainer {
             }
         }
 
-        public static double[] Normalize(params DataSet[] dataSets) {
+        public void Trim(double lowerQuantile, double upperQuantile) {
+            foreach (var data in Datas) {
+                for (int i = 0; i < Program.METRIC_COUNT; i++)
+                    data.Clamp(i, data.GetQuantile(i, lowerQuantile), data.GetQuantile(i, upperQuantile));
+            }
+        }
+
+        public void Normalize(double[] baseCoefficients) {
+            foreach (var data in Datas)
+                data.Normalize(baseCoefficients);
+        }
+
+        public static double[] GetBaseCoefficients(params DataSet[] dataSets) {
             double[] baseCoefficients = new double[Program.METRIC_COUNT];
 
             for (int i = 0; i < Program.METRIC_COUNT; i++) {
-                var values = new List<double>();
+                double max = 0d;
 
                 foreach (var dataSet in dataSets) {
                     foreach (var data in dataSet.Datas) {
-                        foreach (var sample in data.DataSamples[i])
-                            values.Add(sample.Value);
+                        double newMax = data.GetMaxValue(i);
+
+                        if (newMax > max)
+                            max = newMax;
                     }
                 }
                 
-                values.Sort();
-
-                double baseCoefficient = 1d / values[values.Count - 16];
-                
-                baseCoefficients[i] = baseCoefficient;
-                
-                foreach (var dataSet in dataSets) {
-                    foreach (var data in dataSet.Datas) {
-                        var samples = data.DataSamples[i];
-
-                        for (int j = 0; j < samples.Length; j++)
-                            samples[j] = new DataSample(Math.Min(baseCoefficient * samples[j].Value, 1d), samples[j].Weight);
-                    }
-                }
+                baseCoefficients[i] = 1d / max;
             }
 
             return baseCoefficients;

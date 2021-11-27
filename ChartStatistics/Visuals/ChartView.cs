@@ -5,6 +5,7 @@ using System.Drawing;
 using System.Linq;
 using ChartHelper;
 using ChartMetrics;
+using Util;
 
 namespace ChartStatistics {
     public class ChartView {
@@ -109,20 +110,20 @@ namespace ChartStatistics {
             metricDrawables.Add(metricGraph);
 
             float lowerQuantile = result.GetQuantile(ChartProcessor.LOWER_QUANTILE);
-            var valueLabel = new ValueLabel(Util.Lerp(graphBottom, graphTop, lowerQuantile / max), $"Low ({lowerQuantile:0.00})");
+            var valueLabel = new ValueLabel(MathU.Lerp(graphBottom, graphTop, lowerQuantile / max), $"Low ({lowerQuantile:0.00})");
             
             graphicsPanel.AddDrawable(valueLabel);
             metricDrawables.Add(valueLabel);
             
             float upperQuantile = result.GetQuantile(ChartProcessor.UPPER_QUANTILE);
             
-            valueLabel = new ValueLabel(Util.Lerp(graphBottom, graphTop, upperQuantile / max), $"High ({upperQuantile:0.00})");
+            valueLabel = new ValueLabel(MathU.Lerp(graphBottom, graphTop, upperQuantile / max), $"High ({upperQuantile:0.00})");
             graphicsPanel.AddDrawable(valueLabel);
             metricDrawables.Add(valueLabel);
             
             float mean = result.GetClippedMean(lowerQuantile, upperQuantile);
             
-            valueLabel = new ValueLabel(Util.Lerp(graphBottom, graphTop, mean / max), $"Mean ({mean:0.00})");
+            valueLabel = new ValueLabel(MathU.Lerp(graphBottom, graphTop, mean / max), $"Mean ({mean:0.00})");
             graphicsPanel.AddDrawable(valueLabel);
             metricDrawables.Add(valueLabel);
 
@@ -207,11 +208,11 @@ namespace ChartStatistics {
 
                         void TruncateLine(float startX, float startY, ref float endX, ref float endY) {
                             if (endY > 4f) {
-                                endX = Util.Remap(4f, startY, endY, startX, endX);
+                                endX = MathU.Remap(4f, startY, endY, startX, endX);
                                 endY = 4f;
                             }
                             else if (endY < -4f) {
-                                endX = Util.Remap(-4f, startY, endY, startX, endX);
+                                endX = MathU.Remap(-4f, startY, endY, startX, endX);
                                 endY = -4f;
                             }
                         }
