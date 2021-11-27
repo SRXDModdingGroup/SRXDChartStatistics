@@ -242,13 +242,13 @@ namespace ChartMetrics {
         }
 
         public static bool TryLoadChart(string path, out ChartProcessor processor, Difficulty difficulty = Difficulty.XD) {
-            if (!ChartData.TryCreateFromFile(path, out var chartData, Difficulty.XD)) {
+            if (!ChartData.TryCreateFromFile(path, out var chartData, Difficulty.XD) || !chartData.TrackData.TryGetValue(difficulty, out var trackData)) {
                 processor = null;
                 
                 return false;
             }
-            
-            processor = new ChartProcessor(chartData.Title, chartData.TrackData[difficulty].Notes);
+
+            processor = new ChartProcessor(chartData.Title, trackData.Notes);
 
             return true;
         }

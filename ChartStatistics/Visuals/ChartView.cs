@@ -39,7 +39,7 @@ namespace ChartStatistics {
             Command.AddListener("rate", args => RateChart(args[0], string.IsNullOrWhiteSpace(args[0])));
             Command.AddListener("rateall", args => RateAllCharts());
             Command.SetPossibleValues("show", 0, ChartProcessor.Metrics.Select(metric => $"{metric.Name.ToLower()}: {metric.Description}").ToArray());
-            LoadChart("spinshare_6099b4b03a490");
+            // LoadChart("spinshare_6099b4b03a490");
             // DisplayMetric("overallnotedensity");
             // DisplayPath("Simplified", -1);
         }
