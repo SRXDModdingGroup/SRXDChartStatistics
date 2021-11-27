@@ -48,10 +48,6 @@
         <Compile Include="Properties\AssemblyInfo.cs" />
     </ItemGroup>
     <ItemGroup>
-      <ProjectReference Include="..\ChartMetrics\ChartMetrics.csproj">
-        <Project>{c08a389f-34e7-45ed-b770-1f171679636a}</Project>
-        <Name>ChartMetrics</Name>
-      </ProjectReference>
       <ProjectReference Include="..\Util\Util.csproj">
         <Project>{5f1de6d7-64af-47fa-b183-84d451f7f90f}</Project>
         <Name>Util</Name>

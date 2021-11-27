@@ -1,41 +1,36 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
-using ChartMetrics;
+using System.Linq;
 using Util;
 
 namespace ChartAutoRating {
     public class Data {
-        internal DataSample[][] DataSamples { get; private set; }
+        internal DataSample[][] DataSamples { get; }
 
         private int metricCount;
 
-        public static Data Create(ChartProcessor processor) {
-            int metricCount = ChartProcessor.Metrics.Count;
-            var data = new Data();
-            
-            data.DataSamples = new DataSample[metricCount][];
-            data.metricCount = metricCount;
+        private Data(int metricCount) {
+            this.metricCount = metricCount;
+            DataSamples = new DataSample[metricCount][];
+        }
+
+        public static Data Create(int metricCount, Func<int, IEnumerable<(double, double)>> selector) {
+            var data = new Data(metricCount);
 
             for (int i = 0; i < metricCount; i++) {
-                if (!processor.TryGetMetric(ChartProcessor.Metrics[i].Name, out var result)) {
-                    data.DataSamples[i] = Array.Empty<DataSample>();
-                    
-                    continue;
-                }
-
-                var samples = result.Samples;
-                var metricDataSamples = new DataSample[samples.Count];
+                var metricDataSamples = selector(i).Select(pair => new DataSample(pair.Item1, pair.Item2)).ToArray();
                 double totalWeight = 0d;
 
-                foreach (var sample in samples)
-                    totalWeight += sample.Length;
+                foreach (var sample in metricDataSamples)
+                    totalWeight += sample.Weight;
 
                 double weightCoefficient = 1d / totalWeight;
 
-                for (int j = 0; j < samples.Count; j++) {
-                    var sample = samples[j];
-
-                    metricDataSamples[j] = new DataSample(sample.Value, weightCoefficient * sample.Length);
+                for (int j = 0; j < metricDataSamples.Length; j++) {
+                    var sample = metricDataSamples[j];
+                    
+                    metricDataSamples[j] = new DataSample(sample.Value, weightCoefficient * sample.Weight);
                 }
 
                 data.DataSamples[i] = metricDataSamples;
@@ -44,12 +39,8 @@ namespace ChartAutoRating {
             return data;
         }
 
-        public static Data Deserialize(BinaryReader reader) {
-            int metricCount = ChartProcessor.Metrics.Count;
-            var data = new Data();
-            
-            data.DataSamples = new DataSample[metricCount][];
-            data.metricCount = metricCount;
+        public static Data Deserialize(int metricCount, BinaryReader reader) {
+            var data = new Data(metricCount);
 
             for (int i = 0; i < metricCount; i++) {
                 int count = reader.ReadInt32();

@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using ChartHelper;
+using ChartAutoRating;
 using Util;
 
 namespace ChartMetrics {
@@ -21,20 +22,21 @@ namespace ChartMetrics {
             new DriftWeighted()
         };
         private static readonly Dictionary<string, Metric> METRICS_DICT = METRICS.ToDictionary(metric => metric.Name.ToLower(), metric => metric);
-        private static readonly double[][] COEFFICIENTS;
+        private static readonly double[] BASE_COEFFICIENTS;
+        private static readonly Network NETWORK;
         private static readonly Anchor[] ANCHORS = {
             new Anchor(0d, 0),
-            new Anchor(0.482425903207917d, 30),
-            new Anchor(0.610231954336391d, 36),
-            new Anchor(0.669821538594481d, 41),
-            new Anchor(0.707048429051248d, 46),
-            new Anchor(0.741980824951096d, 51),
-            new Anchor(0.888418897429309d, 57),
-            new Anchor(0.956910366638872d, 67),
-            new Anchor(0.990732215668648d, 71),
-            new Anchor(0.994679518934933d, 73),
-            new Anchor(0.996297721144238d, 75),
-            new Anchor(1d, 80)
+            new Anchor(0.12324755d, 30),
+            new Anchor(0.15315513d, 35),
+            new Anchor(0.21060236d, 44),
+            new Anchor(0.23781559d, 48),
+            new Anchor(0.24125996d, 54),
+            new Anchor(0.32585019d, 59),
+            new Anchor(0.34705346d, 62),
+            new Anchor(0.37183286d, 69),
+            new Anchor(0.40477940d, 73),
+            new Anchor(0.43818623d, 75),
+            new Anchor(0.5d, 80)
         };
 
         public static readonly float LOWER_QUANTILE = 0.1f;
@@ -42,16 +44,18 @@ namespace ChartMetrics {
         public static ReadOnlyCollection<Metric> Metrics { get; } = new ReadOnlyCollection<Metric>(METRICS);
 
         static ChartProcessor() {
+            BASE_COEFFICIENTS = new double[METRICS.Length];
+            NETWORK = new Network(METRICS.Length);
+
             using (var reader = new BinaryReader(File.Open(Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "parameters.dat"), FileMode.Open))) {
-                COEFFICIENTS = new double[Metrics.Count][];
-                
-                for (int i = 0; i < Metrics.Count; i++) {
-                    double baseCoeff = reader.ReadDouble();
-                    double x0 = reader.ReadDouble();
+                for (int i = 0; i < METRICS.Length; i++) {
+                    BASE_COEFFICIENTS[i] = reader.ReadDouble();
+
                     double x1 = reader.ReadDouble();
                     double x2 = reader.ReadDouble();
+                    double x3 = reader.ReadDouble();
                     
-                    COEFFICIENTS[i] = new [] { baseCoeff, x0, x1, x2, };
+                    NETWORK.SetCoefficients(i, new Coefficients(x1, x2, x3));
                 }
             }
         }
@@ -211,21 +215,7 @@ namespace ChartMetrics {
                 }
             }
         }
-
-        public readonly struct DetailedRatingInfo {
-            public int DifficultyRating { get; }
-            
-            public double[] MeasuredValues { get; }
-            
-            public double[] ContributedValues { get; }
-
-            internal DetailedRatingInfo(string chartTitle, int difficultyRating, double[] measuredValues, double[] contributedValues) {
-                DifficultyRating = difficultyRating;
-                MeasuredValues = measuredValues;
-                ContributedValues = contributedValues;
-            }
-        }
-
+        
         private readonly struct Anchor {
             public double From { get; }
             
@@ -282,64 +272,32 @@ namespace ChartMetrics {
         }
 
         public int GetDifficultyRating() {
-            double sum = 0d;
+            double value = NETWORK.GetValue(CreateData());
 
-            for (int i = 0; i < METRICS.Length; i++) {
-                var metric = METRICS[i];
-                double[] coefficients = COEFFICIENTS[i];
-
-                TryGetMetric(metric.Name, out var result);
-
-                double value = coefficients[0] * result.GetClippedMean(result.GetQuantile(LOWER_QUANTILE), result.GetQuantile(UPPER_QUANTILE));
-                
-                sum += value * (coefficients[1] + value * (coefficients[2] + value * coefficients[3]));
-            }
-
-            if (sum < 0d)
+            if (value < 0d)
                 return 0;
 
             for (int i = 0; i < ANCHORS.Length - 1; i++) {
                 var anchor = ANCHORS[i];
                 var next = ANCHORS[i + 1];
 
-                if (sum < next.From)
-                    return (int) MathU.Remap(sum, anchor.From, next.From, anchor.To, next.To);
+                if (value < next.From)
+                    return (int) MathU.Remap(value, anchor.From, next.From, anchor.To, next.To);
             }
 
             return 80;
         }
-        
-        public DetailedRatingInfo GetDifficultyRatingDetailed() {
-            double sum = 0d;
-            double[] measuredValues = new double[METRICS.Length];
-            double[] contributedValues = new double[METRICS.Length];
+
+        public Data CreateData() {
+            var data = Data.Create(METRICS.Length, i => {
+                TryGetMetric(METRICS[i].Name, out var result);
+
+                return result.Samples.Select(sample => ((double) sample.Value, (double) sample.Length));
+            });
             
-            for (int i = 0; i < METRICS.Length; i++) {
-                var metric = METRICS[i];
-                double[] coefficients = COEFFICIENTS[i];
+            data.Normalize(BASE_COEFFICIENTS);
 
-                TryGetMetric(metric.Name, out var result);
-
-                double value = coefficients[0] * result.GetClippedMean(result.GetQuantile(LOWER_QUANTILE), result.GetQuantile(UPPER_QUANTILE));
-                double contributedValue = value * (coefficients[1] + value * (coefficients[2] + value * coefficients[3]));
-                
-                measuredValues[i] = value;
-                contributedValues[i] = contributedValue;
-                sum += contributedValue;
-            }
-
-            if (sum < 0d)
-                return new DetailedRatingInfo(ChartTitle, 0, measuredValues, contributedValues);
-
-            for (int i = 0; i < ANCHORS.Length - 1; i++) {
-                var anchor = ANCHORS[i];
-                var next = ANCHORS[i + 1];
-
-                if (sum < next.From)
-                    return new DetailedRatingInfo(ChartTitle, (int) MathU.Remap(sum, anchor.From, next.From, anchor.To, next.To), measuredValues, contributedValues);
-            }
-
-            return new DetailedRatingInfo(ChartTitle, 80, measuredValues, contributedValues);
+            return data;
         }
 
         public ReadOnlyCollection<ReadOnlyCollection<WheelPath.Point>> GetExactPaths() {

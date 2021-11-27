@@ -12,7 +12,7 @@ using ChartHelper;
 using ChartMetrics;
 
 namespace ChartRatingTrainer {
-    public partial class Program {
+    public class Program {
         public static readonly int METRIC_COUNT = ChartProcessor.Metrics.Count;
         public static readonly int CALCULATOR_COUNT = 32;
         public static readonly int GROUP_COUNT = 8;
@@ -56,12 +56,12 @@ namespace ChartRatingTrainer {
             var threadInfo = groups.Select(group => new ThreadInfo(group)).ToArray();
             var form = new Form1();
 
-            // Parallel.Invoke(() => MainThread(threadInfo, form), () => FormThread(form), () => TrainGroups(threadInfo, dataSets, random));
-            // SaveGroups(threadInfo);
-            // OutputDetailedInfo(groups);
-            // SaveParameters(groups, dataSets, baseCoefficients);
-            // Console.WriteLine("Press any key to exit");
-            // Console.ReadKey(true);
+            Parallel.Invoke(() => MainThread(threadInfo, form), () => FormThread(form), () => TrainGroups(threadInfo, dataSets, random));
+            SaveGroups(threadInfo);
+            OutputDetailedInfo(groups);
+            SaveParameters(groups, dataSets, baseCoefficients);
+            Console.WriteLine("Press any key to exit");
+            Console.ReadKey(true);
         }
 
         private static void MainThread(ThreadInfo[] threadInfo, Form1 form) {
@@ -95,7 +95,6 @@ namespace ChartRatingTrainer {
             while (!Console.KeyAvailable || Console.ReadKey(true).Key != ConsoleKey.Enter) {
                 if (Form.ActiveForm == form && drawWatch.ElapsedMilliseconds > 66) {
                     double best = 0d;
-                    double worst = 1d;
                     
                     for (int i = 0; i < GROUP_COUNT; i++) {
                         var thread = threadInfo[i];
@@ -114,16 +113,13 @@ namespace ChartRatingTrainer {
                                 if (fitness > best)
                                     best = fitness;
 
-                                if (fitness < worst)
-                                    worst = fitness;
-
                                 for (int k = 0; k < METRIC_COUNT; k++)
                                     item.CurveWeights[k] = weights[k];
                             }
                         }
                     }
                     
-                    form.Draw(drawInfo, best, worst);
+                    form.Draw(drawInfo, best, best - 0.02d);
                     drawWatch.Restart();
                 }
 
@@ -344,12 +340,8 @@ namespace ChartRatingTrainer {
             Console.WriteLine("Anchors:");
             Console.WriteLine();
 
-            foreach (var group in calculator.CalculateAnchors(dataSets).GroupBy(a => a.To / 5).OrderBy(g => g.Key)) {
-                foreach (var anchor in group)
-                    Console.WriteLine($"{anchor.From} -> {anchor.To} ({anchor.Correlation:0.0000})");
-                
-                Console.WriteLine();
-            }
+            foreach (var anchor in calculator.CalculateAnchors(dataSets).GroupBy(a => a.To / 5).OrderBy(g => g.Key).Select(group => group.First()))
+                Console.WriteLine($"{anchor.From:0.00000000} -> {anchor.To} ({anchor.Correlation:0.0000}) {anchor.ChartTitle}");
 
             var metricCurveWeights = calculator.MetricCurveWeights;
             

@@ -235,20 +235,22 @@ namespace ChartStatistics {
         private void RateChart(string path, bool rateThis) {
             ChartProcessor processor;
 
-            if (rateThis)
+            if (rateThis) {
+                if (chartProcessor == null) {
+                    Console.WriteLine("A chart has not been loaded");
+                    
+                    return;
+                }
+                
                 processor = chartProcessor;
+            }
             else if (!ChartProcessor.TryLoadChart(path, out processor)) {
                 Console.WriteLine("Could not find this file");
                 
                 return;
             }
-
-            var info = processor.GetDifficultyRatingDetailed();
             
-            Console.WriteLine($"Difficulty: {info.DifficultyRating}");
-
-            for (int i = 0; i < ChartProcessor.Metrics.Count; i++)
-                Console.WriteLine($"{ChartProcessor.Metrics[i].Name}: {info.MeasuredValues[i]:0.0000} ({info.ContributedValues[i]:0.0000})");
+            Console.WriteLine($"Difficulty: {processor.GetDifficultyRating()}");
         }
 
         private void RateAllCharts() {

@@ -48,7 +48,7 @@ namespace ChartRatingTrainer {
                         string title = reader.ReadString();
                         int difficultyRating = reader.ReadInt32();
                         
-                        cache.Add(id, new CacheInfo(new RelevantChartInfo(title, difficultyRating), Data.Deserialize(reader)));
+                        cache.Add(id, new CacheInfo(new RelevantChartInfo(title, difficultyRating), Data.Deserialize(Program.METRIC_COUNT, reader)));
                     }
                 }
             }
@@ -71,7 +71,7 @@ namespace ChartRatingTrainer {
                 else {
                     var processor = new ChartProcessor(chartData.Title, trackData.Notes);
 
-                    data = Data.Create(processor);
+                    data = processor.CreateData();
 
                     if (!ratings.TryGetValue(chartData.Title, out int rating))
                         rating = trackData.DifficultyRating;

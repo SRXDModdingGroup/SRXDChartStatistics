@@ -54,6 +54,10 @@
         <Compile Include="WheelPath.cs" />
     </ItemGroup>
     <ItemGroup>
+      <ProjectReference Include="..\ChartAutoRating\ChartAutoRating.csproj">
+        <Project>{a826ce3b-8722-418f-bec2-ce1a4d5ebae6}</Project>
+        <Name>ChartAutoRating</Name>
+      </ProjectReference>
       <ProjectReference Include="..\Util\Util.csproj">
         <Project>{5f1de6d7-64af-47fa-b183-84d451f7f90f}</Project>
         <Name>Util</Name>

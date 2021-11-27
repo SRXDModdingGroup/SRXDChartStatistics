@@ -6,23 +6,26 @@ using ChartAutoRating;
 namespace ChartRatingTrainer {
     public class Calculator {
         public readonly struct Anchor : IComparable<Anchor> {
+            public string ChartTitle { get; }
+            
             public double From { get; }
             
             public int To { get; }
             
             public double Correlation { get; }
 
-            public Anchor(double from, int to, double correlation) {
+            public Anchor(string chartTitle, double @from, int to, double correlation) {
                 From = from;
                 To = to;
                 Correlation = correlation;
+                ChartTitle = chartTitle;
             }
 
             public int CompareTo(Anchor other) => -Correlation.CompareTo(other.Correlation);
         }
         
-        private static readonly double MUTATION_CHANCE = 0.5d;
-        private static readonly double MAX_MUTATION_AMOUNT = 0.0625d;
+        private static readonly double MUTATION_CHANCE = 0.25d;
+        private static readonly double MAX_MUTATION_AMOUNT = 0.125d;
         private static readonly double OVERWEIGHT_THRESHOLD = 0.35d;
         private static readonly double OVERWEIGHT_BIAS = 0.0625d;
 
@@ -98,9 +101,9 @@ namespace ChartRatingTrainer {
                 Table.GenerateComparisonTable(resultsTable, dataSet.ResultsArrays[threadIndex], dataSet.Size);
 
                 for (int i = 0; i < dataSet.Size; i++) {
-                    double correlation = Table.SimilarityForRow(resultsTable, dataSet.DifficultyComparisons, i, dataSet.Size);
+                    double correlation = Table.CorrelationForRow(resultsTable, dataSet.DifficultyComparisons, i, dataSet.Size);
 
-                    anchors.Add(new Anchor(CalculateValue(dataSet.Datas[i]), dataSet.RelevantChartInfo[i].DifficultyRating, correlation));
+                    anchors.Add(new Anchor(dataSet.RelevantChartInfo[i].Title, CalculateValue(dataSet.Datas[i]), dataSet.RelevantChartInfo[i].DifficultyRating, correlation));
                 }
             }
             
