@@ -55,7 +55,7 @@ namespace ChartMetrics {
                     double x2 = reader.ReadDouble();
                     double x3 = reader.ReadDouble();
                     
-                    NETWORK.SetCoefficients(i, new Coefficients(x1, x2, x3));
+                    NETWORK.SetValueCoefficients(i, new Coefficients(x1, x2, x3));
                 }
             }
         }
@@ -292,7 +292,10 @@ namespace ChartMetrics {
             var data = Data.Create(METRICS.Length, i => {
                 TryGetMetric(METRICS[i].Name, out var result);
 
-                return result.Samples.Select(sample => ((double) sample.Value, (double) sample.Length));
+                var samples = result.Samples;
+                var last = samples[samples.Count - 1];
+
+                return samples.Select(sample => ((double) sample.Value, (double) sample.Time)).Append((0d, last.Time + last.Length));
             });
             
             data.Normalize(BASE_COEFFICIENTS);

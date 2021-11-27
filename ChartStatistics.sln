@@ -10,6 +10,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ChartAutoRating", "ChartAut
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Util", "Util\Util.csproj", "{5F1DE6D7-64AF-47FA-B183-84D451F7F90F}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ChartHelper", "ChartHelper\ChartHelper.csproj", "{21B9540E-E021-4C9F-87B8-8CF511E6E8E7}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -36,5 +38,9 @@ Global
 		{5F1DE6D7-64AF-47FA-B183-84D451F7F90F}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{5F1DE6D7-64AF-47FA-B183-84D451F7F90F}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{5F1DE6D7-64AF-47FA-B183-84D451F7F90F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{21B9540E-E021-4C9F-87B8-8CF511E6E8E7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{21B9540E-E021-4C9F-87B8-8CF511E6E8E7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{21B9540E-E021-4C9F-87B8-8CF511E6E8E7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{21B9540E-E021-4C9F-87B8-8CF511E6E8E7}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

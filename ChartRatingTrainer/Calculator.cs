@@ -1,10 +1,15 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.IO;
+using System.Runtime.CompilerServices;
 using ChartAutoRating;
+using ChartMetrics;
 
 namespace ChartRatingTrainer {
     public class Calculator {
+        public static readonly int METRIC_COUNT = ChartProcessor.Metrics.Count;
+        
         public readonly struct Anchor : IComparable<Anchor> {
             public string ChartTitle { get; }
             
@@ -28,34 +33,75 @@ namespace ChartRatingTrainer {
         private static readonly double MAX_MUTATION_AMOUNT = 0.125d;
         private static readonly double OVERWEIGHT_THRESHOLD = 0.35d;
         private static readonly double OVERWEIGHT_BIAS = 0.0625d;
-
-        public ReadOnlyCollection<CurveWeights> MetricCurveWeights { get; }
+        
+        public CurveWeights[,] CurveWeights { get; private set; }
 
         private int threadIndex;
         private Network network;
-        private CurveWeights[] curveWeights;
 
-        public Calculator(int threadIndex) {
-            this.threadIndex = threadIndex;
-            network = new Network(Program.METRIC_COUNT);
-            curveWeights = new CurveWeights[Program.METRIC_COUNT];
-            MetricCurveWeights = new ReadOnlyCollection<CurveWeights>(curveWeights);
+        public static Calculator Create(int threadIndex) =>
+            new Calculator {
+                threadIndex = threadIndex,
+                network = new Network(METRIC_COUNT),
+                CurveWeights = new CurveWeights[METRIC_COUNT, METRIC_COUNT]
+            };
+
+        public static Calculator Deserialize(int threadIndex, BinaryReader reader) {
+            var calculator = Create(threadIndex);
+            
+            for (int i = 0; i < METRIC_COUNT; i++) {
+                for (int j = i; j < METRIC_COUNT; j++) {
+                    double w0 = reader.ReadDouble();
+                    double w1 = reader.ReadDouble();
+                    double w2 = reader.ReadDouble();
+
+                    calculator.CurveWeights[i, j] = new CurveWeights(w0, w1, w2);
+                }
+            }
+
+            return calculator;
+        }
+
+        public void Randomize(Random random, double magnitude) {
+            for (int i = 0; i < METRIC_COUNT; i++) {
+                for (int j = 0; j < METRIC_COUNT; j++)
+                    CurveWeights[i, j] = ChartRatingTrainer.CurveWeights.Random(random, magnitude);
+            }
+
+            ApplyWeights();
+        }
+
+        public void SetWeights(CurveWeights[,] weights) {
+            for (int i = 0; i < METRIC_COUNT; i++) {
+                for (int j = 0; j < METRIC_COUNT; j++)
+                    CurveWeights[i, j] = weights[i, j];
+            }
+
+            ApplyWeights();
+        }
+
+        public void SerializeCurveWeights(BinaryWriter writer) {
+            for (int i = 0; i < METRIC_COUNT; i++) {
+                for (int j = i; j < METRIC_COUNT; j++) {
+                    var curveWeights = CurveWeights[i, j];
+                    
+                    writer.Write(curveWeights.W0);
+                    writer.Write(curveWeights.W1);
+                    writer.Write(curveWeights.W2);
+                }
+            }
         }
         
-        public void Randomize(Random random, double magnitude) {
-            for (int i = 0; i < Program.METRIC_COUNT; i++)
-                curveWeights[i] = CurveWeights.Random(random, magnitude);
-            
-            NormalizeCurveWeights();
-            ApplyWeights();
-        }
-
-        public void SetWeights(CurveWeights[] weights) {
-            for (int i = 0; i < Program.METRIC_COUNT; i++)
-                curveWeights[i] = weights[i];
-            
-            NormalizeCurveWeights();
-            ApplyWeights();
+        public void SerializeCoefficients(BinaryWriter writer) {
+            for (int i = 0; i < METRIC_COUNT; i++) {
+                for (int j = i; j < METRIC_COUNT; j++) {
+                    var coefficients = CurveWeights[i, j].ToCoefficients();
+                    
+                    writer.Write(coefficients.X1);
+                    writer.Write(coefficients.X2);
+                    writer.Write(coefficients.X3);
+                }
+            }
         }
 
         public double CalculateValue(Data data) => network.GetValue(data);
@@ -81,11 +127,13 @@ namespace ChartRatingTrainer {
             double correlation = CalculateCorrelation(dataSets);
             double overWeight = 0d;
 
-            for (int i = 0; i < Program.METRIC_COUNT; i++) {
-                double magnitude = curveWeights[i].Magnitude;
+            for (int i = 0; i < METRIC_COUNT; i++) {
+                for (int j = i; j < METRIC_COUNT; j++) {
+                    double magnitude = CurveWeights[i, j].Magnitude;
 
-                if (magnitude > OVERWEIGHT_THRESHOLD)
-                    overWeight += magnitude - OVERWEIGHT_THRESHOLD;
+                    if (magnitude > OVERWEIGHT_THRESHOLD)
+                        overWeight += magnitude - OVERWEIGHT_THRESHOLD;
+                }
             }
 
             return 0.5d * (correlation + 1d) - OVERWEIGHT_BIAS * overWeight;
@@ -113,18 +161,10 @@ namespace ChartRatingTrainer {
         }
 
         private void ApplyWeights() {
-            for (int i = 0; i < Program.METRIC_COUNT; i++)
-                network.SetCoefficients(i, curveWeights[i].ToCoefficients());
-        }
-
-        private void NormalizeCurveWeights() {
-            double sum = 0d;
-
-            foreach (var weights in curveWeights)
-                sum += weights.Magnitude;
-
-            for (int i = 0; i < curveWeights.Length; i++)
-                curveWeights[i] /= sum;
+            for (int i = 0; i < METRIC_COUNT; i++) {
+                for (int j = i; j < METRIC_COUNT; j++)
+                    network.SetValueCoefficients(i, j, CurveWeights[i, j].ToCoefficients());
+            }
         }
 
         private void CacheResults(DataSet dataSet) {
@@ -135,30 +175,31 @@ namespace ChartRatingTrainer {
         }
 
         public static void Cross(Random random, Calculator parent1, Calculator parent2, Calculator child) {
-            for (int i = 0; i < Program.METRIC_COUNT; i++) {
-                bool mutateMagnitude = random.NextDouble() < MUTATION_CHANCE;
-                bool mutateCurve = random.NextDouble() < MUTATION_CHANCE;
-                double interp = random.NextDouble();
-                var newWeights = (1d - interp) * parent1.curveWeights[i] + interp * parent2.curveWeights[i];
-                CurveWeights mutatedWeights;
+            for (int i = 0; i < METRIC_COUNT; i++) {
+                for (int j = i; j < METRIC_COUNT; j++) {
+                    bool mutateMagnitude = random.NextDouble() < MUTATION_CHANCE;
+                    bool mutateCurve = random.NextDouble() < MUTATION_CHANCE;
+                    double interp = random.NextDouble();
+                    var newWeights = (1d - interp) * parent1.CurveWeights[i, j] + interp * parent2.CurveWeights[i, j];
+                    CurveWeights mutatedWeights;
 
-                if (mutateMagnitude && mutateCurve)
-                    mutatedWeights = CurveWeights.Random(random, random.NextDouble());
-                else if (mutateMagnitude)
-                    mutatedWeights = random.NextDouble() * CurveWeights.Normalize(newWeights);
-                else if (mutateCurve)
-                    mutatedWeights = CurveWeights.Random(random, newWeights.Magnitude);
-                else {
-                    child.curveWeights[i] = newWeights;
+                    if (mutateMagnitude && mutateCurve)
+                        mutatedWeights = ChartRatingTrainer.CurveWeights.Random(random, random.NextDouble());
+                    else if (mutateMagnitude)
+                        mutatedWeights = random.NextDouble() * ChartRatingTrainer.CurveWeights.Normalize(newWeights);
+                    else if (mutateCurve)
+                        mutatedWeights = ChartRatingTrainer.CurveWeights.Random(random, newWeights.Magnitude);
+                    else {
+                        child.CurveWeights[i, j] = newWeights;
                     
-                    continue;
-                }
+                        continue;
+                    }
 
-                interp = MAX_MUTATION_AMOUNT * random.NextDouble();
-                child.curveWeights[i] = (1d - interp) * newWeights + interp * mutatedWeights;
+                    interp = MAX_MUTATION_AMOUNT * random.NextDouble();
+                    child.CurveWeights[i, j] = (1d - interp) * newWeights + interp * mutatedWeights;
+                }
             }
-            
-            child.NormalizeCurveWeights();
+
             child.ApplyWeights();
         }
     }

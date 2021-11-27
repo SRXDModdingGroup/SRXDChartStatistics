@@ -1,16 +1,25 @@
 ﻿using System;
+using System.Collections.Generic;
 
 namespace ChartAutoRating {
-    internal readonly struct DataSample : IComparable<DataSample> {
-        public double Value { get; }
+    internal readonly struct DataSample {
+        public double[] Values { get; }
         
         public double Weight { get; }
 
-        public DataSample(double value, double weight) {
-            Value = value;
+        public DataSample(double[] values, double weight) {
+            Values = values;
             Weight = weight;
         }
 
-        public int CompareTo(DataSample other) => Value.CompareTo(other.Value);
+        public class Comparer : IComparer<DataSample> {
+            private int metricIndex;
+
+            public Comparer(int metricIndex) {
+                this.metricIndex = metricIndex;
+            }
+
+            public int Compare(DataSample x, DataSample y) => x.Values[metricIndex].CompareTo(y.Values[metricIndex]);
+        }
     }
 }

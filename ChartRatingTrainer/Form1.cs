@@ -14,7 +14,7 @@ namespace ChartRatingTrainer {
         
         public Form1() {
             InitializeComponent();
-            Size = new Size(2 * PADDING + (Program.GROUP_COUNT - 1) * SPACING + (1 + Program.METRIC_COUNT) * BOX_SIZE + 18,
+            Size = new Size(2 * PADDING + (Program.GROUP_COUNT - 1) * SPACING + (1 + Calculator.METRIC_COUNT) * BOX_SIZE + 18,
                 2 * PADDING + Program.CALCULATOR_COUNT * BOX_SIZE + 38);
         }
 
@@ -47,7 +47,7 @@ namespace ChartRatingTrainer {
 
                     DrawBox(0, Color.FromArgb(value, value, value));
 
-                    for (int k = 0; k < Program.METRIC_COUNT; k++) {
+                    for (int k = 0; k < Calculator.METRIC_COUNT; k++) {
                         var weights = info.CurveWeights[k];
                         double max = Math.Max(weights.W0, Math.Max(weights.W1, weights.W2));
 

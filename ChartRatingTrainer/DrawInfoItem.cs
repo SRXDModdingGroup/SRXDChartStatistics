@@ -6,6 +6,6 @@ namespace ChartRatingTrainer {
                 
         public CurveWeights[] CurveWeights { get; }
 
-        public DrawInfoItem() => CurveWeights = new CurveWeights[Program.METRIC_COUNT];
+        public DrawInfoItem() => CurveWeights = new CurveWeights[Calculator.METRIC_COUNT];
     }
 }

@@ -1,25 +1,30 @@
 ﻿namespace ChartAutoRating {
     public class Network {
-        private Coefficients[] coefficients;
+        private int metricCount;
+        private Coefficients[,] valueCoefficients;
+        private Coefficients[] weightCoefficients;
 
         public Network(int metricCount) {
-            coefficients = new Coefficients[metricCount];
+            this.metricCount = metricCount;
+            valueCoefficients = new Coefficients[metricCount, metricCount];
+            weightCoefficients = new Coefficients[metricCount];
         }
 
-        public void SetCoefficients(int metricIndex, Coefficients metricCoefficients) => coefficients[metricIndex] = metricCoefficients;
+        public void SetValueCoefficients(int indexA, int indexB, Coefficients metricCoefficients) => valueCoefficients[indexA, indexB] = metricCoefficients;
 
         public double GetValue(Data data) {
-            var dataSamples = data.DataSamples;
             double sum = 0d;
-            
-            for (int i = 0; i < coefficients.Length; i++) {
-                var coeff = coefficients[i];
-                var samples = dataSamples[i];
 
-                foreach (var sample in samples) {
-                    double value = sample.Value;
+            foreach (var sample in data.DataSamples) {
+                for (int i = 0; i < metricCount; i++) {
+                    double value = sample.Values[i];
+                    
+                    for (int j = i; j < metricCount; j++) {
+                        double prod = value * sample.Values[j];
+                        var coeff = valueCoefficients[i, j];
 
-                    sum += sample.Weight * value * (coeff.X1 + value * (coeff.X2 + value * coeff.X3));
+                        sum += sample.Weight * prod * (coeff.X1 + prod * (coeff.X2 + prod * coeff.X3));
+                    }
                 }
             }
 

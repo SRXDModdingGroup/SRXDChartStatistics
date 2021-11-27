@@ -6,97 +6,136 @@ using Util;
 
 namespace ChartAutoRating {
     public class Data {
-        internal DataSample[][] DataSamples { get; }
+        private class TempDataSample {
+            public double[] Values { get; }
+        
+            public double Time { get; }
+
+            public TempDataSample(double[] values, double time) {
+                Values = values;
+                Time = time;
+            }
+        }
+        
+        internal DataSample[] DataSamples { get; }
 
         private int metricCount;
 
-        private Data(int metricCount) {
+        private Data(int metricCount, int sampleCount) {
             this.metricCount = metricCount;
-            DataSamples = new DataSample[metricCount][];
+            DataSamples = new DataSample[sampleCount];
         }
 
         public static Data Create(int metricCount, Func<int, IEnumerable<(double, double)>> selector) {
-            var data = new Data(metricCount);
-
+            var samplesList = new List<TempDataSample>();
+            
             for (int i = 0; i < metricCount; i++) {
-                var metricDataSamples = selector(i).Select(pair => new DataSample(pair.Item1, pair.Item2)).ToArray();
-                double totalWeight = 0d;
-
-                foreach (var sample in metricDataSamples)
-                    totalWeight += sample.Weight;
-
-                double weightCoefficient = 1d / totalWeight;
-
-                for (int j = 0; j < metricDataSamples.Length; j++) {
-                    var sample = metricDataSamples[j];
+                foreach ((double value, double time) in selector(i)) {
+                    double[] newValues;
                     
-                    metricDataSamples[j] = new DataSample(sample.Value, weightCoefficient * sample.Weight);
-                }
+                    if (samplesList.Count > 0) {
+                        bool found = false;
+                        
+                        for (int j = 0; j < samplesList.Count; j++) {
+                            var sample = samplesList[j];
+                            double sampleTime = sample.Time;
 
-                data.DataSamples[i] = metricDataSamples;
+                            if (MathU.AlmostEquals(time, sampleTime)) {
+                                sample.Values[i] = value;
+                                found = true;
+
+                                break;
+                            }
+
+                            if (time < sampleTime) {
+                                newValues = new double[metricCount];
+                                newValues[i] = value;
+                                samplesList.Insert(i, new TempDataSample(newValues, time));
+                                found = true;
+                                
+                                break;
+                            }
+                        }
+                        
+                        if (found)
+                            continue;
+                    }
+                    
+                    newValues = new double[metricCount];
+                    
+                    if (i > 0) {
+                        double[] previousValues = samplesList[i - 1].Values;
+
+                        for (int j = 0; j < metricCount; j++)
+                            newValues[j] = previousValues[j];
+                    }
+                    
+                    newValues[i] = value;
+                    samplesList.Add(new TempDataSample(newValues, time));
+                }
             }
+            
+            var data = new Data(metricCount, samplesList.Count - 1);
+
+            for (int i = 0; i < data.DataSamples.Length; i++)
+                data.DataSamples[i] = new DataSample(samplesList[i].Values, samplesList[i + 1].Time - samplesList[i].Time);
 
             return data;
         }
 
         public static Data Deserialize(int metricCount, BinaryReader reader) {
-            var data = new Data(metricCount);
+            int sampleCount = reader.ReadInt32();
+            var data = new Data(metricCount, sampleCount);
 
-            for (int i = 0; i < metricCount; i++) {
-                int count = reader.ReadInt32();
-                var metricDataSamples = new DataSample[count];
+            for (int i = 0; i < sampleCount; i++) {
+                double[] newValues = new double[metricCount];
 
-                for (int j = 0; j < count; j++) {
-                    double value = reader.ReadDouble();
-                    double weight = reader.ReadDouble();
+                for (int j = 0; j < metricCount; j++)
+                    newValues[j] = reader.ReadDouble();
 
-                    metricDataSamples[j] = new DataSample(value, weight);
-                }
-
-                data.DataSamples[i] = metricDataSamples;
+                data.DataSamples[i] = new DataSample(newValues, reader.ReadDouble());
             }
 
             return data;
         }
 
         public void Serialize(BinaryWriter writer) {
-            for (int j = 0; j < metricCount; j++) {
-                var metricDataSamples = DataSamples[j];
-                        
-                writer.Write(metricDataSamples.Length);
+            writer.Write(DataSamples.Length);
 
-                foreach (var sample in metricDataSamples) {
-                    writer.Write(sample.Value);
-                    writer.Write(sample.Weight);
-                }
+            foreach (var sample in DataSamples) {
+                double[] values = sample.Values;
+
+                for (int j = 0; j < metricCount; j++)
+                    writer.Write(values[j]);
+                
+                writer.Write(sample.Weight);
             }
         }
 
         public void Normalize(double[] baseCoefficients) {
-            for (int i = 0; i < metricCount; i++) {
-                var samples = DataSamples[i];
-                double coeff = baseCoefficients[i];
+            foreach (var sample in DataSamples) {
+                double[] values = sample.Values;
                 
-                for (int j = 0; j < samples.Length; j++)
-                    samples[j] = new DataSample(Math.Min(coeff * samples[j].Value, 1d), samples[j].Weight);
+                for (int i = 0; i < metricCount; i++)
+                    values[i] = Math.Sqrt(Math.Min(baseCoefficients[i] * values[i], 1d));
             }
         }
 
         public void Clamp(int metricIndex, double min, double max) {
-            var samples = DataSamples[metricIndex];
-                
-            for (int i = 0; i < samples.Length; i++)
-                samples[i] = new DataSample(MathU.Clamp(samples[i].Value, min, max), samples[i].Weight);
+            foreach (var sample in DataSamples) {
+                double[] values = sample.Values;
+
+                values[metricIndex] = MathU.Clamp(values[metricIndex], min, max);
+            }
         }
 
         public double GetQuantile(int metricIndex, double quantile) {
-            var samples = DataSamples[metricIndex];
-            var sorted = new DataSample[samples.Length];
+            var sorted = new DataSample[DataSamples.Length];
 
-            for (int i = 0; i < samples.Length; i++)
-                sorted[i] = samples[i];
+            for (int i = 0; i < DataSamples.Length; i++)
+                sorted[i] = DataSamples[i];
                 
-            Array.Sort(sorted);
+            Array.Sort(sorted, new DataSample.Comparer(metricIndex));
 
             double[] cumulativeWeights = new double[sorted.Length];
             double sum = 0d;
@@ -110,12 +149,12 @@ namespace ChartAutoRating {
             var first = sorted[0];
                 
             if (targetTotal < 0.5f * first.Weight)
-                return first.Value;
+                return first.Values[metricIndex];
 
             var last = sorted[sorted.Length - 1];
 
             if (targetTotal > sum - 0.5f * last.Weight)
-                return last.Value;
+                return last.Values[metricIndex];
                 
             for (int i = 0; i < sorted.Length - 1; i++) {
                 double end = cumulativeWeights[i] + 0.5f * sorted[i + 1].Weight;
@@ -125,18 +164,18 @@ namespace ChartAutoRating {
 
                 double start = cumulativeWeights[i] - 0.5f * sorted[i].Weight;
 
-                return MathU.Remap(targetTotal, start, end, sorted[i].Value, sorted[i + 1].Value);
+                return MathU.Remap(targetTotal, start, end, sorted[i].Values[metricIndex], sorted[i + 1].Values[metricIndex]);
             }
 
-            return sorted[sorted.Length - 1].Value;
+            return sorted[sorted.Length - 1].Values[metricIndex];
         }
 
         public double GetMaxValue(int metricIndex) {
             double max = 0d;
             
-            foreach (var sample in DataSamples[metricIndex]) {
-                if (sample.Value > max)
-                    max = sample.Value;
+            foreach (var sample in DataSamples) {
+                if (sample.Values[metricIndex] > max)
+                    max = sample.Values[metricIndex];
             }
 
             return max;

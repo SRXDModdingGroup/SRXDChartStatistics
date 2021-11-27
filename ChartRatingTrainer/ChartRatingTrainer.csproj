@@ -32,9 +32,6 @@
         <WarningLevel>4</WarningLevel>
     </PropertyGroup>
     <ItemGroup>
-        <Reference Include="ChartHelper, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null">
-          <HintPath>..\libs\ChartHelper.dll</HintPath>
-        </Reference>
         <Reference Include="System" />
         <Reference Include="System.Core" />
         <Reference Include="System.Data" />
@@ -70,6 +67,10 @@
       <ProjectReference Include="..\ChartAutoRating\ChartAutoRating.csproj">
         <Project>{a826ce3b-8722-418f-bec2-ce1a4d5ebae6}</Project>
         <Name>ChartAutoRating</Name>
+      </ProjectReference>
+      <ProjectReference Include="..\ChartHelper\ChartHelper.csproj">
+        <Project>{21b9540e-e021-4c9f-87b8-8cf511e6e8e7}</Project>
+        <Name>ChartHelper</Name>
       </ProjectReference>
       <ProjectReference Include="..\ChartMetrics\ChartMetrics.csproj">
         <Project>{c08a389f-34e7-45ed-b770-1f171679636a}</Project>

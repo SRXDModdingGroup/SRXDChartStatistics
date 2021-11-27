@@ -48,7 +48,7 @@ namespace ChartRatingTrainer {
                         string title = reader.ReadString();
                         int difficultyRating = reader.ReadInt32();
                         
-                        cache.Add(id, new CacheInfo(new RelevantChartInfo(title, difficultyRating), Data.Deserialize(Program.METRIC_COUNT, reader)));
+                        cache.Add(id, new CacheInfo(new RelevantChartInfo(title, difficultyRating), Data.Deserialize(Calculator.METRIC_COUNT, reader)));
                     }
                 }
             }
@@ -111,7 +111,7 @@ namespace ChartRatingTrainer {
 
         public void Trim(double lowerQuantile, double upperQuantile) {
             foreach (var data in Datas) {
-                for (int i = 0; i < Program.METRIC_COUNT; i++)
+                for (int i = 0; i < Calculator.METRIC_COUNT; i++)
                     data.Clamp(i, data.GetQuantile(i, lowerQuantile), data.GetQuantile(i, upperQuantile));
             }
         }
@@ -122,9 +122,9 @@ namespace ChartRatingTrainer {
         }
 
         public static double[] GetBaseCoefficients(params DataSet[] dataSets) {
-            double[] baseCoefficients = new double[Program.METRIC_COUNT];
+            double[] baseCoefficients = new double[Calculator.METRIC_COUNT];
 
-            for (int i = 0; i < Program.METRIC_COUNT; i++) {
+            for (int i = 0; i < Calculator.METRIC_COUNT; i++) {
                 double max = 0d;
 
                 foreach (var dataSet in dataSets) {

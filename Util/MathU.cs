@@ -6,6 +6,8 @@ namespace Util {
 
         public static bool AlmostEquals(float a, float b) => Math.Abs(a - b) < ALMOST_EQUALS_THRESHOLD;
 
+        public static bool AlmostEquals(double a, double b) => Math.Abs(a - b) < ALMOST_EQUALS_THRESHOLD;
+
         public static float Lerp(float a, float b, float t) => (1f - t) * a + t * b;
 
         public static float Remap(float value, float fromStart, float fromEnd, float toStart, float toEnd) => toStart + (toEnd - toStart) * (value - fromStart) / (fromEnd - fromStart);

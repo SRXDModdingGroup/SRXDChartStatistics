@@ -13,7 +13,6 @@ using ChartMetrics;
 
 namespace ChartRatingTrainer {
     public class Program {
-        public static readonly int METRIC_COUNT = ChartProcessor.Metrics.Count;
         public static readonly int CALCULATOR_COUNT = 32;
         public static readonly int GROUP_COUNT = 8;
         
@@ -105,7 +104,7 @@ namespace ChartRatingTrainer {
                             for (int j = 0; j < CALCULATOR_COUNT; j++) {
                                 var info = group[j];
                                 var item = drawGroup[j];
-                                var weights = info.Calculator.MetricCurveWeights;
+                                var weights = info.Calculator.CurveWeights;
                                 double fitness = info.Fitness;
 
                                 item.Fitness = fitness;
@@ -113,7 +112,7 @@ namespace ChartRatingTrainer {
                                 if (fitness > best)
                                     best = fitness;
 
-                                for (int k = 0; k < METRIC_COUNT; k++)
+                                for (int k = 0; k < Calculator.METRIC_COUNT; k++)
                                     item.CurveWeights[k] = weights[k];
                             }
                         }
@@ -310,13 +309,8 @@ namespace ChartRatingTrainer {
             using (var writer = new BinaryWriter(File.Open(Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "results.dat"), FileMode.Create))) {
                 foreach (var thread in threadInfo) {
                     lock (thread.Lock) {
-                        foreach (var info in thread.Group) {
-                            foreach (var curveWeights in info.Calculator.MetricCurveWeights) {
-                                writer.Write(curveWeights.W0);
-                                writer.Write(curveWeights.W1);
-                                writer.Write(curveWeights.W2);
-                            }
-                        }
+                        foreach (var info in thread.Group)
+                            info.Calculator.SerializeCurveWeights(writer);
                     }
                 }
             }
@@ -343,23 +337,16 @@ namespace ChartRatingTrainer {
             foreach (var anchor in calculator.CalculateAnchors(dataSets).GroupBy(a => a.To / 5).OrderBy(g => g.Key).Select(group => group.First()))
                 Console.WriteLine($"{anchor.From:0.00000000} -> {anchor.To} ({anchor.Correlation:0.0000}) {anchor.ChartTitle}");
 
-            var metricCurveWeights = calculator.MetricCurveWeights;
+            var metricCurveWeights = calculator.CurveWeights;
             
             using (var writer = new BinaryWriter(File.Open(Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "parameters.dat"), FileMode.Create))) {
-                for (int i = 0; i < METRIC_COUNT; i++) {
-                    var coefficients = metricCurveWeights[i].ToCoefficients();
-
+                for (int i = 0; i < Calculator.METRIC_COUNT; i++)
                     writer.Write(baseCoefficients[i]);
-                    writer.Write(coefficients.X1);
-                    writer.Write(coefficients.X2);
-                    writer.Write(coefficients.X3);
-                    
-                    Console.WriteLine($"{METRIC_NAMES[i]}: Base {baseCoefficients[i]:0.000000} ({coefficients.X1:0.000000}, {coefficients.X2:0.000000}, {coefficients.X3:0.000000}) {coefficients.Magnitude:0.000000}");
-                }
                 
-                Console.WriteLine();
+                calculator.SerializeCoefficients(writer);
             }
-
+            
+            Console.WriteLine();
             Console.WriteLine("Saved parameters successfully");
             Console.WriteLine();
         }
@@ -372,16 +359,6 @@ namespace ChartRatingTrainer {
                 var best = group[0];
 
                 Console.WriteLine($"Fitness: {best.Fitness}");
-
-                var metricCurveWeights = best.Calculator.MetricCurveWeights;
-
-                for (int i = 0; i < METRIC_COUNT; i++) {
-                    var weights = metricCurveWeights[i];
-
-                    Console.WriteLine($"{METRIC_NAMES[i]}: ({weights.W0:0.00000}, {weights.W1:0.00000}, {weights.W2:0.00000}) {weights.Magnitude:0.00000}");
-                }
-
-                Console.WriteLine();
             }
         }
 
@@ -415,19 +392,9 @@ namespace ChartRatingTrainer {
                         var calculatorInfo = new CalculatorInfo[CALCULATOR_COUNT];
                         
                         for (int j = 0; j < CALCULATOR_COUNT; j++) {
-                            var calculator = new Calculator(i);
+                            var calculator = Calculator.Deserialize(i, reader);
                             var info = new CalculatorInfo(calculator);
-                            var weights = new CurveWeights[METRIC_COUNT];
-
-                            for (int k = 0; k < METRIC_COUNT; k++) {
-                                double w0 = reader.ReadDouble();
-                                double w1 = reader.ReadDouble();
-                                double w2 = reader.ReadDouble();
-                                
-                                weights[k] = new CurveWeights(w0, w1, w2);
-                            }
-
-                            calculator.SetWeights(weights);
+                            
                             info.Fitness = calculator.CalculateFitness(dataSets);
                             calculatorInfo[j] = info;
                         }
@@ -441,7 +408,7 @@ namespace ChartRatingTrainer {
                     var calculatorInfo = new CalculatorInfo[CALCULATOR_COUNT];
                     
                     for (int j = 0; j < CALCULATOR_COUNT; j++) {
-                        var calculator = new Calculator(i);
+                        var calculator = Calculator.Create(i);
                         var info = new CalculatorInfo(calculator);
 
                         calculator.Randomize(random, 1d);
