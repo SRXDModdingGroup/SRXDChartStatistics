@@ -255,15 +255,20 @@ namespace ChartStatistics {
 
         private void RateAllCharts() {
             var data = new List<KeyValuePair<string, int>>();
-            
-            foreach (string path in FileHelper.GetAllSrtbs()) {
+            string[] allPaths = FileHelper.GetAllSrtbs().ToArray();
+
+            for (int i = 0; i < allPaths.Length; i++) {
+                string path = allPaths[i];
+                
                 if (!ChartProcessor.TryLoadChart(path, out var processor))
                     continue;
-                
+
                 data.Add(new KeyValuePair<string, int>(processor.ChartTitle, processor.GetDifficultyRating()));
+                Console.WriteLine($"Scanned chart {i} of {allPaths.Length}");
+                Console.SetCursorPosition(0, Console.CursorTop - 1);
             }
-            
-            Console.WriteLine();
+
+            Console.Write(new string(' ', Console.BufferWidth));
             data.Sort((a, b) => a.Value.CompareTo(b.Value));
 
             foreach (var pair in data)

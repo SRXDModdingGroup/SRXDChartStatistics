@@ -28,6 +28,13 @@ namespace ChartMetrics {
                 points.Add(new Point(path[0].Time, sum));
                 lastPathEnd = path[path.Count - 1].Time;
             }
+            
+            if (points.Count == 0) {
+                return new List<Point> {
+                    new Point(notes[0].Time, 0f),
+                    new Point(notes[notes.Count - 1].Time, 0f)
+                };
+            }
 
             int index = 0;
 

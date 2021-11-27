@@ -242,7 +242,7 @@ namespace ChartMetrics {
         }
 
         public static bool TryLoadChart(string path, out ChartProcessor processor, Difficulty difficulty = Difficulty.XD) {
-            if (!ChartData.TryCreateFromFile(path, out var chartData, Difficulty.XD) || !chartData.TrackData.TryGetValue(difficulty, out var trackData)) {
+            if (!ChartData.TryCreateFromFile(path, out var chartData, Difficulty.XD) || !chartData.TrackData.TryGetValue(difficulty, out var trackData) || trackData.Notes.Count == 0) {
                 processor = null;
                 
                 return false;
@@ -343,7 +343,15 @@ namespace ChartMetrics {
         }
 
         private Result CalculateMetric(Metric metric) {
-            var candidates = metric.Calculate(this);
+            IList<Metric.Point> candidates;
+
+            try {
+                candidates = metric.Calculate(this);
+            }
+            catch (Exception e) {
+                throw new Exception($"Error calculating metric {metric.Name} for chart {ChartTitle}", e);
+            }
+            
             float[] cumulativeValues = new float[candidates.Count];
             float sum = 0f;
 

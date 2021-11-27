@@ -24,6 +24,13 @@ namespace ChartMetrics {
                 lastIndex = i;
                 lastTime = note.Time;
             }
+            
+            if (points.Count == 0) {
+                return new List<Point> {
+                    new Point(notes[0].Time, 0f),
+                    new Point(notes[notes.Count - 1].Time, 0f)
+                };
+            }
 
             points[points.Count - 1] = new Point(lastTime, notes.Count - lastIndex);
             points.Add(new Point(notes[notes.Count - 1].Time, 0f));

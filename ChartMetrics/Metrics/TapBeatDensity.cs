@@ -33,6 +33,13 @@ namespace ChartMetrics {
                 tapBeatsFound++;
             }
 
+            if (points.Count == 0) {
+                return new List<Point> {
+                    new Point(notes[0].Time, 0f),
+                    new Point(notes[notes.Count - 1].Time, 0f)
+                };
+            }
+
             var lastPoint = points[points.Count - 1];
 
             points[points.Count - 1] = new Point(lastPoint.Time, lastPoint.Value + tapBeatsFound);
