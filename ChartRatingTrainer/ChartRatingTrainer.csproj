@@ -43,8 +43,8 @@
     <ItemGroup>
         <Compile Include="CacheInfo.cs" />
         <Compile Include="Calculator.cs" />
-        <Compile Include="CalculatorInfo.cs" />
-        <Compile Include="CurveWeights.cs" />
+        <Compile Include="Individual.cs" />
+        <Compile Include="Curve.cs" />
         <Compile Include="DrawInfoItem.cs" />
         <Compile Include="RelevantChartInfo.cs" />
         <Compile Include="DataSet.cs" />

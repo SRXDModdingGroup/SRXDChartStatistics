@@ -1,11 +1,9 @@
-﻿using ChartAutoRating;
-
-namespace ChartRatingTrainer {
+﻿namespace ChartRatingTrainer {
     public class DrawInfoItem {
         public double Fitness { get; set; }
                 
-        public CurveWeights[] CurveWeights { get; }
+        public Curve[,] Curves { get; }
 
-        public DrawInfoItem() => CurveWeights = new CurveWeights[Calculator.METRIC_COUNT];
+        public DrawInfoItem() => Curves = new Curve[Calculator.METRIC_COUNT, Calculator.METRIC_COUNT + 1];
     }
 }

@@ -1,7 +1,7 @@
 ﻿using System;
 
 namespace ChartRatingTrainer {
-    public class CalculatorInfo : IComparable<CalculatorInfo> {
+    public class Individual : IComparable<Individual> {
         public Calculator Calculator { get; }
             
         public double Fitness { get; set; }
@@ -10,14 +10,12 @@ namespace ChartRatingTrainer {
             
         public double KillChance { get; set; }
             
-        public bool Keep { get; set; }
-            
-        public CalculatorInfo Next { get; set; }
+        public Individual Next { get; set; }
 
-        public CalculatorInfo(Calculator calculator) {
+        public Individual(Calculator calculator) {
             Calculator = calculator;
         }
 
-        public int CompareTo(CalculatorInfo other) => -Fitness.CompareTo(other.Fitness);
+        public int CompareTo(Individual other) => -Fitness.CompareTo(other.Fitness);
     }
 }

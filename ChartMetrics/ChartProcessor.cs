@@ -16,14 +16,10 @@ namespace ChartMetrics {
             new OverallNoteDensity(),
             new TapBeatDensity(),
             new RequiredMovement(),
-            new RequiredMovementWeighted(),
             new Acceleration(),
-            new Drift(),
-            new DriftWeighted()
+            new Drift()
         };
         private static readonly Dictionary<string, Metric> METRICS_DICT = METRICS.ToDictionary(metric => metric.Name.ToLower(), metric => metric);
-        private static readonly double[] BASE_COEFFICIENTS;
-        private static readonly Network NETWORK;
         private static readonly Anchor[] ANCHORS = {
             new Anchor(0d, 0),
             new Anchor(0.12324755d, 30),
@@ -43,20 +39,39 @@ namespace ChartMetrics {
         public static readonly float UPPER_QUANTILE = 0.85f;
         public static ReadOnlyCollection<Metric> Metrics { get; } = new ReadOnlyCollection<Metric>(METRICS);
 
-        static ChartProcessor() {
-            BASE_COEFFICIENTS = new double[METRICS.Length];
-            NETWORK = new Network(METRICS.Length);
+        private static Network network;
+        private static Network Network {
+            get {
+                if (network == null)
+                    LoadParameters();
 
-            using (var reader = new BinaryReader(File.Open(Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "parameters.dat"), FileMode.Open))) {
-                for (int i = 0; i < METRICS.Length; i++) {
-                    BASE_COEFFICIENTS[i] = reader.ReadDouble();
+                return network;
+            }
+        }
 
-                    double x1 = reader.ReadDouble();
-                    double x2 = reader.ReadDouble();
-                    double x3 = reader.ReadDouble();
-                    
-                    NETWORK.SetValueCoefficients(i, new Coefficients(x1, x2, x3));
-                }
+        private static double[] baseCoefficients;
+        private static double[] BaseCoefficients {
+            get {
+                if (baseCoefficients == null)
+                    LoadParameters();
+
+                return baseCoefficients;
+            }
+        }
+
+        private static void LoadParameters() {
+            baseCoefficients = new double[METRICS.Length];
+
+            string path = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "parameters.dat");
+            
+            if (!File.Exists(path))
+                return;
+
+            using (var reader = new BinaryReader(File.Open(path, FileMode.Open))) {
+                for (int i = 0; i < METRICS.Length; i++)
+                    baseCoefficients[i] = reader.ReadDouble();
+                
+                network = Network.Deserialize(reader);
             }
         }
 
@@ -272,7 +287,7 @@ namespace ChartMetrics {
         }
 
         public int GetDifficultyRating() {
-            double value = NETWORK.GetValue(CreateData());
+            double value = Network.GetValue(CreateData());
 
             if (value < 0d)
                 return 0;
@@ -298,7 +313,13 @@ namespace ChartMetrics {
                 return samples.Select(sample => ((double) sample.Value, (double) sample.Time)).Append((0d, last.Time + last.Length));
             });
             
-            data.Normalize(BASE_COEFFICIENTS);
+            return data;
+        }
+
+        public Data CreateNormalizedData() {
+            var data = CreateData();
+            
+            data.Normalize(BaseCoefficients);
 
             return data;
         }

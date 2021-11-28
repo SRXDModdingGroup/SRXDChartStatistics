@@ -1,12 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using Util;
 
 namespace ChartAutoRating {
     public class Data {
-        private class TempDataSample {
+        private readonly struct TempDataSample {
             public double[] Values { get; }
         
             public double Time { get; }
@@ -27,58 +26,75 @@ namespace ChartAutoRating {
         }
 
         public static Data Create(int metricCount, Func<int, IEnumerable<(double, double)>> selector) {
-            var samplesList = new List<TempDataSample>();
-            
+            var enumerators = new IEnumerator<(double, double)>[metricCount];
+            bool[] remaining = new bool[metricCount];
+
             for (int i = 0; i < metricCount; i++) {
-                foreach ((double value, double time) in selector(i)) {
-                    double[] newValues;
-                    
-                    if (samplesList.Count > 0) {
-                        bool found = false;
-                        
-                        for (int j = 0; j < samplesList.Count; j++) {
-                            var sample = samplesList[j];
-                            double sampleTime = sample.Time;
-
-                            if (MathU.AlmostEquals(time, sampleTime)) {
-                                sample.Values[i] = value;
-                                found = true;
-
-                                break;
-                            }
-
-                            if (time < sampleTime) {
-                                newValues = new double[metricCount];
-                                newValues[i] = value;
-                                samplesList.Insert(i, new TempDataSample(newValues, time));
-                                found = true;
-                                
-                                break;
-                            }
-                        }
-                        
-                        if (found)
-                            continue;
-                    }
-                    
-                    newValues = new double[metricCount];
-                    
-                    if (i > 0) {
-                        double[] previousValues = samplesList[i - 1].Values;
-
-                        for (int j = 0; j < metricCount; j++)
-                            newValues[j] = previousValues[j];
-                    }
-                    
-                    newValues[i] = value;
-                    samplesList.Add(new TempDataSample(newValues, time));
-                }
+                var enumerator = selector(i).GetEnumerator();
+                
+                enumerators[i] = enumerator;
+                remaining[i] = enumerator.MoveNext();
             }
-            
-            var data = new Data(metricCount, samplesList.Count - 1);
 
-            for (int i = 0; i < data.DataSamples.Length; i++)
-                data.DataSamples[i] = new DataSample(samplesList[i].Values, samplesList[i + 1].Time - samplesList[i].Time);
+            var tempSamples = new List<TempDataSample>();
+            double[] currentValues = new double[metricCount];
+            double currentTime = -1d;
+            bool firstFound = false;
+            bool anyRemaining;
+
+            do {
+                int soonestIndex = -1;
+                double soonestTime = double.MaxValue;
+
+                anyRemaining = false;
+
+                for (int i = 0; i < enumerators.Length; i++) {
+                    if (!remaining[i])
+                        continue;
+
+                    var enumerator = enumerators[i];
+                    double time = enumerator.Current.Item2;
+
+                    if (time >= soonestTime)
+                        continue;
+
+                    soonestIndex = i;
+                    soonestTime = time;
+                    anyRemaining = true;
+                }
+                
+                if (!anyRemaining)
+                    continue;
+
+                var soonest = enumerators[soonestIndex];
+
+                if (!firstFound || !MathU.AlmostEquals(soonestTime, currentTime)) {
+                    if (firstFound) {
+                        double[] newValues = new double[metricCount];
+                        
+                        Array.Copy(currentValues, newValues, metricCount);
+                        tempSamples.Add(new TempDataSample(newValues, currentTime));
+                    }
+
+                    currentTime = soonestTime;
+                    firstFound = true;
+                }
+
+                currentValues[soonestIndex] = soonest.Current.Item1;
+                remaining[soonestIndex] = soonest.MoveNext();
+            } while (anyRemaining);
+            
+            tempSamples.Add(new TempDataSample(currentValues, currentTime));
+
+            var data = new Data(metricCount, tempSamples.Count - 1);
+            var samples = data.DataSamples;
+            double scale = 1d / (tempSamples[tempSamples.Count - 1].Time - tempSamples[0].Time);
+
+            for (int i = 0; i < samples.Length; i++) {
+                var tempSample = tempSamples[i];
+
+                samples[i] = new DataSample(tempSample.Values, scale * (tempSamples[i + 1].Time - tempSample.Time));
+            }
 
             return data;
         }
@@ -121,11 +137,11 @@ namespace ChartAutoRating {
             }
         }
 
-        public void Clamp(int metricIndex, double min, double max) {
+        public void Clamp(int metricIndex, double max) {
             foreach (var sample in DataSamples) {
                 double[] values = sample.Values;
 
-                values[metricIndex] = MathU.Clamp(values[metricIndex], min, max);
+                values[metricIndex] = Math.Min(values[metricIndex], max);
             }
         }
 

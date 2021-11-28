@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -35,7 +34,6 @@ namespace ChartRatingTrainer {
                 }
             }
             
-            int metricCount = ChartProcessor.Metrics.Count;
             var cache = new Dictionary<string, CacheInfo>();
             string cachePath = Path.Combine(path, "cache.dat");
 
@@ -69,9 +67,7 @@ namespace ChartRatingTrainer {
                 else if (!ChartData.TryCreateFromFile(chartPath, out var chartData, Difficulty.XD) || !chartData.TrackData.TryGetValue(Difficulty.XD, out var trackData))
                     continue;
                 else {
-                    var processor = new ChartProcessor(chartData.Title, trackData.Notes);
-
-                    data = processor.CreateData();
+                    data = new ChartProcessor(chartData.Title, trackData.Notes).CreateData();
 
                     if (!ratings.TryGetValue(chartData.Title, out int rating))
                         rating = trackData.DifficultyRating;
@@ -100,19 +96,19 @@ namespace ChartRatingTrainer {
             Datas = dataList.ToArray();
             DifficultyComparisons = new Table(Size);
             Table.GenerateComparisonTable(DifficultyComparisons, RelevantChartInfo.Select(sample => (double) sample.DifficultyRating).ToArray(), Size);
-            ResultsArrays = new double[Program.GROUP_COUNT][];
-            ResultsTables = new Table[Program.GROUP_COUNT];
+            ResultsArrays = new double[Program.CROSSOVERS][];
+            ResultsTables = new Table[Program.CROSSOVERS];
 
-            for (int i = 0; i < Program.GROUP_COUNT; i++) {
+            for (int i = 0; i < Program.CROSSOVERS; i++) {
                 ResultsArrays[i] = new double[Size];
                 ResultsTables[i] = new Table(Size);
             }
         }
 
-        public void Trim(double lowerQuantile, double upperQuantile) {
+        public void Trim(double upperQuantile) {
             foreach (var data in Datas) {
                 for (int i = 0; i < Calculator.METRIC_COUNT; i++)
-                    data.Clamp(i, data.GetQuantile(i, lowerQuantile), data.GetQuantile(i, upperQuantile));
+                    data.Clamp(i, data.GetQuantile(i, upperQuantile));
             }
         }
 

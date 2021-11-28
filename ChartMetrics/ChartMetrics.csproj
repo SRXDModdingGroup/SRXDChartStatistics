@@ -42,10 +42,8 @@
         <Compile Include="Metric.cs" />
         <Compile Include="Metrics\Acceleration.cs" />
         <Compile Include="Metrics\Drift.cs" />
-        <Compile Include="Metrics\DriftWeighted.cs" />
         <Compile Include="Metrics\OverallNoteDensity.cs" />
         <Compile Include="Metrics\RequiredMovement.cs" />
-        <Compile Include="Metrics\RequiredMovementWeighted.cs" />
         <Compile Include="Metrics\TapBeatDensity.cs" />
         <Compile Include="Properties\AssemblyInfo.cs" />
         <Compile Include="WheelPath.cs" />
