@@ -1,6 +1,10 @@
-﻿namespace ChartRatingTrainer {
+﻿using System.Drawing;
+
+namespace ChartRatingTrainer {
     public class DrawInfoItem {
         public double Fitness { get; set; }
+
+        public Color Color { get; set; }
                 
         public Curve[,] Curves { get; }
 

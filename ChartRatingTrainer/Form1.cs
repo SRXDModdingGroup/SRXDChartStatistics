@@ -4,7 +4,7 @@ using System.Windows.Forms;
 
 namespace ChartRatingTrainer {
     public partial class Form1 : Form {
-        private static readonly int COLUMNS = 8;
+        private static readonly int COLUMNS = 4;
         private static readonly int PADDING = 8;
         private static readonly int BOX_SIZE = 8;
         
@@ -51,16 +51,18 @@ namespace ChartRatingTrainer {
                 int value = (int) (255d * interp);
 
                 DrawBox(0, 0, Color.FromArgb(value, value, value));
+                DrawBox(1, 0, info.Color);
 
                 for (int row = 0; row < Calculator.METRIC_COUNT; row++) {
                     for (int column = row; column < Calculator.METRIC_COUNT + 1; column++) {
                         var curve = info.Curves[row, column];
-                        double max = Math.Max(curve.W0, Math.Max(curve.W1, curve.W2));
+                        double scale = 0d;
 
-                        if (max == 0d)
-                            max = 1d;
-                        
-                        double scale = 255d * Math.Sqrt(curve.Magnitude) / max;
+                        if (curve.Magnitude > 0d) {
+                            double max = Math.Max(curve.W0, Math.Max(curve.W1, curve.W2));
+
+                            scale = 255d * Math.Sqrt(max) / curve.Magnitude;
+                        }
                     
                         DrawBox(row, column + 1, Color.FromArgb(
                             (int) (scale * curve.W0),

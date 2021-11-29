@@ -1,6 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
+using System.Threading.Tasks;
 using ChartAutoRating;
 using ChartMetrics;
 
@@ -8,11 +8,11 @@ namespace ChartRatingTrainer {
     public class Calculator {
         public static readonly int METRIC_COUNT = ChartProcessor.Metrics.Count;
         
-        private static readonly double MUTATION_CHANCE = 0.03125d;
-        private static readonly double MAX_MUTATION_AMOUNT = 0.0625d;
+        private static readonly double MUTATION_CHANCE = 0.0625d;
+        private static readonly double MUTATION_AMOUNT = 0.125d;
         private static readonly double OVERWEIGHT_THRESHOLD = 0.35d;
-        private static readonly double OVERWEIGHT_BIAS = 0.08d;
-        private static readonly double WINDOW_MIDPOINT = 0.0009765625d;
+        private static readonly double OVERWEIGHT_BIAS = 0.5d;
+        private static readonly double WINDOW_MIDPOINT = 0.00390625d;
 
         public Curve[,] ValueCurves { get; }
         
@@ -26,7 +26,7 @@ namespace ChartRatingTrainer {
             WeightCurves = new Curve[METRIC_COUNT];
         }
 
-        public static Calculator Random(int threadIndex, Random random) {
+        public static Calculator Random(Random random) {
             var calculator = new Calculator();
             
             for (int i = 0; i < METRIC_COUNT; i++) {
@@ -41,7 +41,7 @@ namespace ChartRatingTrainer {
             return calculator;
         }
 
-        public static Calculator Deserialize(int threadIndex, BinaryReader reader) {
+        public static Calculator Deserialize(BinaryReader reader) {
             var calculator = new Calculator();
 
             for (int i = 0; i < METRIC_COUNT; i++) {
@@ -88,56 +88,58 @@ namespace ChartRatingTrainer {
         }
 
         public void SerializeNetwork(BinaryWriter writer) => network.Serialize(writer);
+        
+        public void CacheResults(DataSet dataSet) {
+            //var resultsTable = dataSet.ResultsTable;
+            double[] resultsArray = dataSet.ResultsArray1;
 
-        public double CalculateFitness(DataSet[] dataSets, int threadIndex) {
-            double totalSum = 0d;
-            double totalAbsSum = 0;
-            
+            Parallel.For(0, dataSet.Size, i => resultsArray[i] = network.GetValue(dataSet.Datas[i]));
+            //Table.GenerateComparisonTable(resultsTable, resultsArray, WINDOW_MIDPOINT, dataSet.Size);
+            Table.GetPositionArray(dataSet.ResultsArray2, resultsArray, dataSet.Size);
+        }
+
+        public double CalculateFitness(DataSet[] dataSets) {
+            double min = double.PositiveInfinity;
+            double sum = 0d;
+            int count = 0;
+
             foreach (var dataSet in dataSets) {
-                var resultsTable = dataSet.ResultsTables[threadIndex];
+                double[] resultsArray = dataSet.ResultsArray2;
+                double[] positionValues = dataSet.PositionValues;
+                    
+                CacheResults(dataSet);
 
-                CacheResults(dataSet, threadIndex);
-                Table.GenerateWindowedComparisonTable(resultsTable, dataSet.ResultsArrays[threadIndex], WINDOW_MIDPOINT, dataSet.Size);
-                Table.CorrelationComponents(resultsTable, dataSet.DifficultyComparisons, dataSet.Size, out double sum1, out double absSum);
-                totalSum += sum1;
-                totalAbsSum += absSum;
+                for (int i = 0; i < dataSet.Size; i++) {
+                    double value = resultsArray[i] - positionValues[i];
+
+                    value = 1d / (value * value + 1d);
+
+                    if (value < min)
+                        min = value;
+
+                    sum += value;
+                }
+
+                count += dataSet.Size;
             }
 
-            double correlation = totalSum / totalAbsSum;
             double overWeight = 0d;
 
             for (int i = 0; i < METRIC_COUNT; i++) {
-                double sum = 0d;
-                
                 for (int j = 0; j < METRIC_COUNT; j++) {
+                    double value;
+                    
                     if (j >= i)
-                        sum += ValueCurves[i, j].Magnitude;
+                        value = ValueCurves[i, j].Magnitude;
                     else
-                        sum += ValueCurves[j, i].Magnitude;
+                        value = ValueCurves[j, i].Magnitude;
+
+                    if (value > OVERWEIGHT_THRESHOLD)
+                        overWeight += value - OVERWEIGHT_THRESHOLD;
                 }
-                
-                if (sum > OVERWEIGHT_THRESHOLD)
-                    overWeight += sum - OVERWEIGHT_THRESHOLD;
             }
 
-            return 0.5d * (correlation + 1d) - OVERWEIGHT_BIAS * overWeight;
-        }
-
-        public double CalculateCorrelation(DataSet[] dataSets, int threadIndex) {
-            double totalSum = 0d;
-            double totalAbsSum = 0;
-            
-            foreach (var dataSet in dataSets) {
-                var resultsTable = dataSet.ResultsTables[threadIndex];
-
-                CacheResults(dataSet, threadIndex);
-                Table.GenerateComparisonTable(resultsTable, dataSet.ResultsArrays[threadIndex], dataSet.Size);
-                Table.CorrelationComponents(resultsTable, dataSet.DifficultyComparisons, dataSet.Size, out double sum, out double absSum);
-                totalSum += sum;
-                totalAbsSum += absSum;
-            }
-            
-            return totalSum / totalAbsSum;
+            return sum * min / count - OVERWEIGHT_BIAS * overWeight;
         }
 
         public static void Cross(Calculator parent1, Calculator parent2, Calculator child, Random random) {
@@ -155,27 +157,13 @@ namespace ChartRatingTrainer {
                 CrossCurves(parentWeightCurves1[i], parentWeightCurves2[i], out childWeightCurves[i]);
 
                 void CrossCurves(Curve parentCurve1, Curve parentCurve2, out Curve childCurve) {
-                    bool mutateMagnitude = random.NextDouble() < MUTATION_CHANCE;
-                    bool mutateCurve = random.NextDouble() < MUTATION_CHANCE;
-                    double interp = random.NextDouble();
+                    if (random.NextDouble() < 0.5d)
+                        childCurve = parentCurve1;
+                    else
+                        childCurve = parentCurve2;
                     
-                    var newCurves = (1d - interp) * parentCurve1 + interp * parentCurve2;
-                    Curve mutated;
-
-                    if (mutateMagnitude && mutateCurve)
-                        mutated = Curve.Random(random, random.NextDouble());
-                    else if (mutateMagnitude)
-                        mutated = random.NextDouble() * Curve.Normalize(newCurves);
-                    else if (mutateCurve)
-                        mutated = Curve.Random(random, newCurves.Magnitude);
-                    else {
-                        childCurve = newCurves;
-                    
-                        return;
-                    }
-
-                    interp = MAX_MUTATION_AMOUNT * random.NextDouble();
-                    childCurve = (1d - interp) * newCurves + interp * mutated;
+                    if (random.NextDouble() < MUTATION_CHANCE)
+                        childCurve = Curve.Clamp(childCurve + Curve.Random(random, MUTATION_AMOUNT * (2d * random.NextDouble() - 1d)));
                 }
             }
 
@@ -211,14 +199,5 @@ namespace ChartRatingTrainer {
                 network.SetWeightCoefficients(i, WeightCurves[i].ToCoefficients());
             }
         }
-
-        private void CacheResults(DataSet dataSet, int threadIndex) {
-            double[] resultsArray = dataSet.ResultsArrays[threadIndex];
-            
-            for (int i = 0; i < dataSet.Size; i++)
-                resultsArray[i] = CalculateValue(dataSet.Datas[i]);
-        }
-
-        private double CalculateValue(Data data) => network.GetValue(data);
     }
 }

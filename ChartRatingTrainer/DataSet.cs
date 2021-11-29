@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -8,17 +9,19 @@ using ChartMetrics;
 
 namespace ChartRatingTrainer {
     public class DataSet {
+        private static readonly double WINDOW_MIDPOINT = 1d;
+        
         public int Size { get; }
         
         public RelevantChartInfo[] RelevantChartInfo { get; }
 
         public Data[] Datas { get; }
-
-        public Table DifficultyComparisons { get; }
         
-        public double[][] ResultsArrays { get; }
+        public double[] PositionValues { get; }
         
-        public Table[] ResultsTables { get; }
+        public double[] ResultsArray1 { get; }
+        
+        public double[] ResultsArray2 { get; }
 
         public DataSet(string path) {
             var ratings = new Dictionary<string, int>();
@@ -94,15 +97,10 @@ namespace ChartRatingTrainer {
             Size = chartInfo.Count;
             RelevantChartInfo = chartInfo.ToArray();
             Datas = dataList.ToArray();
-            DifficultyComparisons = new Table(Size);
-            Table.GenerateComparisonTable(DifficultyComparisons, RelevantChartInfo.Select(sample => (double) sample.DifficultyRating).ToArray(), Size);
-            ResultsArrays = new double[Program.CROSSOVERS][];
-            ResultsTables = new Table[Program.CROSSOVERS];
-
-            for (int i = 0; i < Program.CROSSOVERS; i++) {
-                ResultsArrays[i] = new double[Size];
-                ResultsTables[i] = new Table(Size);
-            }
+            PositionValues = new double[Size];
+            Table.GetPositionArray(PositionValues, RelevantChartInfo.Select(sample => (double) sample.DifficultyRating).ToArray(), Size);
+            ResultsArray1 = new double[Size];
+            ResultsArray2 = new double[Size];
         }
 
         public void Trim(double upperQuantile) {

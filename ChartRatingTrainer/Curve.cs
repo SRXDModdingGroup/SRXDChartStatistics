@@ -40,6 +40,11 @@ namespace ChartRatingTrainer {
             return cw / cw.Magnitude;
         }
 
+        public static Curve Clamp(Curve cw) => new Curve(
+            Math.Max(0d, cw.W0),
+            Math.Max(0d, cw.W1),
+            Math.Max(0d, cw.W2));
+
         public static Curve operator +(Curve a, Curve b) => new Curve(a.W0 + b.W0, a.W1 + b.W1, a.W2 + b.W2);
 
         public static Curve operator *(double x, Curve cw) => new Curve(x * cw.W0, x * cw.W1, x * cw.W2);

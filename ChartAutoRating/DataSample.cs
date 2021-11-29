@@ -4,10 +4,13 @@ namespace ChartAutoRating {
     internal readonly struct DataSample {
         public double[] Values { get; }
         
+        public double Time { get; }
+        
         public double Weight { get; }
 
-        public DataSample(double[] values, double weight) {
+        public DataSample(double[] values, double time, double weight) {
             Values = values;
+            Time = time;
             Weight = weight;
         }
 

@@ -93,7 +93,7 @@ namespace ChartAutoRating {
             for (int i = 0; i < samples.Length; i++) {
                 var tempSample = tempSamples[i];
 
-                samples[i] = new DataSample(tempSample.Values, scale * (tempSamples[i + 1].Time - tempSample.Time));
+                samples[i] = new DataSample(tempSample.Values, tempSample.Time, scale * (tempSamples[i + 1].Time - tempSample.Time));
             }
 
             return data;
@@ -109,7 +109,9 @@ namespace ChartAutoRating {
                 for (int j = 0; j < metricCount; j++)
                     newValues[j] = reader.ReadDouble();
 
-                data.DataSamples[i] = new DataSample(newValues, reader.ReadDouble());
+                double time = reader.ReadDouble();
+                
+                data.DataSamples[i] = new DataSample(newValues, time, reader.ReadDouble());
             }
 
             return data;
@@ -124,6 +126,7 @@ namespace ChartAutoRating {
                 for (int j = 0; j < metricCount; j++)
                     writer.Write(values[j]);
                 
+                writer.Write(sample.Time);
                 writer.Write(sample.Weight);
             }
         }
