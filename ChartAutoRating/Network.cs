@@ -3,13 +3,13 @@
 namespace ChartAutoRating {
     public class Network {
         private int metricCount;
-        private Coefficients[,] valueCoefficients;
+        private Coefficients[,,] valueCoefficients;
         private Coefficients[] weightCoefficients;
 
         public static Network Create(int metricCount) =>
             new Network {
                 metricCount = metricCount,
-                valueCoefficients = new Coefficients[metricCount, metricCount],
+                valueCoefficients = new Coefficients[metricCount, metricCount, metricCount],
                 weightCoefficients = new Coefficients[metricCount]
             };
 
@@ -18,17 +18,21 @@ namespace ChartAutoRating {
             
             var network = new Network {
                 metricCount = metricCount,
-                valueCoefficients = new Coefficients[metricCount, metricCount],
+                valueCoefficients = new Coefficients[metricCount, metricCount, metricCount],
                 weightCoefficients = new Coefficients[metricCount]
             };
             
             for (int i = 0; i < metricCount; i++) {
                 for (int j = i; j < metricCount; j++) {
-                    double x1 = reader.ReadDouble();
-                    double x2 = reader.ReadDouble();
-                    double x3 = reader.ReadDouble();
+                    for (int k = j; k < metricCount; k++) {
+                        double x1 = reader.ReadDouble();
+                        double x2 = reader.ReadDouble();
+                        double x3 = reader.ReadDouble();
+                        double x4 = reader.ReadDouble();
+                        double x5 = reader.ReadDouble();
 
-                    network.valueCoefficients[i, j] = new Coefficients(x1, x2, x3);
+                        network.valueCoefficients[i, j, k] = new Coefficients(x1, x2, x3, x4, x5);
+                    }
                 }
             }
             
@@ -36,8 +40,10 @@ namespace ChartAutoRating {
                 double x1 = reader.ReadDouble();
                 double x2 = reader.ReadDouble();
                 double x3 = reader.ReadDouble();
+                double x4 = reader.ReadDouble();
+                double x5 = reader.ReadDouble();
 
-                network.weightCoefficients[i] = new Coefficients(x1, x2, x3);
+                network.weightCoefficients[i] = new Coefficients(x1, x2, x3, x4, x5);
             }
 
             return network;
@@ -48,11 +54,13 @@ namespace ChartAutoRating {
 
             for (int i = 0; i < metricCount; i++) {
                 for (int j = i; j < metricCount; j++) {
-                    var coeff = valueCoefficients[i, j];
+                    for (int k = j; k < metricCount; k++) {
+                        var coeff = valueCoefficients[i, j, k];
 
-                    writer.Write(coeff.X1);
-                    writer.Write(coeff.X2);
-                    writer.Write(coeff.X3);
+                        writer.Write(coeff.X1);
+                        writer.Write(coeff.X2);
+                        writer.Write(coeff.X3);
+                    }
                 }
             }
             
@@ -65,7 +73,7 @@ namespace ChartAutoRating {
             }
         }
 
-        public void SetValueCoefficients(int indexA, int indexB, Coefficients metricCoefficients) => valueCoefficients[indexA, indexB] = metricCoefficients;
+        public void SetValueCoefficients(int indexA, int indexB, int indexC, Coefficients metricCoefficients) => valueCoefficients[indexA, indexB, indexC] = metricCoefficients;
 
         public void SetWeightCoefficients(int metricIndex, Coefficients metricCoefficients) => weightCoefficients[metricIndex] = metricCoefficients;
 
@@ -79,9 +87,9 @@ namespace ChartAutoRating {
                 
                 for (int i = 0; i < metricCount; i++) {
                     double a = sample.Values[i];
-                    var coeff = weightCoefficients[i];
 
-                    weight += a * (coeff.X1 + a * (coeff.X2 + a * coeff.X3));
+                    a = a * a * a;
+                    weight += Coefficients.Compute(a, weightCoefficients[i]);
                 }
 
                 weight *= sample.Weight;
@@ -90,10 +98,13 @@ namespace ChartAutoRating {
                     double a = sample.Values[i];
 
                     for (int j = i; j < metricCount; j++) {
-                        double ab = a * sample.Values[j];
-                        var coeff = valueCoefficients[i, j];
+                        double b = sample.Values[j];
 
-                        value += ab * (coeff.X1 + ab * (coeff.X2 + ab * coeff.X3));
+                        for (int k = j; k < metricCount; k++) {
+                            double abc = a * b * sample.Values[k];
+
+                            value += Coefficients.Compute(abc, valueCoefficients[i, j, k]);
+                        }
                     }
                 }
 

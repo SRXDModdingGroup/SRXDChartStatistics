@@ -7,7 +7,6 @@ using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using ChartAutoRating;
 using ChartHelper;
 using ChartMetrics;
 
@@ -61,6 +60,7 @@ namespace ChartRatingTrainer {
             
             for (int i = 0; i < POPULATION_SIZE; i++)
                 drawInfo[i] = new DrawInfoItem();
+            
             drawWatch.Start();
             checkWatch.Start();
             autoSaveWatch.Start();
@@ -70,13 +70,15 @@ namespace ChartRatingTrainer {
                 
                 if (Form.ActiveForm == form && drawWatch.ElapsedMilliseconds > 166) {
                     double best = 0d;
+                    double valueScale = 1d / Calculator.OVERWEIGHT_THRESHOLD_VALUE;
 
                     for (int i = 0; i < POPULATION_SIZE; i++) {
                         var individual = population[i];
                         var valueCurves = individual.Calculator.ValueCurves;
                         var weightCurves = individual.Calculator.WeightCurves;
                         var item = drawInfo[i];
-                        var drawCurves = item.Curves;
+                        var drawValueCurves = item.ValueCurves;
+                        var drawWeightCurves = item.WeightCurves;
                         double fitness = individual.Fitness;
 
                         item.Fitness = fitness;
@@ -85,11 +87,13 @@ namespace ChartRatingTrainer {
                         if (fitness > best)
                             best = fitness;
 
-                        for (int k = 0; k < Calculator.METRIC_COUNT; k++) {
-                            for (int l = k; l < Calculator.METRIC_COUNT; l++)
-                                drawCurves[k, l] = valueCurves[k, l];
+                        for (int j = 0; j < Calculator.METRIC_COUNT; j++) {
+                            for (int k = j; k < Calculator.METRIC_COUNT; k++) {
+                                for (int l = k; l < Calculator.METRIC_COUNT; l++)
+                                    drawValueCurves[j, k, l] = valueScale * valueCurves[j, k, l];
+                            }
 
-                            drawCurves[k, Calculator.METRIC_COUNT] = weightCurves[k];
+                            drawWeightCurves[j] = weightCurves[j];
                         }
                     }
                     
@@ -268,7 +272,7 @@ namespace ChartRatingTrainer {
             for (int i = 0; i < Calculator.METRIC_COUNT; i++) {
                 for (int j = 0; j < Calculator.METRIC_COUNT; j++) {
                     if (j >= i)
-                        Console.Write($"{valueCurves[i, j].Magnitude:0.0000} ");
+                        Console.Write($"{valueCurves[i, j, 0].Magnitude:0.0000} ");
                     else
                         Console.Write("       ");
                 }
@@ -287,13 +291,13 @@ namespace ChartRatingTrainer {
                 calculator.CacheResults(dataSet);
 
                 for (int i = 0; i < dataSet.Size; i++) {
-                    double correlation = dataSet.ResultsArray2[i] - dataSet.PositionValues[i];
+                    double correlation = dataSet.ResultPositions[i] - dataSet.PositionValues[i];
 
                     correlation = 1d / (correlation * correlation + 1d);
                     resultsByValue[i] = new Result(
                         dataSet.RelevantChartInfo[i].Title,
                         dataSet.RelevantChartInfo[i].DifficultyRating,
-                        dataSet.ResultsArray2[i],
+                        dataSet.ResultPositions[i],
                         correlation);
 
                     int nameLength = dataSet.RelevantChartInfo[i].Title.Length;

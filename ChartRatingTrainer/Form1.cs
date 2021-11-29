@@ -4,7 +4,6 @@ using System.Windows.Forms;
 
 namespace ChartRatingTrainer {
     public partial class Form1 : Form {
-        private static readonly int COLUMNS = 4;
         private static readonly int PADDING = 8;
         private static readonly int BOX_SIZE = 8;
         
@@ -12,18 +11,14 @@ namespace ChartRatingTrainer {
         private static readonly Color CLEAR_COLOR = Color.FromArgb(16, 16, 24);
 
         private int spacingX;
-        private int spacingY;
         private BufferedGraphics buffer;
         
         public Form1() {
             InitializeComponent();
-
-            int rows = Program.POPULATION_SIZE / COLUMNS;
             
-            spacingX = (Calculator.METRIC_COUNT + 2) * BOX_SIZE + PADDING;
-            spacingY = Calculator.METRIC_COUNT * BOX_SIZE + PADDING;
-            Size = new Size(2 * PADDING + (COLUMNS - 1) * spacingX + (Calculator.METRIC_COUNT + 2) * BOX_SIZE + 18,
-                2 * PADDING + (rows - 1) * spacingY + Calculator.METRIC_COUNT * BOX_SIZE + 38);
+            spacingX = (Calculator.METRIC_COUNT + 1) * BOX_SIZE + PADDING;
+            Size = new Size(2 * PADDING + (Program.POPULATION_SIZE - 1) * spacingX + (Calculator.METRIC_COUNT + 1) * BOX_SIZE + 18,
+                2 * PADDING + Calculator.METRIC_COUNT * (Calculator.METRIC_COUNT + 1) / 2 * BOX_SIZE + 38);
         }
 
         public void Draw(DrawInfoItem[] drawInfo, double best, double worst) {
@@ -38,8 +33,7 @@ namespace ChartRatingTrainer {
 
             for (int i = 0; i < Program.POPULATION_SIZE; i++) {
                 var info = drawInfo[i];  
-                int startX = i % COLUMNS * spacingX + PADDING;
-                int startY = i / COLUMNS * spacingY + PADDING;
+                int startX = i * spacingX + PADDING;
                 double interp = (info.Fitness - worst) / (best - worst);
 
                 if (interp < 0d)
@@ -53,27 +47,38 @@ namespace ChartRatingTrainer {
                 DrawBox(0, 0, Color.FromArgb(value, value, value));
                 DrawBox(1, 0, info.Color);
 
-                for (int row = 0; row < Calculator.METRIC_COUNT; row++) {
-                    for (int column = row; column < Calculator.METRIC_COUNT + 1; column++) {
-                        var curve = info.Curves[row, column];
-                        double scale = 0d;
+                int drawRow = 0;
 
-                        if (curve.Magnitude > 0d) {
-                            double max = Math.Max(curve.W0, Math.Max(curve.W1, curve.W2));
+                for (int cluster = 0; cluster < Calculator.METRIC_COUNT; cluster++) {
+                    for (int row = cluster; row < Calculator.METRIC_COUNT; row++) {
+                        for (int column = row; column < Calculator.METRIC_COUNT; column++) {
+                            var curve = info.ValueCurves[cluster, row, column];
+                            double magnitude = curve.Magnitude;
+                            double r = (curve.A + 2d * curve.B) / 3d;
+                            double g = (curve.C + 2d * curve.D) / 3d;
+                            double b = (curve.E + 2d * curve.F) / 3d;
 
-                            scale = 255d * Math.Sqrt(max) / curve.Magnitude;
+                            double scale = 0d;
+
+                            if (magnitude > 0d) {
+                                double max = Math.Max(r, Math.Max(g, b));
+                                
+                                scale = 255d * Math.Min(magnitude, 1d) / max;
+                            }
+                            
+                            DrawBox(drawRow, column + 1, Color.FromArgb(
+                                (int) (scale * r),
+                                (int) (scale * g),
+                                (int) (scale * b)));
                         }
-                    
-                        DrawBox(row, column + 1, Color.FromArgb(
-                            (int) (scale * curve.W0),
-                            (int) (scale * curve.W1),
-                            (int) (scale * curve.W2)));
+                        
+                        drawRow++;
                     }
                 }
-
+                
                 void DrawBox(int row, int column, Color color) {
                     BRUSH.Color = color;
-                    graphics.FillRectangle(BRUSH, startX + column * BOX_SIZE, startY + row * BOX_SIZE, BOX_SIZE, BOX_SIZE);
+                    graphics.FillRectangle(BRUSH, startX + column * BOX_SIZE, PADDING + row * BOX_SIZE, BOX_SIZE, BOX_SIZE);
                 }
             }
             

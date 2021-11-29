@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -19,9 +18,9 @@ namespace ChartRatingTrainer {
         
         public double[] PositionValues { get; }
         
-        public double[] ResultsArray1 { get; }
+        public double[] ResultValues { get; }
         
-        public double[] ResultsArray2 { get; }
+        public double[] ResultPositions { get; }
 
         public DataSet(string path) {
             var ratings = new Dictionary<string, int>();
@@ -100,11 +99,12 @@ namespace ChartRatingTrainer {
             PositionValues = new double[Size];
 
             int[] difficulties = RelevantChartInfo.Select(sample => sample.DifficultyRating).ToArray();
-            int[] sortedDifficulties = difficulties.OrderBy(diff => diff).Distinct().ToArray();
-            
-            GetPositionArray(PositionValues, difficulties, sortedDifficulties, Size, sortedDifficulties.Length);
-            ResultsArray1 = new double[Size];
-            ResultsArray2 = new double[Size];
+
+            for (int i = 0; i < Size; i++)
+                PositionValues[i] = (double) (difficulties[i] - 30) / (75 - 30);
+
+            ResultValues = new double[Size];
+            ResultPositions = new double[Size];
         }
 
         public void Trim(double upperQuantile) {
@@ -138,22 +138,6 @@ namespace ChartRatingTrainer {
             }
 
             return baseCoefficients;
-        }
-
-        private static void GetPositionArray(double[] target, int[] input, int[] sorted, int size, int sortedSize) {
-            for (int i = 0; i < size; i++) {
-                int value = input[i];
-                int sum = 0;
-
-                for (int j = 0; j < sortedSize; j++) {
-                    int other = sorted[j];
-
-                    if (value > other)
-                        sum++;
-                }
-
-                target[i] = (double) sum / (sortedSize - 1);
-            }
         }
     }
 }

@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace ChartRatingTrainer {
+﻿namespace ChartRatingTrainer {
     public static class Table {
         // private double[,] data;
         // private double scale;

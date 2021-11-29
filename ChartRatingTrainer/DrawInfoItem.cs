@@ -6,8 +6,13 @@ namespace ChartRatingTrainer {
 
         public Color Color { get; set; }
                 
-        public Curve[,] Curves { get; }
+        public Curve[,,] ValueCurves { get; }
+        
+        public Curve[] WeightCurves { get; }
 
-        public DrawInfoItem() => Curves = new Curve[Calculator.METRIC_COUNT, Calculator.METRIC_COUNT + 1];
+        public DrawInfoItem() {
+            ValueCurves = new Curve[Calculator.METRIC_COUNT, Calculator.METRIC_COUNT, Calculator.METRIC_COUNT];
+            WeightCurves = new Curve[Calculator.METRIC_COUNT];
+        }
     }
 }
