@@ -98,7 +98,11 @@ namespace ChartRatingTrainer {
             RelevantChartInfo = chartInfo.ToArray();
             Datas = dataList.ToArray();
             PositionValues = new double[Size];
-            Table.GetPositionArray(PositionValues, RelevantChartInfo.Select(sample => (double) sample.DifficultyRating).ToArray(), Size);
+
+            int[] difficulties = RelevantChartInfo.Select(sample => sample.DifficultyRating).ToArray();
+            int[] sortedDifficulties = difficulties.OrderBy(diff => diff).Distinct().ToArray();
+            
+            GetPositionArray(PositionValues, difficulties, sortedDifficulties, Size, sortedDifficulties.Length);
             ResultsArray1 = new double[Size];
             ResultsArray2 = new double[Size];
         }
@@ -134,6 +138,22 @@ namespace ChartRatingTrainer {
             }
 
             return baseCoefficients;
+        }
+
+        private static void GetPositionArray(double[] target, int[] input, int[] sorted, int size, int sortedSize) {
+            for (int i = 0; i < size; i++) {
+                int value = input[i];
+                int sum = 0;
+
+                for (int j = 0; j < sortedSize; j++) {
+                    int other = sorted[j];
+
+                    if (value > other)
+                        sum++;
+                }
+
+                target[i] = (double) sum / (sortedSize - 1);
+            }
         }
     }
 }

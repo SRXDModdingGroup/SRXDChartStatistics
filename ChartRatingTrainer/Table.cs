@@ -89,21 +89,5 @@ namespace ChartRatingTrainer {
         //     
         //     return sum / size;
         // }
-
-        public static void GetPositionArray(double[] target, double[] input, int size) {
-            for (int i = 0; i < size; i++) {
-                double value = input[i];
-                int sum = 0;
-                
-                for (int j = 0; j < size; j++) {
-                    double other = input[j];
-
-                    if (value > other)
-                        sum++;
-                }
-
-                target[i] = (double) sum / size;
-            }
-        }
     }
 }

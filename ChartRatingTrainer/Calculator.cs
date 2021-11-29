@@ -9,7 +9,7 @@ namespace ChartRatingTrainer {
         public static readonly int METRIC_COUNT = ChartProcessor.Metrics.Count;
         
         private static readonly double MUTATION_CHANCE = 0.0625d;
-        private static readonly double MUTATION_AMOUNT = 0.125d;
+        private static readonly double MUTATION_AMOUNT = 0.25d;
         private static readonly double OVERWEIGHT_THRESHOLD = 0.35d;
         private static readonly double OVERWEIGHT_BIAS = 0.5d;
         private static readonly double WINDOW_MIDPOINT = 0.00390625d;
@@ -95,7 +95,7 @@ namespace ChartRatingTrainer {
 
             Parallel.For(0, dataSet.Size, i => resultsArray[i] = network.GetValue(dataSet.Datas[i]));
             //Table.GenerateComparisonTable(resultsTable, resultsArray, WINDOW_MIDPOINT, dataSet.Size);
-            Table.GetPositionArray(dataSet.ResultsArray2, resultsArray, dataSet.Size);
+            GetPositionArray(dataSet.ResultsArray2, resultsArray, dataSet.Size);
         }
 
         public double CalculateFitness(DataSet[] dataSets) {
@@ -197,6 +197,22 @@ namespace ChartRatingTrainer {
             for (int i = 0; i < METRIC_COUNT; i++) {
                 WeightCurves[i] = scale * WeightCurves[i];
                 network.SetWeightCoefficients(i, WeightCurves[i].ToCoefficients());
+            }
+        }
+        
+        private static void GetPositionArray(double[] target, double[] input, int size) {
+            for (int i = 0; i < size; i++) {
+                double value = input[i];
+                int sum = 0;
+                
+                for (int j = 0; j < size; j++) {
+                    double other = input[j];
+
+                    if (value > other)
+                        sum++;
+                }
+
+                target[i] = (double) sum / size;
             }
         }
     }
