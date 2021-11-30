@@ -10,9 +10,9 @@ namespace ChartRatingTrainer {
         public static readonly double OVERWEIGHT_THRESHOLD_VALUE = 0.12d;
         public static readonly double OVERWEIGHT_THRESHOLD_WEIGHT = 0.4d;
         
-        private static readonly double MUTATION_CHANCE = 0.0625d;
-        private static readonly double MUTATION_AMOUNT_VALUE = 0.03d;
-        private static readonly double MUTATION_AMOUNT_WEIGHT = 0.1d;
+        private static readonly double MUTATION_CHANCE = 0.015625d;
+        private static readonly double MUTATION_AMOUNT_VALUE = 0.00046875d;
+        private static readonly double MUTATION_AMOUNT_WEIGHT = 0.0015625d;
         private static readonly double OVERWEIGHT_BIAS = 0.25d;
         private static readonly double WINDOW_MIDPOINT = 0.00390625d;
 
@@ -135,7 +135,7 @@ namespace ChartRatingTrainer {
         }
 
         public double CalculateFitness(DataSet[] dataSets) {
-            double min = double.PositiveInfinity;
+            double max = 0d;
             double sum = 0d;
             int count = 0;
 
@@ -147,12 +147,12 @@ namespace ChartRatingTrainer {
 
                 for (int i = 0; i < dataSet.Size; i++) {
                     double value = resultPositions[i] - dataPositions[i];
-
-                    value = 1d / (value * value + 1d);
-
-                    if (value < min)
-                        min = value;
-
+                    
+                    value *= value;
+                    
+                    if (value > max)
+                        max = value;
+                    
                     sum += value;
                 }
 
@@ -179,7 +179,7 @@ namespace ChartRatingTrainer {
                     overWeight += value - OVERWEIGHT_THRESHOLD_WEIGHT;
             }
 
-            return min * sum / count - OVERWEIGHT_BIAS * overWeight;
+            return (1d - max) * (1d - Math.Sqrt(sum / count)) - OVERWEIGHT_BIAS * overWeight;
         }
 
         public static void Cross(Calculator parent1, Calculator parent2, Calculator child, Random random) {
@@ -192,21 +192,24 @@ namespace ChartRatingTrainer {
 
             for (int i = 0; i < METRIC_COUNT; i++) {
                 for (int j = i; j < METRIC_COUNT; j++) {
-                    for (int k = 0; k < METRIC_COUNT; k++)
-                        CrossCurves(parentValueCurves1[i, j, k], parentValueCurves2[i, j, k], MUTATION_AMOUNT_VALUE, out childValueCurves[i, j, k]);
+                    for (int k = 0; k < METRIC_COUNT; k++) {
+                        if (random.NextDouble() < 0.5d)
+                            childValueCurves[i, j, k] = parentValueCurves1[i, j, k];
+                        else
+                            childValueCurves[i, j, k] = parentValueCurves2[i, j, k];
+
+                        if (random.NextDouble() < MUTATION_CHANCE)
+                            parentValueCurves2[i, j, k] = Curve.Clamp(parentValueCurves2[i, j, k] + Curve.Random(random, MUTATION_AMOUNT_VALUE * (2d * random.NextDouble() - 1d)));
+                    }
                 }
 
-                CrossCurves(parentWeightCurves1[i], parentWeightCurves2[i], MUTATION_AMOUNT_WEIGHT, out childWeightCurves[i]);
+                if (random.NextDouble() < 0.5d)
+                    childWeightCurves[i] = parentWeightCurves1[i];
+                else
+                    childWeightCurves[i] = parentWeightCurves2[i];
 
-                void CrossCurves(Curve parentCurve1, Curve parentCurve2, double mutationAmount, out Curve childCurve) {
-                    if (random.NextDouble() < 0.5d)
-                        childCurve = parentCurve1;
-                    else
-                        childCurve = parentCurve2;
-                    
-                    if (random.NextDouble() < MUTATION_CHANCE)
-                        childCurve = Curve.Clamp(childCurve + Curve.Random(random, mutationAmount * (2d * random.NextDouble() - 1d)));
-                }
+                if (random.NextDouble() < MUTATION_CHANCE)
+                    parentWeightCurves2[i] = Curve.Clamp(parentWeightCurves2[i] + Curve.Random(random, MUTATION_AMOUNT_VALUE * (2d * random.NextDouble() - 1d)));
             }
 
             child.ApplyCurves();

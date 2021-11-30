@@ -5,13 +5,9 @@ namespace ChartRatingTrainer {
     public class Individual : IComparable<Individual> {
         public Calculator Calculator { get; }
         
-        public Color IdColor { get; }
+        public Color IdColor { get; set; }
             
         public double Fitness { get; set; }
-
-        public double CrossChance { get; set; }
-            
-        public double KillChance { get; set; }
             
         public Individual Next { get; set; }
 

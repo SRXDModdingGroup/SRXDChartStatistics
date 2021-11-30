@@ -1,6 +1,8 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Text.RegularExpressions;
 using ChartAutoRating;
 using ChartHelper;
@@ -32,7 +34,7 @@ namespace ChartRatingTrainer {
                     var match = regex.Match(line);
 
                     if (match.Success)
-                        ratings.Add(match.Groups[2].ToString(), int.Parse(match.Groups[1].ToString()));
+                        ratings.Add(match.Groups[2].ToString().Trim(), int.Parse(match.Groups[1].ToString()));
                 }
             }
             
@@ -66,13 +68,20 @@ namespace ChartRatingTrainer {
                     newChartInfo = cacheInfo.ChartInfo;
                     data = cacheInfo.Data;
                 }
-                else if (!ChartData.TryCreateFromFile(chartPath, out var chartData, Difficulty.XD) || !chartData.TrackData.TryGetValue(Difficulty.XD, out var trackData))
+                else if (!ChartData.TryCreateFromFile(chartPath, out var chartData, Difficulty.XD)
+                         || !chartData.TrackData.TryGetValue(Difficulty.XD, out var trackData))
                     continue;
                 else {
                     data = new ChartProcessor(chartData.Title, trackData.Notes).CreateData();
 
-                    if (!ratings.TryGetValue(chartData.Title, out int rating))
-                        rating = trackData.DifficultyRating;
+                    string trim = chartData.Title.Trim();
+
+                    if (ratings.TryGetValue(trim, out int rating))
+                        ratings.Remove(trim);
+                    else if (ratings.TryGetValue($"{trim} ({chartData.Charter})", out rating))
+                        ratings.Remove($"{trim} ({chartData.Charter})");
+                    else
+                        continue;
 
                     newChartInfo = new RelevantChartInfo(chartData.Title, rating);
                 }
@@ -85,7 +94,7 @@ namespace ChartRatingTrainer {
             using (var writer = new BinaryWriter(File.Open(cachePath, FileMode.Create))) {
                 for (int i = 0; i < chartInfo.Count; i++) {
                     var info = chartInfo[i];
-
+            
                     writer.Write(ids[i]);
                     writer.Write(info.Title);
                     writer.Write(info.DifficultyRating);
@@ -98,10 +107,8 @@ namespace ChartRatingTrainer {
             Datas = dataList.ToArray();
             PositionValues = new double[Size];
 
-            int[] difficulties = RelevantChartInfo.Select(sample => sample.DifficultyRating).ToArray();
-
             for (int i = 0; i < Size; i++)
-                PositionValues[i] = (double) (difficulties[i] - 30) / (75 - 30);
+                PositionValues[i] = (double) (RelevantChartInfo[i].DifficultyRating - 30) / (75 - 30);
 
             ResultValues = new double[Size];
             ResultPositions = new double[Size];
