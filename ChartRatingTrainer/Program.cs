@@ -217,66 +217,31 @@ namespace ChartRatingTrainer {
             var calculator = best.Calculator;
 
             foreach (var dataSet in dataSets) {
-                var resultsByValue = new Result[dataSet.Size];
+                var valuePairs = dataSet.ValuePairs;
                 int longestName = 0;
 
                 calculator.CacheResults(dataSet);
+                Array.Sort(valuePairs, Calculator.ValuePair.IndexComparer);
 
                 for (int i = 0; i < dataSet.Size; i++) {
-                    resultsByValue[i] = new Result(
-                        dataSet.RelevantChartInfo[i].Title,
-                        dataSet.RelevantChartInfo[i].DifficultyRating,
-                        dataSet.ResultPositions[i],
-                        1d - Math.Abs(dataSet.ResultPositions[i] - dataSet.PositionValues[i]));
-
-                    int nameLength = dataSet.RelevantChartInfo[i].Title.Length;
+                    int nameLength = dataSet.ChartInfo[i].Title.Length;
 
                     if (nameLength > longestName)
                         longestName = nameLength;
                 }
 
-                var resultsByRating = new Result[dataSet.Size];
-                var resultsByCorrelation = new Result[dataSet.Size];
-                
-                Array.Copy(resultsByValue, resultsByRating, dataSet.Size);
-                Array.Copy(resultsByValue, resultsByCorrelation, dataSet.Size);
-                Array.Sort(resultsByValue, (a, b) => a.Value.CompareTo(b.Value));
-                Array.Sort(resultsByRating, (a, b) => a.DifficultyRating.CompareTo(b.DifficultyRating));
-                Array.Sort(resultsByCorrelation, (a, b) => a.Correlation.CompareTo(b.Correlation));
                 Console.WriteLine("Ordered rankings:");
+                Array.Sort(valuePairs, Calculator.ValuePair.ReturnedComparer);
+
+                var chartInfo = dataSet.ChartInfo;
 
                 for (int i = 0; i < dataSet.Size; i++) {
-                    var result = resultsByValue[i];
+                    var pair = valuePairs[i];
                     
-                    Console.Write($"{i.ToString().PadLeft(3)} <- {Array.IndexOf(resultsByRating, result).ToString().PadLeft(3)} ({result.Correlation:0.0000}) - {result.Title.PadRight(longestName)}\t");
-
-                    result = resultsByRating[i];
-                    
-                    Console.Write($"{Array.IndexOf(resultsByValue, result).ToString().PadLeft(3)} <- {i.ToString().PadLeft(3)} ({result.Correlation:0.0000}) - {result.Title.PadRight(longestName)}\t");
-                    
-                    result = resultsByCorrelation[i];
-                    
-                    Console.WriteLine($"{Array.IndexOf(resultsByValue, result).ToString().PadLeft(3)} <- {Array.IndexOf(resultsByRating, result).ToString().PadLeft(3)} ({result.Correlation:0.0000}) - {result.Title}");
+                    Console.WriteLine($"{pair.Returned:0.0000} <- {pair.Expected:0.0000} ({1d - Math.Abs(pair.Returned - pair.Expected):0.0000}) - {chartInfo[pair.Index].Title}");
                 }
                 
                 Console.WriteLine();
-            }
-        }
-
-        private readonly struct Result {
-            public string Title { get; }
-            
-            public int DifficultyRating { get; }
-
-            public double Value { get; }
-            
-            public double Correlation { get; }
-
-            public Result(string title, int difficultyRating, double value, double correlation) {
-                Title = title;
-                DifficultyRating = difficultyRating;
-                Value = value;
-                Correlation = correlation;
             }
         }
 

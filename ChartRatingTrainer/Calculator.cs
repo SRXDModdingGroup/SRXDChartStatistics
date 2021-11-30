@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
 using ChartAutoRating;
@@ -6,6 +7,25 @@ using ChartMetrics;
 
 namespace ChartRatingTrainer {
     public class Calculator {
+        public struct ValuePair {
+            public int Index { get; set; }
+            
+            public double Expected { get; set; }
+            
+            public double Returned { get; set; }
+            
+            private class IndexComparerInternal : IComparer<ValuePair> {
+                public int Compare(ValuePair x, ValuePair y) => x.Index.CompareTo(y.Index);
+            }
+
+            private class ReturnedComparerInternal : IComparer<ValuePair> {
+                public int Compare(ValuePair x, ValuePair y) => x.Returned.CompareTo(y.Returned);
+            }
+            
+            public static IComparer<ValuePair> IndexComparer { get; } = new IndexComparerInternal();
+            public static IComparer<ValuePair> ReturnedComparer { get; } = new ReturnedComparerInternal();
+        }
+        
         public static readonly int METRIC_COUNT = ChartProcessor.Metrics.Count;
         public static readonly double OVERWEIGHT_THRESHOLD_VALUE = 0.06d;
         public static readonly double OVERWEIGHT_THRESHOLD_WEIGHT = 0.4d;
@@ -109,26 +129,30 @@ namespace ChartRatingTrainer {
         public void SerializeNetwork(BinaryWriter writer) => network.Serialize(writer);
         
         public void CacheResults(DataSet dataSet) {
-            double[] resultValues = dataSet.ResultValues;
-            double[] resultPositions = dataSet.ResultPositions;
+            var valuePairs = dataSet.ValuePairs;
 
-            Parallel.For(0, dataSet.Size, i => resultValues[i] = network.GetValue(dataSet.Datas[i]));
+            dataSet.InitValuePairs();
+            Parallel.For(0, dataSet.Size, i => valuePairs[i].Returned = network.GetValue(dataSet.Datas[i]));
+            Array.Sort(valuePairs, ValuePair.ReturnedComparer);
+            
+            double[] cache = dataSet.Cache;
 
-            double min = double.PositiveInfinity;
-            double max = 0d;
+            for (int i = 1; i < dataSet.Size - 1; i++) {
+                double first = valuePairs[i - 1].Returned;
+                double mid = valuePairs[i].Returned;
+                double last = valuePairs[i + 1].Returned;
 
-            foreach (double value in resultValues) {
-                if (value < min)
-                    min = value;
-
-                if (value > max)
-                    max = value;
+                cache[i] = i - 0.5d + (mid - first) / (last - first);
             }
 
-            double scale = 1d / (max - min);
+            double scale = 1d / dataSet.Size;
 
-            for (int i = 0; i < dataSet.Size; i++)
-                resultPositions[i] = scale * (resultValues[i] - min);
+            valuePairs[0].Returned = 0d;
+
+            for (int i = 1; i < dataSet.Size - 1; i++)
+                valuePairs[i].Returned = scale * cache[i];
+
+            valuePairs[dataSet.Size - 1].Returned = 1d;
         }
 
         public double CalculateFitness(DataSet[] dataSets) {
@@ -137,20 +161,20 @@ namespace ChartRatingTrainer {
             int count = 0;
 
             foreach (var dataSet in dataSets) {
-                double[] resultPositions = dataSet.ResultPositions;
-                double[] dataPositions = dataSet.PositionValues;
-                    
                 CacheResults(dataSet);
 
+                var valuePairs = dataSet.ValuePairs;
+
                 for (int i = 0; i < dataSet.Size; i++) {
-                    double value = resultPositions[i] - dataPositions[i];
+                    var pair = valuePairs[i];
+                    double error = pair.Returned - pair.Expected;
                     
-                    value *= value;
+                    error *= error;
                     
-                    if (value > max)
-                        max = value;
+                    if (error > max)
+                        max = error;
                     
-                    sum += value;
+                    sum += error;
                 }
 
                 count += dataSet.Size;

@@ -7,20 +7,18 @@ using ChartMetrics;
 
 namespace ChartRatingTrainer {
     public class DataSet {
-        private static readonly double WINDOW_MIDPOINT = 1d;
-        
         public int Size { get; }
         
-        public RelevantChartInfo[] RelevantChartInfo { get; }
+        public RelevantChartInfo[] ChartInfo { get; }
 
         public Data[] Datas { get; }
         
-        public double[] PositionValues { get; }
-        
-        public double[] ResultValues { get; }
-        
-        public double[] ResultPositions { get; }
+        public Calculator.ValuePair[] ValuePairs { get; }
 
+        public double[] Cache { get; }
+
+        private double[] expectedValues;
+        
         public DataSet(string path) {
             var ratings = new Dictionary<string, int>();
             var regex = new Regex(@"(\d+)\t(.*)");
@@ -100,15 +98,14 @@ namespace ChartRatingTrainer {
             }
             
             Size = chartInfo.Count;
-            RelevantChartInfo = chartInfo.ToArray();
+            ChartInfo = chartInfo.ToArray();
             Datas = dataList.ToArray();
-            PositionValues = new double[Size];
+            Cache = new double[Size];
+            ValuePairs = new Calculator.ValuePair[Size];
+            expectedValues = new double[Size];
 
             for (int i = 0; i < Size; i++)
-                PositionValues[i] = (double) (RelevantChartInfo[i].DifficultyRating - 30) / (75 - 30);
-
-            ResultValues = new double[Size];
-            ResultPositions = new double[Size];
+                expectedValues[i] = (double) (ChartInfo[i].DifficultyRating - 30) / (75 - 30);
         }
 
         public void Trim(double upperQuantile) {
@@ -121,6 +118,13 @@ namespace ChartRatingTrainer {
         public void Normalize(double[] baseCoefficients) {
             foreach (var data in Datas)
                 data.Normalize(baseCoefficients);
+        }
+
+        public void InitValuePairs() {
+            for (int i = 0; i < Size; i++) {
+                ValuePairs[i].Index = i;
+                ValuePairs[i].Expected = expectedValues[i];
+            }
         }
 
         public static double[] GetBaseCoefficients(params DataSet[] dataSets) {
