@@ -3,19 +3,16 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
-using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using ChartHelper;
-using ChartMetrics;
 
 namespace ChartRatingTrainer {
     public class Program {
         public static readonly int POPULATION_SIZE = 8;
         
         private static readonly int CROSSOVERS = 2;
-        private static readonly string[] METRIC_NAMES = ChartProcessor.Metrics.Select(metric => metric.Name).ToArray();
 
         public static void Main(string[] args) {
             var random = new Random();
@@ -124,24 +121,18 @@ namespace ChartRatingTrainer {
         }
 
         private static void Generate(Individual[] population, DataSet[] dataSets, Random random) {
-            int crossCount = POPULATION_SIZE - CROSSOVERS;
-            int killCount = CROSSOVERS;
-            var crossStart = population[0];
-            var killStart = population[crossCount - 1];
+            int crossCount = POPULATION_SIZE - 2 * CROSSOVERS;
+            var bestStart = population[0];
+            var crossStart = population[CROSSOVERS];
+            var killStart = population[POPULATION_SIZE - CROSSOVERS];
 
-            for (int i = 0; i < POPULATION_SIZE; i++) {
-                var info = population[i];
-                    
-                if (i < POPULATION_SIZE - 1)
-                    info.Next = population[i + 1];
-                else
-                    info.Next = null;
-            }
+            for (int i = 0; i < POPULATION_SIZE - 1; i++)
+                population[i].Next = population[i + 1];
 
             for (int i = 0; i < CROSSOVERS; i++) {
                 var parent1 = PopBest();
                 var parent2 = PopRandomFit();
-                var child = PopRandomUnfit();
+                var child = PopWorst();
                 
                 Calculator.Cross(parent1.Calculator, parent2.Calculator, child.Calculator, random);
                 parent2.Fitness = child.Calculator.CalculateFitness(dataSets);
@@ -159,10 +150,9 @@ namespace ChartRatingTrainer {
             Array.Sort(population);
 
             Individual PopBest() {
-                var best = crossStart;
+                var best = bestStart;
 
-                crossStart = best.Next;
-                crossCount--;
+                bestStart = best.Next;
 
                 return best;
             }
@@ -181,9 +171,6 @@ namespace ChartRatingTrainer {
                         else
                             previous.Next = current.Next;
 
-                        if (current == killStart)
-                            killStart = previous;
-
                         crossCount--;
 
                         return current;
@@ -197,27 +184,12 @@ namespace ChartRatingTrainer {
                 return null;
             }
 
-            Individual PopRandomUnfit() {
-                int position = random.Next(0, killCount);
-                var current = killStart.Next;
-                var previous = killStart;
+            Individual PopWorst() {
+                var worst = killStart;
 
-                while (current != null) {
-                    var next = current.Next;
+                killStart = worst.Next;
 
-                    if (position == 0 || next == null) {
-                        killCount--;
-                        previous.Next = current.Next;
-
-                        return current;
-                    }
-
-                    position--;
-                    previous = current;
-                    current = next;
-                }
-
-                return null;
+                return worst;
             }
         }
 
@@ -251,14 +223,11 @@ namespace ChartRatingTrainer {
                 calculator.CacheResults(dataSet);
 
                 for (int i = 0; i < dataSet.Size; i++) {
-                    double diff = dataSet.ResultPositions[i] - dataSet.PositionValues[i];
-
-                    diff = 1d - diff * diff;
                     resultsByValue[i] = new Result(
                         dataSet.RelevantChartInfo[i].Title,
                         dataSet.RelevantChartInfo[i].DifficultyRating,
                         dataSet.ResultPositions[i],
-                        diff);
+                        1d - Math.Abs(dataSet.ResultPositions[i] - dataSet.PositionValues[i]));
 
                     int nameLength = dataSet.RelevantChartInfo[i].Title.Length;
 

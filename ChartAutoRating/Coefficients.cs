@@ -23,8 +23,6 @@
 
         public static double Compute(double x, Coefficients c) => x * (c.X1 + x * (c.X2 + x * (c.X3 + x * (c.X4 + x * c.X5))));
 
-        public static Coefficients Normalize(Coefficients c) => c / c.Magnitude;
-
         public static Coefficients operator *(double x, Coefficients c) => new Coefficients(
             x * c.X1,
             x * c.X2,

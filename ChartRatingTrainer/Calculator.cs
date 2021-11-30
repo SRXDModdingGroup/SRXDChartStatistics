@@ -7,14 +7,13 @@ using ChartMetrics;
 namespace ChartRatingTrainer {
     public class Calculator {
         public static readonly int METRIC_COUNT = ChartProcessor.Metrics.Count;
-        public static readonly double OVERWEIGHT_THRESHOLD_VALUE = 0.12d;
+        public static readonly double OVERWEIGHT_THRESHOLD_VALUE = 0.06d;
         public static readonly double OVERWEIGHT_THRESHOLD_WEIGHT = 0.4d;
         
-        private static readonly double MUTATION_CHANCE = 0.015625d;
-        private static readonly double MUTATION_AMOUNT_VALUE = 0.00046875d;
-        private static readonly double MUTATION_AMOUNT_WEIGHT = 0.0015625d;
+        private static readonly double MUTATION_CHANCE = 0.025d;
+        private static readonly double MUTATION_AMOUNT_VALUE = 0.001875d;
+        private static readonly double MUTATION_AMOUNT_WEIGHT = 0.0125d;
         private static readonly double OVERWEIGHT_BIAS = 0.25d;
-        private static readonly double WINDOW_MIDPOINT = 0.00390625d;
 
         public Curve[,,] ValueCurves { get; }
         
@@ -110,12 +109,10 @@ namespace ChartRatingTrainer {
         public void SerializeNetwork(BinaryWriter writer) => network.Serialize(writer);
         
         public void CacheResults(DataSet dataSet) {
-            //var resultsTable = dataSet.ResultsTable;
             double[] resultValues = dataSet.ResultValues;
             double[] resultPositions = dataSet.ResultPositions;
 
             Parallel.For(0, dataSet.Size, i => resultValues[i] = network.GetValue(dataSet.Datas[i]));
-            //Table.GenerateComparisonTable(resultsTable, resultsArray, WINDOW_MIDPOINT, dataSet.Size);
 
             double min = double.PositiveInfinity;
             double max = 0d;
@@ -179,7 +176,7 @@ namespace ChartRatingTrainer {
                     overWeight += value - OVERWEIGHT_THRESHOLD_WEIGHT;
             }
 
-            return (1d - max) * (1d - Math.Sqrt(sum / count)) - OVERWEIGHT_BIAS * overWeight;
+            return (1d - Math.Sqrt(max)) * (1d - Math.Sqrt(sum / count)) - OVERWEIGHT_BIAS * overWeight;
         }
 
         public static void Cross(Calculator parent1, Calculator parent2, Calculator child, Random random) {
@@ -193,25 +190,20 @@ namespace ChartRatingTrainer {
             for (int i = 0; i < METRIC_COUNT; i++) {
                 for (int j = i; j < METRIC_COUNT; j++) {
                     for (int k = 0; k < METRIC_COUNT; k++) {
-                        if (random.NextDouble() < 0.5d)
-                            childValueCurves[i, j, k] = parentValueCurves1[i, j, k];
-                        else
-                            childValueCurves[i, j, k] = parentValueCurves2[i, j, k];
+                        childValueCurves[i, j, k] = 0.5d * (parentValueCurves1[i, j, k] + parentValueCurves2[i, j, k]);
 
                         if (random.NextDouble() < MUTATION_CHANCE)
                             parentValueCurves2[i, j, k] = Curve.Clamp(parentValueCurves2[i, j, k] + Curve.Random(random, MUTATION_AMOUNT_VALUE * (2d * random.NextDouble() - 1d)));
                     }
                 }
 
-                if (random.NextDouble() < 0.5d)
-                    childWeightCurves[i] = parentWeightCurves1[i];
-                else
-                    childWeightCurves[i] = parentWeightCurves2[i];
+                childWeightCurves[i] = 0.5d * (parentWeightCurves1[i] + parentWeightCurves2[i]);
 
                 if (random.NextDouble() < MUTATION_CHANCE)
-                    parentWeightCurves2[i] = Curve.Clamp(parentWeightCurves2[i] + Curve.Random(random, MUTATION_AMOUNT_VALUE * (2d * random.NextDouble() - 1d)));
+                    parentWeightCurves2[i] = Curve.Clamp(parentWeightCurves2[i] + Curve.Random(random, MUTATION_AMOUNT_WEIGHT * (2d * random.NextDouble() - 1d)));
             }
 
+            parent2.ApplyCurves();
             child.ApplyCurves();
         }
 
