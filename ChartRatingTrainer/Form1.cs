@@ -16,9 +16,9 @@ namespace ChartRatingTrainer {
         public Form1() {
             InitializeComponent();
             
-            spacingX = (Calculator.METRIC_COUNT + 1) * BOX_SIZE + PADDING;
+            spacingX = (Calculator.METRIC_COUNT + 2) * BOX_SIZE + PADDING;
             Size = new Size(2 * PADDING + (Program.POPULATION_SIZE - 1) * spacingX + (Calculator.METRIC_COUNT + 1) * BOX_SIZE + 18,
-                2 * PADDING + Calculator.METRIC_COUNT * (Calculator.METRIC_COUNT + 1) / 2 * BOX_SIZE + 38);
+                2 * PADDING + Calculator.METRIC_COUNT * BOX_SIZE + 38);
         }
 
         public void Draw(DrawInfoItem[] drawInfo, double best, double worst) {
@@ -47,32 +47,30 @@ namespace ChartRatingTrainer {
                 DrawBox(0, 0, Color.FromArgb(value, value, value));
                 DrawBox(1, 0, info.Color);
 
-                int drawRow = 0;
+                for (int row = 0; row < Calculator.METRIC_COUNT; row++) {
+                    for (int column = row; column < Calculator.METRIC_COUNT; column++)
+                        DrawBoxForCurve(column + 1, info.ValueCurves[row, column]);
 
-                for (int cluster = 0; cluster < Calculator.METRIC_COUNT; cluster++) {
-                    for (int row = cluster; row < Calculator.METRIC_COUNT; row++) {
-                        for (int column = row; column < Calculator.METRIC_COUNT; column++) {
-                            var curve = info.ValueCurves[cluster, row, column];
-                            double magnitude = curve.Magnitude;
-                            double r = (curve.A + 2d * curve.B) / 3d;
-                            double g = (curve.C + 2d * curve.D) / 3d;
-                            double b = (curve.E + 2d * curve.F) / 3d;
+                    DrawBoxForCurve(Calculator.METRIC_COUNT + 1, info.WeightCurves[row]);
 
-                            double scale = 0d;
+                    void DrawBoxForCurve(int index, Curve curve) {
+                        double magnitude = curve.Magnitude;
+                        double r = (curve.A + 2d * curve.B) / 3d;
+                        double g = (curve.C + 2d * curve.D) / 3d;
+                        double b = (curve.E + 2d * curve.F) / 3d;
 
-                            if (magnitude > 0d) {
-                                double max = Math.Max(r, Math.Max(g, b));
+                        double scale = 0d;
+
+                        if (magnitude > 0d) {
+                            double max = Math.Max(r, Math.Max(g, b));
                                 
-                                scale = 255d * Math.Min(magnitude, 1d) / max;
-                            }
-                            
-                            DrawBox(drawRow, column + 1, Color.FromArgb(
-                                (int) (scale * r),
-                                (int) (scale * g),
-                                (int) (scale * b)));
+                            scale = 255d * Math.Min(magnitude, 1d) / max;
                         }
-                        
-                        drawRow++;
+                            
+                        DrawBox(row, index, Color.FromArgb(
+                            (int) (scale * r),
+                            (int) (scale * g),
+                            (int) (scale * b)));
                     }
                 }
                 

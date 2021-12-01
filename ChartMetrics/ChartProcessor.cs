@@ -19,25 +19,17 @@ namespace ChartMetrics {
             new Acceleration(),
             new Drift()
         };
-        private static readonly Dictionary<string, Metric> METRICS_DICT = METRICS.ToDictionary(metric => metric.Name.ToLower(), metric => metric);
-        private static readonly Anchor[] ANCHORS = {
-            new Anchor(0d, 0),
-            new Anchor(0.12324755d, 30),
-            new Anchor(0.15315513d, 35),
-            new Anchor(0.21060236d, 44),
-            new Anchor(0.23781559d, 48),
-            new Anchor(0.24125996d, 54),
-            new Anchor(0.32585019d, 59),
-            new Anchor(0.34705346d, 62),
-            new Anchor(0.37183286d, 69),
-            new Anchor(0.40477940d, 73),
-            new Anchor(0.43818623d, 75),
-            new Anchor(0.5d, 80)
+        private static readonly Metric[] DIFFICULTY_METRICS = {
+            new TapBeatDensity(),
+            new RequiredMovement(),
+            new Acceleration()
         };
+        private static readonly Dictionary<string, Metric> METRICS_DICT = METRICS.ToDictionary(metric => metric.Name.ToLower(), metric => metric);
 
         public static readonly float LOWER_QUANTILE = 0.1f;
-        public static readonly float UPPER_QUANTILE = 0.85f;
+        public static readonly float UPPER_QUANTILE = 0.9f;
         public static ReadOnlyCollection<Metric> Metrics { get; } = new ReadOnlyCollection<Metric>(METRICS);
+        public static ReadOnlyCollection<Metric> DifficultyMetrics { get; } = new ReadOnlyCollection<Metric>(DIFFICULTY_METRICS);
 
         private static Network network;
         private static Network Network {
@@ -59,6 +51,16 @@ namespace ChartMetrics {
             }
         }
 
+        private static Anchor[] anchors;
+        private static Anchor[] Anchors {
+            get {
+                if (anchors == null)
+                    LoadParameters();
+
+                return anchors;
+            }
+        }
+
         private static void LoadParameters() {
             baseCoefficients = new double[METRICS.Length];
 
@@ -68,10 +70,21 @@ namespace ChartMetrics {
                 return;
 
             using (var reader = new BinaryReader(File.Open(path, FileMode.Open))) {
-                for (int i = 0; i < METRICS.Length; i++)
+                for (int i = 0; i < DIFFICULTY_METRICS.Length; i++)
                     baseCoefficients[i] = reader.ReadDouble();
                 
                 network = Network.Deserialize(reader);
+
+                int anchorCount = reader.ReadInt32();
+
+                anchors = new Anchor[anchorCount];
+
+                for (int i = 0; i < anchorCount; i++) {
+                    double value = reader.ReadDouble();
+                    int diff = reader.ReadInt32();
+
+                    anchors[i] = new Anchor(value, diff);
+                }
             }
         }
 
@@ -232,13 +245,13 @@ namespace ChartMetrics {
         }
         
         private readonly struct Anchor {
-            public double From { get; }
+            public double Value { get; }
             
-            public int To { get; }
+            public int Difficulty { get; }
 
-            public Anchor(double from, int to) {
-                From = from;
-                To = to;
+            public Anchor(double value, int difficulty) {
+                Value = value;
+                Difficulty = difficulty;
             }
         }
         
@@ -287,25 +300,27 @@ namespace ChartMetrics {
         }
 
         public int GetDifficultyRating() {
-            double value = Network.GetValue(CreateData());
+            double value = Network.GetValue(CreateNormalizedData());
 
             if (value < 0d)
                 return 0;
 
-            for (int i = 0; i < ANCHORS.Length - 1; i++) {
-                var anchor = ANCHORS[i];
-                var next = ANCHORS[i + 1];
+            var getAnchors = Anchors;
 
-                if (value < next.From)
-                    return (int) MathU.Remap(value, anchor.From, next.From, anchor.To, next.To);
+            for (int i = 0; i < getAnchors.Length - 1; i++) {
+                var anchor = getAnchors[i];
+                var next = getAnchors[i + 1];
+
+                if (value < next.Value || i == getAnchors.Length - 2)
+                    return (int) Math.Round(MathU.Remap(value, anchor.Value, next.Value, anchor.Difficulty, next.Difficulty));
             }
 
             return 80;
         }
 
-        public Data CreateData() {
-            var data = Data.Create(METRICS.Length, i => {
-                TryGetMetric(METRICS[i].Name, out var result);
+        public Data CreateData(IReadOnlyList<Metric> metrics) {
+            var data = Data.Create(metrics.Count, i => {
+                TryGetMetric(metrics[i].Name, out var result);
 
                 var samples = result.Samples;
                 var last = samples[samples.Count - 1];
@@ -313,14 +328,6 @@ namespace ChartMetrics {
                 return samples.Select(sample => ((double) sample.Value, (double) sample.Time)).Append((0d, last.Time + last.Length));
             });
             
-            return data;
-        }
-
-        public Data CreateNormalizedData() {
-            var data = CreateData();
-            
-            data.Normalize(BaseCoefficients);
-
             return data;
         }
 
@@ -475,6 +482,17 @@ namespace ChartMetrics {
                 indices.Add(bestIndex);
                 Subdivide(bestIndex, end);
             }
+        }
+
+        private Data CreateNormalizedData() {
+            var data = CreateData(DIFFICULTY_METRICS);
+            
+            for (int i = 0; i < DIFFICULTY_METRICS.Length; i++)
+                data.Clamp(i, data.GetQuantile(i, 0.9d));
+            
+            data.Normalize(BaseCoefficients);
+
+            return data;
         }
     }
 }

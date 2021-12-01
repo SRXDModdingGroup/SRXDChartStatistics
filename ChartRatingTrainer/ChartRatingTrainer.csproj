@@ -43,6 +43,7 @@
     <ItemGroup>
         <Compile Include="CacheInfo.cs" />
         <Compile Include="Calculator.cs" />
+        <Compile Include="ExpectedReturned.cs" />
         <Compile Include="Individual.cs" />
         <Compile Include="Curve.cs" />
         <Compile Include="DrawInfoItem.cs" />

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -32,8 +33,10 @@ namespace ChartRatingTrainer {
             Array.Sort(population);
             Parallel.Invoke(() => MainThread(population, dataSets, random, form), () => FormThread(form));
             SavePopulation(population);
-            SaveParameters(population[0].Calculator, baseCoefficients);
-            OutputDetailedInfo(population[0], dataSets);
+            
+            var anchors = OutputDetailedInfo(population[0], dataSets);
+            
+            SaveParameters(population[0].Calculator, baseCoefficients, anchors);
             Console.WriteLine("Press any key to exit");
             Console.ReadKey(true);
         }
@@ -59,7 +62,6 @@ namespace ChartRatingTrainer {
                 
                 if (Form.ActiveForm == form && drawWatch.ElapsedMilliseconds > 166) {
                     double best = 0d;
-                    double valueScale = 1d / Calculator.OVERWEIGHT_THRESHOLD_VALUE;
 
                     for (int i = 0; i < POPULATION_SIZE; i++) {
                         var individual = population[i];
@@ -77,10 +79,8 @@ namespace ChartRatingTrainer {
                             best = fitness;
 
                         for (int j = 0; j < Calculator.METRIC_COUNT; j++) {
-                            for (int k = j; k < Calculator.METRIC_COUNT; k++) {
-                                for (int l = k; l < Calculator.METRIC_COUNT; l++)
-                                    drawValueCurves[j, k, l] = valueScale * valueCurves[j, k, l];
-                            }
+                            for (int k = j; k < Calculator.METRIC_COUNT; k++)
+                                drawValueCurves[j, k] = valueCurves[j, k];
 
                             drawWeightCurves[j] = weightCurves[j];
                         }
@@ -193,58 +193,6 @@ namespace ChartRatingTrainer {
             }
         }
 
-        private static void OutputDetailedInfo(Individual best, DataSet[] dataSets) {
-            Console.WriteLine();
-            Console.WriteLine($"Fitness: {best.Fitness:0.00000000}");
-            Console.WriteLine("Value magnitudes:");
-
-            var valueCurves = best.Calculator.ValueCurves;
-            var weightCurves = best.Calculator.WeightCurves;
-
-            for (int i = 0; i < Calculator.METRIC_COUNT; i++) {
-                for (int j = 0; j < Calculator.METRIC_COUNT; j++) {
-                    if (j >= i)
-                        Console.Write($"{valueCurves[i, j, 0].Magnitude:0.0000} ");
-                    else
-                        Console.Write("       ");
-                }
-                
-                Console.WriteLine($"   {weightCurves[i].Magnitude:0.0000}");
-            }
-            
-            Console.WriteLine();
-
-            var calculator = best.Calculator;
-
-            foreach (var dataSet in dataSets) {
-                var valuePairs = dataSet.ValuePairs;
-                int longestName = 0;
-
-                calculator.CacheResults(dataSet);
-                Array.Sort(valuePairs, Calculator.ValuePair.IndexComparer);
-
-                for (int i = 0; i < dataSet.Size; i++) {
-                    int nameLength = dataSet.ChartInfo[i].Title.Length;
-
-                    if (nameLength > longestName)
-                        longestName = nameLength;
-                }
-
-                Console.WriteLine("Ordered rankings:");
-                Array.Sort(valuePairs, Calculator.ValuePair.ReturnedComparer);
-
-                var chartInfo = dataSet.ChartInfo;
-
-                for (int i = 0; i < dataSet.Size; i++) {
-                    var pair = valuePairs[i];
-                    
-                    Console.WriteLine($"{pair.Returned:0.0000} <- {pair.Expected:0.0000} ({1d - Math.Abs(pair.Returned - pair.Expected):0.0000}) - {chartInfo[pair.Index].Title}");
-                }
-                
-                Console.WriteLine();
-            }
-        }
-
         private static void SavePopulation(Individual[] population) {
             using (var writer = new BinaryWriter(File.Open(Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "results.dat"), FileMode.Create))) {
                 foreach (var individual in population)
@@ -256,16 +204,113 @@ namespace ChartRatingTrainer {
             Console.WriteLine();
         }
 
-        private static void SaveParameters(Calculator calculator, double[] baseCoefficients) {
+        private static void SaveParameters(Calculator calculator, double[] baseCoefficients, List<(double, int)> anchors) {
             using (var writer = new BinaryWriter(File.Open(Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "parameters.dat"), FileMode.Create))) {
                 for (int i = 0; i < Calculator.METRIC_COUNT; i++)
                     writer.Write(baseCoefficients[i]);
                 
                 calculator.SerializeNetwork(writer);
+                writer.Write(anchors.Count);
+
+                foreach ((double value, int diff) in anchors) {
+                    writer.Write(value);
+                    writer.Write(diff);
+                }
             }
             
             Console.WriteLine("Saved parameters successfully");
             Console.WriteLine();
+        }
+
+        private static List<(double, int)> OutputDetailedInfo(Individual best, DataSet[] dataSets) {
+            Console.WriteLine();
+            Console.WriteLine($"Fitness: {best.Fitness:0.00000000}");
+            Console.WriteLine("Value magnitudes:");
+
+            var valueCurves = best.Calculator.ValueCurves;
+            var weightCurves = best.Calculator.WeightCurves;
+
+            for (int i = 0; i < Calculator.METRIC_COUNT; i++) {
+                for (int j = 0; j < Calculator.METRIC_COUNT; j++) {
+                    if (j >= i)
+                        Console.Write($"{valueCurves[i, j].Magnitude:0.0000} ");
+                    else
+                        Console.Write("       ");
+                }
+                
+                Console.WriteLine($"   {weightCurves[i].Magnitude:0.0000}");
+            }
+            
+            Console.WriteLine();
+
+            var calculator = best.Calculator;
+            DataSet dataSet;
+            ExpectedReturned[] expectedReturnedPairs;
+
+            for (int i = 0; i < dataSets.Length; i++) {
+                dataSet = dataSets[i];
+                expectedReturnedPairs = dataSet.ExpectedReturnedPairs;
+                
+                int longestName = 0;
+
+                calculator.CacheResults(dataSet);
+                Array.Sort(expectedReturnedPairs, (a, b) => a.Index.CompareTo(b.Index));
+
+                for (int j = 0; j < dataSet.Size; j++) {
+                    int nameLength = dataSet.ChartInfo[j].Title.Length;
+
+                    if (nameLength > longestName)
+                        longestName = nameLength;
+                }
+
+                Console.WriteLine("Ordered rankings:");
+                Array.Sort(expectedReturnedPairs);
+
+                var chartInfo = dataSet.ChartInfo;
+
+                for (int j = 0; j < dataSet.Size; j++) {
+                    var pair = expectedReturnedPairs[j];
+                    
+                    Console.WriteLine($"{pair.ReturnedPosition:0.0000} <- {pair.Expected:0.0000} ({1d - Math.Abs(pair.ReturnedPosition - pair.Expected):0.0000}) - {chartInfo[pair.Index].Title}");
+                }
+                
+                Console.WriteLine();
+            }
+
+            dataSet = dataSets[0];
+            expectedReturnedPairs = dataSet.ExpectedReturnedPairs;
+            Array.Sort(expectedReturnedPairs, (a, b) => Math.Abs(a.ReturnedPosition - a.Expected).CompareTo(Math.Abs(b.ReturnedPosition - b.Expected)));
+
+            var anchors = new List<(double, int)> {
+                (expectedReturnedPairs.Min(pair => pair.ReturnedValue), 30),
+                (expectedReturnedPairs.Max(pair => pair.ReturnedValue), 75)
+            };
+
+            foreach (var pair in expectedReturnedPairs) {
+                double value = pair.ReturnedValue;
+                int diff = (int) Math.Round(45d * pair.Expected + 30d);
+
+                for (int i = 0; i < anchors.Count; i++) {
+                    (double otherValue, int otherDiff) = anchors[i];
+
+                    if (value > otherValue && diff > otherDiff)
+                        continue;
+                    
+                    if (value < otherValue && diff < otherDiff)
+                        anchors.Insert(i, (value, diff));
+
+                    break;
+                }
+            }
+
+            Console.WriteLine("Anchors:");
+            
+            foreach ((double value, int diff) in anchors)
+                Console.WriteLine($"{value:0.0000} -> {diff}");
+            
+            Console.WriteLine();
+
+            return anchors;
         }
 
         private static DataSet[] GetDataSets() {

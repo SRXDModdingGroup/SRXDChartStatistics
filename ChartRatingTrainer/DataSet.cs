@@ -13,9 +13,7 @@ namespace ChartRatingTrainer {
 
         public Data[] Datas { get; }
         
-        public Calculator.ValuePair[] ValuePairs { get; }
-
-        public double[] Cache { get; }
+        public ExpectedReturned[] ExpectedReturnedPairs { get; }
 
         private double[] expectedValues;
         
@@ -67,7 +65,7 @@ namespace ChartRatingTrainer {
                          || !chartData.TrackData.TryGetValue(Difficulty.XD, out var trackData))
                     continue;
                 else {
-                    data = new ChartProcessor(chartData.Title, trackData.Notes).CreateData();
+                    data = new ChartProcessor(chartData.Title, trackData.Notes).CreateData(ChartProcessor.DifficultyMetrics);
 
                     string trim = chartData.Title.Trim();
 
@@ -100,12 +98,26 @@ namespace ChartRatingTrainer {
             Size = chartInfo.Count;
             ChartInfo = chartInfo.ToArray();
             Datas = dataList.ToArray();
-            Cache = new double[Size];
-            ValuePairs = new Calculator.ValuePair[Size];
+            ExpectedReturnedPairs = new ExpectedReturned[Size];
             expectedValues = new double[Size];
 
-            for (int i = 0; i < Size; i++)
-                expectedValues[i] = (double) (ChartInfo[i].DifficultyRating - 30) / (75 - 30);
+            int min = 75;
+            int max = 0;
+
+            for (int i = 0; i < Size; i++) {
+                int difficulty = ChartInfo[i].DifficultyRating;
+
+                if (difficulty < min)
+                    min = difficulty;
+
+                if (difficulty > max)
+                    max = difficulty;
+            }
+
+            for (int i = 0; i < Size; i++) {
+                ExpectedReturnedPairs[i] = new ExpectedReturned();
+                expectedValues[i] = (double) (ChartInfo[i].DifficultyRating - min) / (max - min);
+            }
         }
 
         public void Trim(double upperQuantile) {
@@ -122,8 +134,8 @@ namespace ChartRatingTrainer {
 
         public void InitValuePairs() {
             for (int i = 0; i < Size; i++) {
-                ValuePairs[i].Index = i;
-                ValuePairs[i].Expected = expectedValues[i];
+                ExpectedReturnedPairs[i].Index = i;
+                ExpectedReturnedPairs[i].Expected = expectedValues[i];
             }
         }
 

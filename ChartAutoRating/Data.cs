@@ -136,7 +136,7 @@ namespace ChartAutoRating {
                 double[] values = sample.Values;
                 
                 for (int i = 0; i < metricCount; i++)
-                    values[i] = Math.Pow(Math.Min(baseCoefficients[i] * values[i], 1d), 1d / 3d);
+                    values[i] = Math.Sqrt(Math.Min(baseCoefficients[i] * values[i], 1d));
             }
         }
 
