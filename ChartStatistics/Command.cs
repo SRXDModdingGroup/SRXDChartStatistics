@@ -10,7 +10,13 @@ namespace ChartStatistics {
                 new ArgDescription("command", "The name of the command")),
             new CommandInternal("exit", "Exits the program"),
             new CommandInternal("load", "Loads a chart into the chart viewer",
-                new ArgDescription("path", "The file name (with or without extension) or full path of the chart to load")),
+                new ArgDescription("path", "The file name (with or without extension) or full path of the chart to load"),
+                new ArgDescription("difficulty", "The difficulty type to rate. XD by default",
+                    "easy: Easy difficulty",
+                    "normal: Normal difficulty",
+                    "hard: Hard difficulty",
+                    "expert: Expert difficulty",
+                    "xd: XD difficulty")),
             new CommandInternal("show", "Shows data for a specified metric",
                 new ArgDescription("metric", "The name of the metric to show")),
             new CommandInternal("path", "Displays a movement path through the notes in the chart",
@@ -19,9 +25,21 @@ namespace ChartStatistics {
                     "simplified: A simplified path with less movement",
                     "none: Do not show a path")),
             new CommandInternal("rate", "Calculates a difficulty rating for the chart based on the measured metrics",
-                new ArgDescription("path", "The file name (with or without extension) or full path of the chart to rate. Leave empty to rate the currently open chart")),
+                new ArgDescription("path", "The file name (with or without extension) or full path of the chart to rate. Leave empty to rate the currently open chart"),
+                new ArgDescription("difficulty", "The difficulty type to rate. XD by default",
+                    "easy: Easy difficulty",
+                    "normal: Normal difficulty",
+                    "hard: Hard difficulty",
+                    "expert: Expert difficulty",
+                    "xd: XD difficulty")),
             new CommandInternal("rateall", "Calculates a difficulty rating for every chart in a folder",
-                new ArgDescription("path", "The path to the folder you want to use. Leave empty to use the default customs location"))
+                new ArgDescription("path", "The path to the folder you want to use. Leave empty to use the default customs location"),
+                new ArgDescription("difficulty", "The difficulty type to rate. XD by default",
+                    "easy: Easy difficulty",
+                    "normal: Normal difficulty",
+                    "hard: Hard difficulty",
+                    "expert: Expert difficulty",
+                    "xd: XD difficulty"))
         };
         
         private static readonly Dictionary<string, CommandInternal> COMMANDS_DICT = COMMANDS.ToDictionary(command => command.Name, command => command);

@@ -1,27 +1,34 @@
 ﻿using System;
 using System.Drawing;
+using System.Runtime.CompilerServices;
 using System.Windows.Forms;
 
 namespace ChartRatingTrainer {
     public partial class Form1 : Form {
         private static readonly int PADDING = 8;
         private static readonly int BOX_SIZE = 8;
-        
+        private static readonly int EXPECTED_RETURNED_HEIGHT = 128;
+
+        private static readonly Pen PEN = new Pen(Color.FromArgb(64, Color.White));
         private static readonly SolidBrush BRUSH = new SolidBrush(Color.Black);
         private static readonly Color CLEAR_COLOR = Color.FromArgb(16, 16, 24);
 
         private int spacingX;
+
+        private int width;
+        private int expectedReturnedStart;
         private BufferedGraphics buffer;
         
         public Form1() {
             InitializeComponent();
             
             spacingX = (Calculator.METRIC_COUNT + 2) * BOX_SIZE + PADDING;
-            Size = new Size(2 * PADDING + (Program.POPULATION_SIZE - 1) * spacingX + (Calculator.METRIC_COUNT + 1) * BOX_SIZE + 18,
-                2 * PADDING + Calculator.METRIC_COUNT * BOX_SIZE + 38);
+            width = (Program.POPULATION_SIZE - 1) * spacingX + (Calculator.METRIC_COUNT + 2) * BOX_SIZE;
+            expectedReturnedStart = 2 * PADDING + Calculator.METRIC_COUNT * BOX_SIZE;
+            Size = new Size(2 * PADDING + width + 18, expectedReturnedStart + EXPECTED_RETURNED_HEIGHT + PADDING + 38);
         }
 
-        public void Draw(DrawInfoItem[] drawInfo, double best, double worst) {
+        public void Draw(DrawInfoItem[] drawInfo, PointF[] expectedReturned, double best, double worst) {
             if (buffer == null) {
                 buffer?.Dispose();
                 buffer = BufferedGraphicsManager.Current.Allocate(panel1.CreateGraphics(), panel1.Bounds);
@@ -64,7 +71,7 @@ namespace ChartRatingTrainer {
                         if (magnitude > 0d) {
                             double max = Math.Max(r, Math.Max(g, b));
                                 
-                            scale = 255d * Math.Min(magnitude, 1d) / max;
+                            scale = 255d * Math.Min(Math.Sqrt(magnitude), 1d) / max;
                         }
                             
                         DrawBox(row, index, Color.FromArgb(
@@ -78,6 +85,19 @@ namespace ChartRatingTrainer {
                     BRUSH.Color = color;
                     graphics.FillRectangle(BRUSH, startX + column * BOX_SIZE, PADDING + row * BOX_SIZE, BOX_SIZE, BOX_SIZE);
                 }
+            }
+            
+            BRUSH.Color = Color.White;
+            graphics.DrawLine(PEN, PADDING, expectedReturnedStart + EXPECTED_RETURNED_HEIGHT, PADDING + width, expectedReturnedStart);
+
+            foreach (var point in expectedReturned) {
+                int x = PADDING + (int) (point.X * width);
+                int y = expectedReturnedStart + (int) ((1d - point.Y) * EXPECTED_RETURNED_HEIGHT);
+                float diff = point.Y - point.X;
+                int gb = (int) (255f * (1f - Math.Min(32f * diff * diff, 1f)));
+                
+                BRUSH.Color = Color.FromArgb(255, gb, gb);
+                graphics.FillRectangle(BRUSH, x, y, 2, 2);
             }
             
             panel1.Invalidate();

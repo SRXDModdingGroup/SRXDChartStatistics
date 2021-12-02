@@ -40,11 +40,17 @@
     <ItemGroup>
         <Compile Include="ChartProcessor.cs" />
         <Compile Include="Metric.cs" />
+        <Compile Include="Metrics\Abstract\DensityMetric.cs" />
+        <Compile Include="Metrics\Abstract\PathMetric.cs" />
         <Compile Include="Metrics\Acceleration.cs" />
         <Compile Include="Metrics\Drift.cs" />
+        <Compile Include="Metrics\MovementComplexity.cs" />
         <Compile Include="Metrics\OverallNoteDensity.cs" />
         <Compile Include="Metrics\RequiredMovement.cs" />
+        <Compile Include="Metrics\SequenceComplexity.cs" />
+        <Compile Include="Metrics\SpinDensity.cs" />
         <Compile Include="Metrics\TapBeatDensity.cs" />
+        <Compile Include="Metrics\MovementNoteDensity.cs" />
         <Compile Include="Properties\AssemblyInfo.cs" />
         <Compile Include="WheelPath.cs" />
     </ItemGroup>

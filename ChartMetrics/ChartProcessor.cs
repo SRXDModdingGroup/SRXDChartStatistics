@@ -17,52 +17,50 @@ namespace ChartMetrics {
             new TapBeatDensity(),
             new RequiredMovement(),
             new Acceleration(),
-            new Drift()
+            new Drift(),
+            new MovementComplexity(),
+            new SequenceComplexity()
         };
         private static readonly Metric[] DIFFICULTY_METRICS = {
+            new OverallNoteDensity(),
             new TapBeatDensity(),
+            new MovementNoteDensity(),
+            new SpinDensity(),
             new RequiredMovement(),
-            new Acceleration()
+            new Acceleration(),
+            new Drift(),
+            new MovementComplexity()
         };
-        private static readonly Dictionary<string, Metric> METRICS_DICT = METRICS.ToDictionary(metric => metric.Name.ToLower(), metric => metric);
+        private static readonly Dictionary<string, Metric> METRICS_DICT;
 
         public static readonly float LOWER_QUANTILE = 0.1f;
-        public static readonly float UPPER_QUANTILE = 0.9f;
+        public static readonly float UPPER_QUANTILE = 0.975f;
         public static ReadOnlyCollection<Metric> Metrics { get; } = new ReadOnlyCollection<Metric>(METRICS);
         public static ReadOnlyCollection<Metric> DifficultyMetrics { get; } = new ReadOnlyCollection<Metric>(DIFFICULTY_METRICS);
 
         private static Network network;
-        private static Network Network {
-            get {
-                if (network == null)
-                    LoadParameters();
-
-                return network;
-            }
-        }
-
         private static double[] baseCoefficients;
-        private static double[] BaseCoefficients {
-            get {
-                if (baseCoefficients == null)
-                    LoadParameters();
+        private static double bias;
+        private static double scale;
+        private static bool parametersLoaded;
 
-                return baseCoefficients;
-            }
-        }
+        static ChartProcessor() {
+            METRICS_DICT = new Dictionary<string, Metric>();
 
-        private static Anchor[] anchors;
-        private static Anchor[] Anchors {
-            get {
-                if (anchors == null)
-                    LoadParameters();
+            foreach (var metric in METRICS)
+                METRICS_DICT.Add(metric.Name.ToLowerInvariant(), metric);
 
-                return anchors;
+            foreach (var metric in DIFFICULTY_METRICS) {
+                if (!METRICS_DICT.ContainsKey(metric.Name.ToLowerInvariant()))
+                    METRICS_DICT.Add(metric.Name.ToLowerInvariant(), metric);
             }
         }
 
         private static void LoadParameters() {
-            baseCoefficients = new double[METRICS.Length];
+            if (parametersLoaded)
+                return;
+            
+            baseCoefficients = new double[DIFFICULTY_METRICS.Length];
 
             string path = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "parameters.dat");
             
@@ -74,18 +72,11 @@ namespace ChartMetrics {
                     baseCoefficients[i] = reader.ReadDouble();
                 
                 network = Network.Deserialize(reader);
-
-                int anchorCount = reader.ReadInt32();
-
-                anchors = new Anchor[anchorCount];
-
-                for (int i = 0; i < anchorCount; i++) {
-                    double value = reader.ReadDouble();
-                    int diff = reader.ReadInt32();
-
-                    anchors[i] = new Anchor(value, diff);
-                }
+                bias = reader.ReadDouble();
+                scale = reader.ReadDouble();
             }
+
+            parametersLoaded = true;
         }
 
         public readonly struct Sample : IComparable<Sample> {
@@ -244,17 +235,6 @@ namespace ChartMetrics {
             }
         }
         
-        private readonly struct Anchor {
-            public double Value { get; }
-            
-            public int Difficulty { get; }
-
-            public Anchor(double value, int difficulty) {
-                Value = value;
-                Difficulty = difficulty;
-            }
-        }
-        
         public string ChartTitle { get; }
         
         public ReadOnlyCollection<Note> Notes { get; }
@@ -270,7 +250,7 @@ namespace ChartMetrics {
         }
 
         public static bool TryLoadChart(string path, out ChartProcessor processor, Difficulty difficulty = Difficulty.XD) {
-            if (!ChartData.TryCreateFromFile(path, out var chartData, Difficulty.XD) || !chartData.TrackData.TryGetValue(difficulty, out var trackData) || trackData.Notes.Count == 0) {
+            if (!ChartData.TryCreateFromFile(path, out var chartData, difficulty) || !chartData.TrackData.TryGetValue(difficulty, out var trackData) || trackData.Notes.Count == 0) {
                 processor = null;
                 
                 return false;
@@ -300,22 +280,17 @@ namespace ChartMetrics {
         }
 
         public int GetDifficultyRating() {
-            double value = Network.GetValue(CreateNormalizedData());
+            LoadParameters();
+            
+            double value = network.GetValue(CreateNormalizedData());
 
             if (value < 0d)
                 return 0;
 
-            var getAnchors = Anchors;
+            if (value > 1d)
+                return 100;
 
-            for (int i = 0; i < getAnchors.Length - 1; i++) {
-                var anchor = getAnchors[i];
-                var next = getAnchors[i + 1];
-
-                if (value < next.Value || i == getAnchors.Length - 2)
-                    return (int) Math.Round(MathU.Remap(value, anchor.Value, next.Value, anchor.Difficulty, next.Difficulty));
-            }
-
-            return 80;
+            return (int) Math.Round(100d * (value - bias) / scale);
         }
 
         public Data CreateData(IReadOnlyList<Metric> metrics) {
@@ -485,12 +460,14 @@ namespace ChartMetrics {
         }
 
         private Data CreateNormalizedData() {
+            LoadParameters();
+            
             var data = CreateData(DIFFICULTY_METRICS);
             
             for (int i = 0; i < DIFFICULTY_METRICS.Length; i++)
-                data.Clamp(i, data.GetQuantile(i, 0.9d));
+                data.Clamp(i, data.GetQuantile(i, 0.975d));
             
-            data.Normalize(BaseCoefficients);
+            data.Normalize(baseCoefficients);
 
             return data;
         }

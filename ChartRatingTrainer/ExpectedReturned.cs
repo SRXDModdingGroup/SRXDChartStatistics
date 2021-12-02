@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 
 namespace ChartRatingTrainer {
     public class ExpectedReturned : IComparable<ExpectedReturned> {
@@ -7,10 +6,8 @@ namespace ChartRatingTrainer {
             
         public double Expected { get; set; }
         
-        public double ReturnedValue { get; set; }
-            
-        public double ReturnedPosition { get; set; }
+        public double Returned { get; set; }
 
-        public int CompareTo(ExpectedReturned other) => ReturnedPosition.CompareTo(other.ReturnedPosition);
+        public int CompareTo(ExpectedReturned other) => Returned.CompareTo(other.Returned);
     }
 }

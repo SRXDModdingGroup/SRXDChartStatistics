@@ -11,8 +11,8 @@ namespace ChartMetrics {
                 Value = value;
             }
         }
-        
-        public abstract string Name { get; }
+
+        public string Name => GetType().Name;
         
         public abstract string Description { get; }
 

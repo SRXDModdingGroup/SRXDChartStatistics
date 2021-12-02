@@ -292,10 +292,11 @@ namespace ChartMetrics {
 
                         continue;
                     }
-
-                    float targetPosition = MathU.Lerp(pointPosition, MathU.Remap(point.Time, previous.Time, next.Time, previous.NetPosition, next.NetPosition), SIMPLIFY_APPROACH_RATE);
                     
-                    targetPosition = MathU.Clamp(targetPosition, path[j].NetPosition - 1f, path[j].NetPosition + 1f);
+                    float maxDeviation = 1f / (10f * Math.Abs(previous.Time - next.Time) + 1f);
+                    float targetPosition = MathU.Lerp(pointPosition, MathU.Remap(point.Time, previous.Time, next.Time, previous.NetPosition, next.NetPosition), SIMPLIFY_APPROACH_RATE * maxDeviation);
+                    
+                    targetPosition = MathU.Clamp(targetPosition, path[j].NetPosition - maxDeviation, path[j].NetPosition + maxDeviation);
                     newPath[j] = new Point(point.Time, point.LanePosition + targetPosition - pointPosition, targetPosition, point.CurrentColor);
                 }
 

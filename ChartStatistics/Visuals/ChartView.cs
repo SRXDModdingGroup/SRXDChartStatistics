@@ -33,18 +33,27 @@ namespace ChartStatistics {
             graphicsPanel.AddDrawable(new Grid(chartTop, chartBottom, 7, 5));
             metricDrawables = new List<Drawable>();
             pathDrawables = new List<Drawable>();
-            Command.AddListener("load", args => LoadChart(args[0]));
+            Command.AddListener("load", args => {
+                if (TryParseDifficulty(args[1], out var diff))
+                    LoadChart(args[0], diff);
+            });
             Command.AddListener("show", args => DisplayMetric(args[0]));
             Command.AddListener("path", args => DisplayPath(args[0], int.TryParse(args[1], out int val) ? val : -1));
-            Command.AddListener("rate", args => RateChart(args[0], string.IsNullOrWhiteSpace(args[0])));
-            Command.AddListener("rateall", args => RateAllCharts());
+            Command.AddListener("rate", args => {
+                if (TryParseDifficulty(args[1], out var diff))
+                    RateChart(args[0], string.IsNullOrWhiteSpace(args[0]), diff);
+            });
+            Command.AddListener("rateall", args => {
+                if (TryParseDifficulty(args[0], out var diff))
+                    RateAllCharts(diff);
+            });
             Command.SetPossibleValues("show", 0, ChartProcessor.Metrics.Select(metric => $"{metric.Name.ToLower()}: {metric.Description}").ToArray());
-            // LoadChart("spinshare_6099b4b03a490");
-            // DisplayMetric("overallnotedensity");
-            // DisplayPath("Simplified", -1);
+            LoadChart("spinshare_60c529dc9664f");
+            DisplayMetric("sequencecomplexity");
+            DisplayPath("Simplified", -1);
         }
 
-        private void LoadChart(string path) {
+        private void LoadChart(string path, Difficulty difficulty = Difficulty.XD) {
             if (!ChartProcessor.TryLoadChart(path, out var temp)) {
                 Console.WriteLine("Could not find this file");
                 
@@ -232,7 +241,7 @@ namespace ChartStatistics {
             graphicsPanel.Redraw();
         }
 
-        private void RateChart(string path, bool rateThis) {
+        private void RateChart(string path, bool rateThis, Difficulty difficulty) {
             ChartProcessor processor;
 
             if (rateThis) {
@@ -244,8 +253,8 @@ namespace ChartStatistics {
                 
                 processor = chartProcessor;
             }
-            else if (!ChartProcessor.TryLoadChart(path, out processor)) {
-                Console.WriteLine("Could not find this file");
+            else if (!ChartProcessor.TryLoadChart(path, out processor, difficulty)) {
+                Console.WriteLine("Could not load this file");
                 
                 return;
             }
@@ -253,14 +262,14 @@ namespace ChartStatistics {
             Console.WriteLine($"Difficulty: {processor.GetDifficultyRating()}");
         }
 
-        private void RateAllCharts() {
+        private void RateAllCharts(Difficulty difficulty) {
             var data = new List<KeyValuePair<string, int>>();
             string[] allPaths = FileHelper.GetAllSrtbs().ToArray();
 
             for (int i = 0; i < allPaths.Length; i++) {
                 string path = allPaths[i];
                 
-                if (!ChartProcessor.TryLoadChart(path, out var processor))
+                if (!ChartProcessor.TryLoadChart(path, out var processor, difficulty))
                     continue;
 
                 data.Add(new KeyValuePair<string, int>(processor.ChartTitle, processor.GetDifficultyRating()));
@@ -273,6 +282,8 @@ namespace ChartStatistics {
 
             foreach (var pair in data)
                 Console.WriteLine($"{pair.Value} - {pair.Key}");
+            
+            Console.WriteLine();
         }
 
         private void DrawChart() {
@@ -326,6 +337,18 @@ namespace ChartStatistics {
             }
 
             graphicsPanel.Redraw();
+        }
+
+        private bool TryParseDifficulty(string arg, out Difficulty difficulty) {
+            difficulty = Difficulty.XD;
+
+            if (string.IsNullOrWhiteSpace(arg) || Enum.TryParse(arg, true, out difficulty))
+                return true;
+            
+            Console.WriteLine("Invalid difficulty string");
+
+            return false;
+
         }
 
         private float ColumnToY(float column) => chartCenter + chartHeight * column / -8f;

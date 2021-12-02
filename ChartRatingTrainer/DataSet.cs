@@ -13,7 +13,11 @@ namespace ChartRatingTrainer {
 
         public Data[] Datas { get; }
         
-        public ExpectedReturned[] ExpectedReturnedPairs { get; }
+        public ExpectedReturned[] ExpectedReturned { get; }
+        
+        public double Bias { get; set; }
+        
+        public double Scale { get; set; }
 
         private double[] expectedValues;
         
@@ -98,25 +102,12 @@ namespace ChartRatingTrainer {
             Size = chartInfo.Count;
             ChartInfo = chartInfo.ToArray();
             Datas = dataList.ToArray();
-            ExpectedReturnedPairs = new ExpectedReturned[Size];
+            ExpectedReturned = new ExpectedReturned[Size];
             expectedValues = new double[Size];
 
-            int min = 75;
-            int max = 0;
-
             for (int i = 0; i < Size; i++) {
-                int difficulty = ChartInfo[i].DifficultyRating;
-
-                if (difficulty < min)
-                    min = difficulty;
-
-                if (difficulty > max)
-                    max = difficulty;
-            }
-
-            for (int i = 0; i < Size; i++) {
-                ExpectedReturnedPairs[i] = new ExpectedReturned();
-                expectedValues[i] = (double) (ChartInfo[i].DifficultyRating - min) / (max - min);
+                ExpectedReturned[i] = new ExpectedReturned();
+                expectedValues[i] = 0.01d * ChartInfo[i].DifficultyRating;
             }
         }
 
@@ -134,8 +125,8 @@ namespace ChartRatingTrainer {
 
         public void InitValuePairs() {
             for (int i = 0; i < Size; i++) {
-                ExpectedReturnedPairs[i].Index = i;
-                ExpectedReturnedPairs[i].Expected = expectedValues[i];
+                ExpectedReturned[i].Index = i;
+                ExpectedReturned[i].Expected = expectedValues[i];
             }
         }
 

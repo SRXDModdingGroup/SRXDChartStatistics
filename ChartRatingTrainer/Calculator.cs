@@ -8,14 +8,12 @@ namespace ChartRatingTrainer {
     public class Calculator {
         public static readonly int METRIC_COUNT = ChartProcessor.DifficultyMetrics.Count;
 
-        private static readonly double MUTATION_FACTOR = 1d / 16d;
-        private static readonly double MUTATION_CHANCE = 1d / (METRIC_COUNT * (METRIC_COUNT + 1) / 2 + METRIC_COUNT);
-        private static readonly double MUTATION_AMOUNT = MUTATION_FACTOR / METRIC_COUNT;
+        private static readonly double MUTATION_CHANCE = 1d / (METRIC_COUNT + METRIC_COUNT * (METRIC_COUNT + 1) / 2);
+        private static readonly double MUTATION_AMOUNT = 0.125d;
 
         public Curve[,] ValueCurves { get; }
         
         public Curve[] WeightCurves { get; }
-
         private Network network;
 
         private Calculator() {
@@ -100,41 +98,51 @@ namespace ChartRatingTrainer {
         public void SerializeNetwork(BinaryWriter writer) => network.Serialize(writer);
         
         public void CacheResults(DataSet dataSet) {
-            var valuePairs = dataSet.ExpectedReturnedPairs;
+            var expectedReturned = dataSet.ExpectedReturned;
 
             dataSet.InitValuePairs();
-            Parallel.For(0, dataSet.Size, i => valuePairs[i].ReturnedValue = network.GetValue(dataSet.Datas[i]));
-            Array.Sort(valuePairs);
+            Parallel.For(0, dataSet.Size, i => expectedReturned[i].Returned = network.GetValue(dataSet.Datas[i]));
+
+            int count = expectedReturned.Length;
+            double sx = 0d;
+            double sy = 0d;
+            double sxx = 0d;
+            double sxy = 0d;
             
-            double scale = 1d / (dataSet.Size - 1);
+            foreach (var pair in expectedReturned) {
+                double x = pair.Expected;
+                double y = pair.Returned;
 
-            for (int i = 1; i < dataSet.Size - 1; i++) {
-                double first = valuePairs[i - 1].ReturnedValue;
-                var mid = valuePairs[i];
-
-                mid.ReturnedPosition = scale * (i - 0.5d + (mid.ReturnedValue - first) / (valuePairs[i + 1].ReturnedValue - first));
+                sx += x;
+                sy += y;
+                sxx += x * x;
+                sxy += x * y;
             }
 
-            valuePairs[0].ReturnedPosition = 0d;
-            valuePairs[dataSet.Size - 1].ReturnedPosition = 1d;
+            dataSet.Scale = (count * sxy - sx * sy) / (count * sxx - sx * sx);
+            dataSet.Bias = (sxy * sx - sy * sxx) / (sx * sx - count * sxx);
+
+            foreach (var pair in expectedReturned)
+                pair.Returned = (pair.Returned - dataSet.Bias) / dataSet.Scale;
         }
 
         public double CalculateFitness(DataSet[] dataSets) {
+            foreach (var dataSet in dataSets)
+                CacheResults(dataSet);
+            
             double sum = 0d;
             int count = 0;
 
             foreach (var dataSet in dataSets) {
-                CacheResults(dataSet);
-
-                var valuePairs = dataSet.ExpectedReturnedPairs;
-
+                var valuePairs = dataSet.ExpectedReturned;
+                
                 for (int i = 0; i < dataSet.Size; i++) {
                     var pair = valuePairs[i];
-                    double error = pair.ReturnedPosition - pair.Expected;
+                    double error = pair.Returned - pair.Expected;
                     
                     sum += error * error;
                 }
-
+                
                 count += dataSet.Size;
             }
 
@@ -150,21 +158,26 @@ namespace ChartRatingTrainer {
             var childWeightCurves = child.WeightCurves;
 
             for (int i = 0; i < METRIC_COUNT; i++) {
-                for (int j = i; j < METRIC_COUNT; j++) {
-                    childValueCurves[i, j] = 0.5d * (parentValueCurves1[i, j] + parentValueCurves2[i, j]);
+                for (int j = i; j < METRIC_COUNT; j++)
+                    CrossCurves(parentValueCurves1[i, j], ref parentValueCurves2[i, j], out childValueCurves[i, j]);
 
-                    if (random.NextDouble() < MUTATION_CHANCE)
-                        parentValueCurves2[i, j] = Curve.Clamp(parentValueCurves2[i, j] + Curve.Random(random, MUTATION_AMOUNT * (2d * random.NextDouble() - 1d)));
-                }
-
-                childWeightCurves[i] = 0.5d * (parentWeightCurves1[i] + parentWeightCurves2[i]);
-
-                if (random.NextDouble() < MUTATION_CHANCE)
-                    parentWeightCurves2[i] = Curve.Clamp(parentWeightCurves2[i] + Curve.Random(random, MUTATION_AMOUNT * (2d * random.NextDouble() - 1d)));
+                CrossCurves(parentWeightCurves1[i], ref parentWeightCurves2[i], out childWeightCurves[i]);
             }
 
             parent2.ApplyCurves();
             child.ApplyCurves();
+
+            void CrossCurves(Curve parentCurve1, ref Curve parentCurve2, out Curve childCurve) {
+                double interp = random.NextDouble();
+                
+                childCurve = (1d - interp) * parentCurve1 + interp * parentCurve2;
+
+                if (random.NextDouble() > MUTATION_CHANCE)
+                    return;
+                    
+                interp = random.NextDouble();
+                parentCurve2 = Curve.Clamp(parentCurve2 + Curve.Random(random, MUTATION_AMOUNT * (2d * interp * interp - 1d)));
+            }
         }
 
         private void ApplyCurves() {

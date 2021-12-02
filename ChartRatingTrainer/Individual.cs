@@ -8,6 +8,8 @@ namespace ChartRatingTrainer {
         public Color IdColor { get; set; }
             
         public double Fitness { get; set; }
+        
+        public double CrossChance { get; set; }
             
         public Individual Next { get; set; }
 

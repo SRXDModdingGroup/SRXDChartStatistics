@@ -110,8 +110,9 @@ namespace ChartAutoRating {
                     newValues[j] = reader.ReadDouble();
 
                 double time = reader.ReadDouble();
+                double weight = reader.ReadDouble();
                 
-                data.DataSamples[i] = new DataSample(newValues, time, reader.ReadDouble());
+                data.DataSamples[i] = new DataSample(newValues, time, weight);
             }
 
             return data;
