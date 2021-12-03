@@ -47,7 +47,7 @@ namespace ChartRatingTrainer {
                         string title = reader.ReadString();
                         int difficultyRating = reader.ReadInt32();
                         
-                        cache.Add(id, new CacheInfo(new RelevantChartInfo(title, difficultyRating), Data.Deserialize(Calculator.METRIC_COUNT, reader)));
+                        cache.Add(id, new CacheInfo(new RelevantChartInfo(title, difficultyRating), Data.Deserialize(reader)));
                     }
                 }
             }

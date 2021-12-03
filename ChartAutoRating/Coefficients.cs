@@ -23,12 +23,20 @@
 
         public static double Compute(double x, Coefficients c) => x * (c.X1 + x * (c.X2 + x * (c.X3 + x * (c.X4 + x * c.X5))));
 
+        public static Coefficients operator +(Coefficients a, Coefficients b) => new Coefficients(
+            a.X1 + b.X1,
+            a.X2 + b.X2,
+            a.X3 + b.X3,
+            a.X4 + b.X4,
+            a.X5 + b.X5);
+
         public static Coefficients operator *(double x, Coefficients c) => new Coefficients(
             x * c.X1,
             x * c.X2,
             x * c.X3,
             x * c.X4,
             x * c.X5);
+        public static Coefficients operator *(Coefficients c, double x) => x * c;
 
         public static Coefficients operator /(Coefficients c, double x) => 1d / x * c;
     }

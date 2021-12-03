@@ -41,7 +41,7 @@ namespace ChartMetrics {
         public static ReadOnlyCollection<Metric> Metrics { get; } = new ReadOnlyCollection<Metric>(METRICS);
         public static ReadOnlyCollection<Metric> DifficultyMetrics { get; } = new ReadOnlyCollection<Metric>(DIFFICULTY_METRICS);
 
-        private static Network network;
+        private static Matrix matrix;
         private static double[] baseCoefficients;
         private static double bias;
         private static double scale;
@@ -74,7 +74,7 @@ namespace ChartMetrics {
                 for (int i = 0; i < DIFFICULTY_METRICS.Length; i++)
                     baseCoefficients[i] = reader.ReadDouble();
                 
-                network = Network.Deserialize(reader);
+                matrix = Matrix.Deserialize(reader);
                 bias = reader.ReadDouble();
                 scale = reader.ReadDouble();
             }
@@ -284,8 +284,8 @@ namespace ChartMetrics {
 
         public int GetDifficultyRating() {
             LoadParameters();
-            
-            double value = network.GetValue(CreateNormalizedData());
+
+            double value = CreateNormalizedData().GetResult(matrix);
 
             if (value < 0d)
                 return 0;

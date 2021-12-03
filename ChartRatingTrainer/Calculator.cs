@@ -14,10 +14,10 @@ namespace ChartRatingTrainer {
         public Curve[,] ValueCurves { get; }
         
         public Curve[] WeightCurves { get; }
-        private Network network;
+        private Matrix matrix;
 
         private Calculator() {
-            network = Network.Create(METRIC_COUNT);
+            matrix = new Matrix(METRIC_COUNT);
             ValueCurves = new Curve[METRIC_COUNT, METRIC_COUNT];
             WeightCurves = new Curve[METRIC_COUNT];
         }
@@ -95,13 +95,13 @@ namespace ChartRatingTrainer {
             }
         }
 
-        public void SerializeNetwork(BinaryWriter writer) => network.Serialize(writer);
+        public void SerializeNetwork(BinaryWriter writer) => matrix.Serialize(writer);
         
         public void CacheResults(DataSet dataSet) {
             var expectedReturned = dataSet.ExpectedReturned;
 
             dataSet.InitValuePairs();
-            Parallel.For(0, dataSet.Size, i => expectedReturned[i].Returned = network.GetValue(dataSet.Datas[i]));
+            Parallel.For(0, dataSet.Size, i => expectedReturned[i].Returned = dataSet.Datas[i].GetResult(matrix));
 
             int count = expectedReturned.Length;
             double sx = 0d;
@@ -192,7 +192,7 @@ namespace ChartRatingTrainer {
             for (int i = 0; i < METRIC_COUNT; i++) {
                 for (int j = i; j < METRIC_COUNT; j++) {
                     ValueCurves[i, j] = scale * ValueCurves[i, j];
-                    network.SetValueCoefficients(i, j, ValueCurves[i, j].ToCoefficients());
+                    matrix.ValueCoefficients[i, j] = ValueCurves[i, j].ToCoefficients();
                 }
             }
 
@@ -205,7 +205,7 @@ namespace ChartRatingTrainer {
 
             for (int i = 0; i < METRIC_COUNT; i++) {
                 WeightCurves[i] = scale * WeightCurves[i];
-                network.SetWeightCoefficients(i, WeightCurves[i].ToCoefficients());
+                matrix.WeightCoefficients[i] = WeightCurves[i].ToCoefficients();
             }
         }
     }

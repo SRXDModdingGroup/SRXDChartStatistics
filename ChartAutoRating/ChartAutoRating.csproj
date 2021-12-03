@@ -44,7 +44,7 @@
         <Compile Include="Coefficients.cs" />
         <Compile Include="DataSample.cs" />
         <Compile Include="Data.cs" />
-        <Compile Include="Network.cs" />
+        <Compile Include="Matrix.cs" />
         <Compile Include="Properties\AssemblyInfo.cs" />
     </ItemGroup>
     <ItemGroup>

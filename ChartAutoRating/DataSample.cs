@@ -1,17 +1,18 @@
 ﻿using System.Collections.Generic;
 
 namespace ChartAutoRating {
-    internal readonly struct DataSample {
+    internal class DataSample {
         public double[] Values { get; }
-        
-        public double Time { get; }
-        
+
         public double Weight { get; }
 
-        public DataSample(double[] values, double time, double weight) {
+        public Matrix Vector { get; }
+
+        public DataSample(double[] values, double weight) {
             Values = values;
-            Time = time;
             Weight = weight;
+            Vector = new Matrix(Values.Length);
+            Matrix.GetVector(Vector, Values);
         }
 
         public class Comparer : IComparer<DataSample> {
