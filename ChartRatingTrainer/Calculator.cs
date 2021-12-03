@@ -9,7 +9,7 @@ namespace ChartRatingTrainer {
         public static readonly int METRIC_COUNT = ChartProcessor.DifficultyMetrics.Count;
 
         private static readonly double MUTATION_CHANCE = 1d / (METRIC_COUNT + METRIC_COUNT * (METRIC_COUNT + 1) / 2);
-        private static readonly double MUTATION_AMOUNT = 0.125d;
+        private static readonly double MUTATION_AMOUNT = 0.00390625d;
 
         public Curve[,] ValueCurves { get; }
         
@@ -127,13 +127,12 @@ namespace ChartRatingTrainer {
         }
 
         public double CalculateFitness(DataSet[] dataSets) {
-            foreach (var dataSet in dataSets)
-                CacheResults(dataSet);
-            
             double sum = 0d;
             int count = 0;
 
             foreach (var dataSet in dataSets) {
+                CacheResults(dataSet);
+                
                 var valuePairs = dataSet.ExpectedReturned;
                 
                 for (int i = 0; i < dataSet.Size; i++) {

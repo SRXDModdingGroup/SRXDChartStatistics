@@ -19,7 +19,8 @@ namespace ChartMetrics {
             new Acceleration(),
             new Drift(),
             new MovementComplexity(),
-            new SequenceComplexity()
+            new SequenceComplexity(),
+            new TapBeatComplexity()
         };
         private static readonly Metric[] DIFFICULTY_METRICS = {
             new OverallNoteDensity(),
@@ -29,7 +30,9 @@ namespace ChartMetrics {
             new RequiredMovement(),
             new Acceleration(),
             new Drift(),
-            new MovementComplexity()
+            new MovementComplexity(),
+            new SequenceComplexity(),
+            new TapBeatComplexity()
         };
         private static readonly Dictionary<string, Metric> METRICS_DICT;
 
@@ -351,12 +354,7 @@ namespace ChartMetrics {
         private Result CalculateMetric(Metric metric) {
             IList<Metric.Point> candidates;
 
-            try {
-                candidates = metric.Calculate(this);
-            }
-            catch (Exception e) {
-                throw new Exception($"Error calculating metric {metric.Name} for chart {ChartTitle}", e);
-            }
+            candidates = metric.Calculate(this);
             
             float[] cumulativeValues = new float[candidates.Count];
             float sum = 0f;

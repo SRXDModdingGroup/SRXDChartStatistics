@@ -11,24 +11,41 @@ namespace ChartMetrics {
         internal override IList<Point> Calculate(ChartProcessor processor) {
             var notes = processor.Notes;
             var points = new List<Point>();
-            int notesFound = -1;
-            float lastTime = 0f;
+            int notesInCurrentStack = 0;
+            int notesToPop = 0;
+            float stackTime = -1f;
+            float stackTimeToPop = -1f;
+            bool stackIsCandidate = false;
 
-            for (int i = 1; i < notes.Count; i++) {
+            for (int i = 0; i < notes.Count; i++) {
                 var note = notes[i];
                 
                 if (!CountFilter(note))
                     continue;
 
-                if (CandidateFilter(note) && (notesFound < 0 || !MathU.AlmostEquals(note.Time, lastTime))) {
-                    if (notesFound >= 0)
-                        points.Add(new Point(lastTime, notesFound));
-
-                    notesFound = 0;
-                    lastTime = note.Time;
+                if (!MathU.AlmostEquals(note.Time, stackTime)) {
+                    if (stackIsCandidate) {
+                        if (notesToPop > 0) {
+                            points.Add(new Point(stackTimeToPop, notesToPop));
+                            notesToPop = 0;
+                            stackTimeToPop = stackTime;
+                        }
+                        
+                        stackIsCandidate = false;
+                    }
+                    
+                    notesToPop += notesInCurrentStack;
+                    notesInCurrentStack = 0;
+                    stackTime = note.Time;
+                    
+                    if (stackTimeToPop < 0f)
+                        stackTimeToPop = stackTime;
                 }
-
-                notesFound++;
+                
+                notesInCurrentStack++;
+                
+                if (CandidateFilter(note))
+                    stackIsCandidate = true;
             }
 
             if (points.Count == 0) {
@@ -40,8 +57,8 @@ namespace ChartMetrics {
 
             var lastPoint = points[points.Count - 1];
 
-            points[points.Count - 1] = new Point(lastPoint.Time, lastPoint.Value + notesFound);
-            points.Add(new Point(lastTime, 0f));
+            points[points.Count - 1] = new Point(lastPoint.Time, lastPoint.Value + notesToPop + notesInCurrentStack);
+            points.Add(new Point(stackTime, 0f));
 
             return points;
         }

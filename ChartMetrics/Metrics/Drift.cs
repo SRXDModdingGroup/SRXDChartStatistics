@@ -15,11 +15,13 @@ namespace ChartMetrics {
             for (int i = 0; i < simplified.Count - 1; i++) {
                 var start = simplified[i];
                 var end = simplified[i + 1];
+                float startPosition = start.NetPosition;
+                float endPosition = end.NetPosition;
                     
-                sum += Math.Abs(0.5f * (end.NetPosition + start.NetPosition)) * (end.Time - start.Time);
+                sum += (endPosition * endPosition + endPosition * startPosition + startPosition * startPosition) * (end.Time - start.Time);
             }
 
-            return sum;
+            return sum / 3f;
         }
 
         protected override float ValueForSpin(Note note) => 0f;

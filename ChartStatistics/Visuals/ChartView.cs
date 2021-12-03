@@ -48,9 +48,9 @@ namespace ChartStatistics {
                     RateAllCharts(diff);
             });
             Command.SetPossibleValues("show", 0, ChartProcessor.Metrics.Select(metric => $"{metric.Name.ToLower()}: {metric.Description}").ToArray());
-            LoadChart("spinshare_60c529dc9664f");
-            DisplayMetric("sequencecomplexity");
-            DisplayPath("Simplified", -1);
+            // LoadChart("spinshare_60c529dc9664f");
+            // DisplayMetric("sequencecomplexity");
+            // DisplayPath("Simplified", -1);
         }
 
         private void LoadChart(string path, Difficulty difficulty = Difficulty.XD) {

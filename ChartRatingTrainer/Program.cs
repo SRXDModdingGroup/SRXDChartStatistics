@@ -286,6 +286,14 @@ namespace ChartRatingTrainer {
             }
                 
             Console.WriteLine();
+            Console.WriteLine("Correlation:");
+            Array.Sort(expectedReturnedPairs, (a, b) => (1d - Math.Abs(a.Returned - a.Expected)).CompareTo(1d - Math.Abs(b.Returned - b.Expected)));
+
+            for (int j = 0; j < dataSet.Size; j++) {
+                var pair = expectedReturnedPairs[j];
+                    
+                Console.WriteLine($"{pair.Returned:0.0000} <- {pair.Expected:0.0000} ({1d - Math.Abs(pair.Returned - pair.Expected):0.0000}) - {chartInfo[pair.Index].Title}");
+            }
         }
 
         private static DataSet[] GetDataSets() {

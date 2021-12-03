@@ -31,6 +31,6 @@ namespace ChartMetrics {
             return sum;
         }
 
-        protected override float ValueForSpin(Note note) => 0f;
+        protected override float ValueForSpin(Note note) => 160f;
     }
 }

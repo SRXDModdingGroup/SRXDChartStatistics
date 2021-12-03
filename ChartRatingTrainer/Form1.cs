@@ -7,7 +7,7 @@ namespace ChartRatingTrainer {
     public partial class Form1 : Form {
         private static readonly int PADDING = 8;
         private static readonly int BOX_SIZE = 8;
-        private static readonly int EXPECTED_RETURNED_HEIGHT = 128;
+        private static readonly int EXPECTED_RETURNED_SIZE = 512;
 
         private static readonly Pen PEN = new Pen(Color.FromArgb(64, Color.White));
         private static readonly SolidBrush BRUSH = new SolidBrush(Color.Black);
@@ -25,7 +25,7 @@ namespace ChartRatingTrainer {
             spacingX = (Calculator.METRIC_COUNT + 2) * BOX_SIZE + PADDING;
             width = (Program.POPULATION_SIZE - 1) * spacingX + (Calculator.METRIC_COUNT + 2) * BOX_SIZE;
             expectedReturnedStart = 2 * PADDING + Calculator.METRIC_COUNT * BOX_SIZE;
-            Size = new Size(2 * PADDING + width + 18, expectedReturnedStart + EXPECTED_RETURNED_HEIGHT + PADDING + 38);
+            Size = new Size(2 * PADDING + width + 18, expectedReturnedStart + EXPECTED_RETURNED_SIZE + PADDING + 38);
         }
 
         public void Draw(DrawInfoItem[] drawInfo, PointF[] expectedReturned, double best, double worst) {
@@ -88,11 +88,11 @@ namespace ChartRatingTrainer {
             }
             
             BRUSH.Color = Color.White;
-            graphics.DrawLine(PEN, PADDING, expectedReturnedStart + EXPECTED_RETURNED_HEIGHT, PADDING + width, expectedReturnedStart);
+            graphics.DrawLine(PEN, PADDING, expectedReturnedStart + EXPECTED_RETURNED_SIZE, PADDING + width, expectedReturnedStart);
 
             foreach (var point in expectedReturned) {
                 int x = PADDING + (int) (point.X * width);
-                int y = expectedReturnedStart + (int) ((1d - point.Y) * EXPECTED_RETURNED_HEIGHT);
+                int y = expectedReturnedStart + (int) ((1d - point.Y) * EXPECTED_RETURNED_SIZE);
                 float diff = point.Y - point.X;
                 int gb = (int) (255f * (1f - Math.Min(32f * diff * diff, 1f)));
                 
