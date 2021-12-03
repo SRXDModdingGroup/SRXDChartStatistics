@@ -1,4 +1,4 @@
-﻿namespace ChartHelper {
+﻿namespace ChartHelper.Types {
     /// <summary>
     /// The type of a note, as specified by the srtb
     /// </summary>

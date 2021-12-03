@@ -1,5 +1,5 @@
 ﻿using System.Drawing;
-using ChartHelper;
+using ChartHelper.Types;
 
 namespace ChartStatistics {
     public class HoldSegment : Drawable {

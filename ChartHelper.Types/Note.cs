@@ -1,50 +1,105 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.Globalization;
-using System.Text.RegularExpressions;
+﻿using System.Collections.Generic;
 
-namespace ChartHelper {
+namespace ChartHelper.Types {
     /// <summary>
-    /// A container for a single track of a chart
+    /// Contains data for a single note
     /// </summary>
-    public class TrackData {
-        private static readonly Regex MATCH_METADATA = new Regex(@"\\""difficultyRating\\"":(\d+),.*?,\\""difficultyType\\"":(\d+)");
-        private static readonly Regex MATCH_NOTE_DATA
-            = new Regex(@"\{\\""time\\"":(\d+\.?\d*),\\""type\\"":(\d+),\\""colorIndex\\"":(\d+),\\""column\\"":(-?\d+),\\""m_size\\"":(\d+)\}");
+    public class Note {
+        /// <summary>
+        /// The time of the note
+        /// </summary>
+        public float Time { get; }
+        /// <summary>
+        /// The type of the note, as specified by the srtb
+        /// </summary>
+        public NoteTypeRaw TypeRaw { get; }
+        /// <summary>
+        /// The specific type of the note
+        /// </summary>
+        public NoteType Type { get; private set; }
+        /// <summary>
+        /// The color of the note
+        /// </summary>
+        public NoteColor Color { get; private set; }
+        /// <summary>
+        /// The lane of the note. Value increases to the left
+        /// </summary>
+        public int Column { get; }
+        /// <summary>
+        /// The specific curve type of the note
+        /// </summary>
+        public CurveType CurveType { get; }
+        /// <summary>
+        /// The index of the start of a sustained note
+        /// </summary>
+        public int StartIndex { get; private set; } = -1;
+        /// <summary>
+        /// The index of the end of a sustained note
+        /// </summary>
+        public int EndIndex { get; private set; } = -1;
+        /// <summary>
+        /// True if the note ends a spin or scratch zone
+        /// </summary>
+        public bool IsSpinEnd { get; private set; }
+        /// <summary>
+        /// True if a spin or scratch sill auto snap to this note
+        /// </summary>
+        public bool IsAutoSnap { get; private set; }
 
         /// <summary>
-        /// The difficulty type of the track
+        /// Constructor
         /// </summary>
-        public Difficulty DifficultyType { get; private set; }
-        /// <summary>
-        /// The difficulty rating of the track
-        /// </summary>
-        public int DifficultyRating { get; private set; }
-        /// <summary>
-        /// All of the notes contained within the track
-        /// </summary>
-        public ReadOnlyCollection<Note> Notes { get; private set; }
-
-        internal static bool TryCreate(string srtbData, out TrackData data) {
-            data = new TrackData();
+        /// <param name="time">The time of the note</param>
+        /// <param name="typeRaw">The type of the note</param>
+        /// <param name="color">The color of the note</param>
+        /// <param name="column">The lane of the note. Value increases to the left</param>
+        /// <param name="curveType">The curve type of the note. Also may specify if the note is a liftoff or hard beat release</param>
+        public Note(float time, NoteTypeRaw typeRaw, NoteColor color = NoteColor.Blue, int column = 0, CurveType curveType = CurveType.Cosine) {
+            Time = time;
+            TypeRaw = typeRaw;
+            CurveType = curveType;
+            Color = color;
+            Column = column;
             
-            var diffMatch = MATCH_METADATA.Match(srtbData);
+            switch (typeRaw) {
+                case NoteTypeRaw.Match:
+                    Type = NoteType.Match;
+                    break;
+                case NoteTypeRaw.Beat:
+                    Type = NoteType.Beat;
+                    break;
+                case NoteTypeRaw.SpinRight:
+                    Type = NoteType.SpinRight;
+                    break;
+                case NoteTypeRaw.SpinLeft:
+                    Type = NoteType.SpinLeft;
+                    break;
+                case NoteTypeRaw.Hold:
+                    Type = NoteType.Hold;
+                    break;
+                case NoteTypeRaw.HoldPoint:
+                    Type = NoteType.HoldPoint;
+                    break;
+                case NoteTypeRaw.Tap:
+                    Type = NoteType.Tap;
+                    break;
+                case NoteTypeRaw.BeatRelease:
+                    if (curveType == CurveType.Cosine)
+                        Type = NoteType.BeatReleaseHard;
+                    else
+                        Type = NoteType.BeatReleaseSoft;
 
-            if (!int.TryParse(diffMatch.Groups[1].Value, out int difficultyRating)
-                || !int.TryParse(diffMatch.Groups[2].Value, out int difficultyType)
-                || !Enum.IsDefined(typeof(Difficulty), difficultyType - 2))
-                return false;
-
-            data.DifficultyRating = difficultyRating;
-            data.DifficultyType = (Difficulty) (difficultyType - 2);
-
-            return true;
+                    break;
+                case NoteTypeRaw.Scratch:
+                    Type = NoteType.Scratch;
+                    break;
+                case NoteTypeRaw.Experimental:
+                    Type = NoteType.Experimental;
+                    break;
+            }
         }
 
-        internal void GenerateNoteData(string srtbData) {
-            var noteMatches = MATCH_NOTE_DATA.Matches(srtbData);
-            var notes = new List<Note>();
+        public static void ApplyDetailedData(IList<Note> notes) {
             int index = 0;
             int sustainedNoteStartIndex = -1;
             int lastHoldPointIndex = -1;
@@ -53,14 +108,8 @@ namespace ChartHelper {
             bool spinning = false;
             bool beatHolding = false;
             bool readyToSnap = false;
-			
-            foreach (Match match in noteMatches) {
-                var note = new Note(
-                    float.Parse(match.Groups[1].Value, NumberFormatInfo.InvariantInfo),
-                    int.Parse(match.Groups[2].Value), 
-                    int.Parse(match.Groups[3].Value),
-                    int.Parse(match.Groups[4].Value),
-                    int.Parse(match.Groups[5].Value));
+
+            foreach (var note in notes) {
                 bool skip = false;
 
                 switch (note.TypeRaw) {
@@ -145,14 +194,11 @@ namespace ChartHelper {
                 if (skip)
                     continue;
                 
-                notes.Add(note);
                 index++;
             }
-
+            
             EndHold();
-
-            Notes = new ReadOnlyCollection<Note>(notes);
-
+            
             void EndHold() {
                 if (!holding || lastHoldPointIndex < 0)
                     return;

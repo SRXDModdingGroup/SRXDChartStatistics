@@ -1,4 +1,6 @@
-﻿namespace ChartAutoRating {
+﻿using System;
+
+namespace MatrixAI.Processing {
     public readonly struct Coefficients {
         public double X1 { get; }
             
@@ -20,6 +22,13 @@
             X5 = x5;
             Magnitude = x1 + x2 + x3 + x4 + x5;
         }
+
+        public static Coefficients Random(Random random) => new Coefficients(
+            2d * random.NextDouble() - 1d,
+            2d * random.NextDouble() - 1d,
+            2d * random.NextDouble() - 1d,
+            2d * random.NextDouble() - 1d,
+            2d * random.NextDouble() - 1d);
 
         public static double Compute(double x, Coefficients c) => x * (c.X1 + x * (c.X2 + x * (c.X3 + x * (c.X4 + x * c.X5))));
 

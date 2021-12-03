@@ -1,6 +1,6 @@
 ﻿using System.IO;
 
-namespace ChartAutoRating {
+namespace MatrixAI.Processing {
     public class Matrix {
         public int Size { get; }
         
@@ -86,6 +86,32 @@ namespace ChartAutoRating {
 
                 target.WeightCoefficients[i] = factor * source.WeightCoefficients[i];
             }
+        }
+
+        public static void Normalize(Matrix target, Matrix source) {
+            double sum = 0d;
+            
+            for (int i = 0; i < target.Size; i++) {
+                for (int j = i; j < target.Size; j++)
+                    sum += source.ValueCoefficients[i, j].Magnitude;
+            }
+
+            double scale = 1d / sum;
+            
+            for (int i = 0; i < target.Size; i++) {
+                for (int j = i; j < target.Size; j++)
+                    target.ValueCoefficients[i, j] = scale * source.ValueCoefficients[i, j];
+            }
+
+            sum = 0d;
+
+            for (int i = 0; i < target.Size; i++)
+                sum += source.WeightCoefficients[i].Magnitude;
+
+            scale = 1d / sum;
+
+            for (int i = 0; i < target.Size; i++)
+                target.WeightCoefficients[i] = scale * source.WeightCoefficients[i];
         }
 
         public static void GetVector(Matrix target, double[] values) {

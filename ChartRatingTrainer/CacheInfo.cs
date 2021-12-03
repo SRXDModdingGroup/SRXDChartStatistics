@@ -1,4 +1,4 @@
-﻿using ChartAutoRating;
+﻿using MatrixAI.Processing;
 
 namespace ChartRatingTrainer {
     public readonly struct CacheInfo {

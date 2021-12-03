@@ -2,8 +2,9 @@
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Text.RegularExpressions;
+using ChartHelper.Types;
 
-namespace ChartHelper {
+namespace ChartHelper.Parsing {
     /// <summary>
     /// A container for all of the useful data in a chart
     /// </summary>

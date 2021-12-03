@@ -4,11 +4,11 @@ using System.Runtime.InteropServices;
 // General Information about an assembly is controlled through the following 
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
-[assembly: AssemblyTitle("ChartHelper")]
+[assembly: AssemblyTitle("ChartHelper.Types")]
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("")]
-[assembly: AssemblyProduct("ChartHelper")]
+[assembly: AssemblyProduct("ChartHelper.Types")]
 [assembly: AssemblyCopyright("Copyright ©  2021")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
@@ -19,7 +19,7 @@ using System.Runtime.InteropServices;
 [assembly: ComVisible(false)]
 
 // The following GUID is for the ID of the typelib if this project is exposed to COM
-[assembly: Guid("21B9540E-E021-4C9F-87B8-8CF511E6E8E7")]
+[assembly: Guid("EB2BBCF3-FD29-4762-BA8D-25667463111C")]
 
 // Version information for an assembly consists of the following four values:
 //

@@ -1,5 +1,5 @@
 ﻿using System.Collections.Generic;
-using ChartHelper;
+using ChartHelper.Types;
 
 namespace ChartMetrics {
     public abstract class PathMetric : Metric {

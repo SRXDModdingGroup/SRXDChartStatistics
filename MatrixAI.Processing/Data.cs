@@ -1,9 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.IO;
 using Util;
 
-namespace ChartAutoRating {
+namespace MatrixAI.Processing {
     public class Data {
         private readonly struct TempDataSample {
             public double[] Values { get; }
@@ -16,17 +17,19 @@ namespace ChartAutoRating {
             }
         }
 
-        private int sampleSize;
+        public int SampleSize { get; }
+        
+        public ReadOnlyCollection<DataSample> Samples { get; }
+
         private DataSample[] samples;
-        private Matrix cachedVector;
 
         private Data(int sampleSize, int sampleCount) {
-            this.sampleSize = sampleSize;
+            SampleSize = sampleSize;
             samples = new DataSample[sampleCount];
-            cachedVector = new Matrix(sampleSize);
+            Samples = new ReadOnlyCollection<DataSample>(samples);
         }
 
-        public static Data Create(int sampleSize, Func<int, IEnumerable<(double, double)>> selector) {
+        public static Data Create(string name, double expectedResult, int sampleSize, Func<int, IEnumerable<(double, double)>> selector) {
             var enumerators = new IEnumerator<(double, double)>[sampleSize];
             bool[] remaining = new bool[sampleSize];
 
@@ -101,6 +104,8 @@ namespace ChartAutoRating {
         }
 
         public static Data Deserialize(BinaryReader reader) {
+            string name = reader.ReadString();
+            double expectedResult = reader.ReadDouble();
             int sampleSize = reader.ReadInt32();
             int sampleCount = reader.ReadInt32();
             var data = new Data(sampleSize, sampleCount);
@@ -120,12 +125,13 @@ namespace ChartAutoRating {
         }
 
         public void Serialize(BinaryWriter writer) {
+            writer.Write(SampleSize);
             writer.Write(samples.Length);
 
             foreach (var sample in samples) {
                 double[] values = sample.Values;
 
-                for (int j = 0; j < sampleSize; j++)
+                for (int j = 0; j < SampleSize; j++)
                     writer.Write(values[j]);
                 
                 writer.Write(sample.Weight);
@@ -136,7 +142,7 @@ namespace ChartAutoRating {
             foreach (var sample in samples) {
                 double[] values = sample.Values;
                 
-                for (int i = 0; i < sampleSize; i++)
+                for (int i = 0; i < SampleSize; i++)
                     values[i] = Math.Sqrt(Math.Min(baseCoefficients[i] * values[i], 1d));
             }
         }
@@ -157,7 +163,7 @@ namespace ChartAutoRating {
                 double value = 0d;
                 double weight = 0d;
                 
-                for (int i = 0; i < sampleSize; i++) {
+                for (int i = 0; i < SampleSize; i++) {
                     double a = sample.Values[i];
 
                     weight += Coefficients.Compute(a * a, matrix.WeightCoefficients[i]);
@@ -165,10 +171,10 @@ namespace ChartAutoRating {
 
                 weight *= sample.Weight;
                 
-                for (int i = 0; i < sampleSize; i++) {
+                for (int i = 0; i < SampleSize; i++) {
                     double a = sample.Values[i];
 
-                    for (int j = i; j < sampleSize; j++)
+                    for (int j = i; j < SampleSize; j++)
                         value += Coefficients.Compute(a * sample.Values[j], matrix.ValueCoefficients[i, j]);
                 }
 
@@ -177,62 +183,6 @@ namespace ChartAutoRating {
             }
 
             return sumValue / sumWeight;
-        }
-
-        public double GetResultAndVector(Matrix matrix, out Matrix vector) {
-            double sumValue = 0d;
-            double sumWeight = 0d;
-            
-            vector = cachedVector;
-
-            for (int i = 0; i < sampleSize; i++) {
-                for (int j = i; j < sampleSize; j++)
-                    vector.ValueCoefficients[i, j] = new Coefficients(0d, 0d, 0d, 0d, 0d);
-
-                vector.WeightCoefficients[i] = new Coefficients(0d, 0d, 0d, 0d, 0d);
-            }
-
-            foreach (var sample in samples) {
-                double value = 0d;
-                double weight = 0d;
-                var sampleVector = sample.Vector;
-                
-                for (int i = 0; i < sampleSize; i++) {
-                    double a = sample.Values[i];
-
-                    for (int j = i; j < sampleSize; j++)
-                        value += Coefficients.Compute(a * sample.Values[j], matrix.ValueCoefficients[i, j]);
-                }
-                
-                for (int i = 0; i < sampleSize; i++) {
-                    double a = sample.Values[i];
-
-                    weight += Coefficients.Compute(a * a, matrix.WeightCoefficients[i]);
-                }
-
-                weight *= sample.Weight;
-                
-                for (int i = 0; i < sampleSize; i++) {
-                    for (int j = i; j < sampleSize; j++)
-                        vector.ValueCoefficients[i, j] += weight * sampleVector.ValueCoefficients[i, j];
-
-                    vector.WeightCoefficients[i] += weight * value * sampleVector.WeightCoefficients[i];
-                }
-
-                sumValue += weight * value;
-                sumWeight += weight;
-            }
-
-            double scale = 1d / sumWeight;
-
-            for (int i = 0; i < sampleSize; i++) {
-                for (int j = i; j < sampleSize; j++)
-                    vector.ValueCoefficients[i, j] *= scale;
-
-                vector.WeightCoefficients[i] *= scale;
-            }
-
-            return scale * sumValue;
         }
 
         public double GetQuantile(int metricIndex, double quantile) {

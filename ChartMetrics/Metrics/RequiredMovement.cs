@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using ChartHelper;
+using ChartHelper.Types;
 
 namespace ChartMetrics {
     internal class RequiredMovement : PathMetric {

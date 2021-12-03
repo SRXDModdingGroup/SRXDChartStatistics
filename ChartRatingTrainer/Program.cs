@@ -228,7 +228,7 @@ namespace ChartRatingTrainer {
                 for (int i = 0; i < Calculator.METRIC_COUNT; i++)
                     writer.Write(baseCoefficients[i]);
                 
-                calculator.SerializeNetwork(writer);
+                calculator.Serialize(writer);
                 
                 writer.Write(bias);
                 writer.Write(scale);

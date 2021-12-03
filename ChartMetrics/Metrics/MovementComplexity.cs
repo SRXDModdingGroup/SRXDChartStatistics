@@ -1,7 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using ChartHelper;
-using Util;
+﻿using System.Collections.Generic;
+using ChartHelper.Types;
 
 namespace ChartMetrics {
     public class MovementComplexity : PathMetric {

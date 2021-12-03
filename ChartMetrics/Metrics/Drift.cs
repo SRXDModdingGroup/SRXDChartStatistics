@@ -1,6 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using ChartHelper;
+﻿using System.Collections.Generic;
+using ChartHelper.Types;
 
 namespace ChartMetrics {
     internal class Drift : PathMetric {

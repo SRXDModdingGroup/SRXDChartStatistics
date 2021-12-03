@@ -4,6 +4,8 @@ using System.Collections.ObjectModel;
 using System.Drawing;
 using System.Linq;
 using ChartHelper;
+using ChartHelper.Parsing;
+using ChartHelper.Types;
 using ChartMetrics;
 using Util;
 
@@ -54,13 +56,12 @@ namespace ChartStatistics {
         }
 
         private void LoadChart(string path, Difficulty difficulty = Difficulty.XD) {
-            if (!ChartProcessor.TryLoadChart(path, out var temp)) {
+            if (!TryLoadChart(path, difficulty, ref chartProcessor)) {
                 Console.WriteLine("Could not find this file");
                 
                 return;
             }
-
-            chartProcessor = temp;
+            
             DrawChart();
             Console.WriteLine("Loaded chart successfully");
             
@@ -242,7 +243,7 @@ namespace ChartStatistics {
         }
 
         private void RateChart(string path, bool rateThis, Difficulty difficulty) {
-            ChartProcessor processor;
+            ChartProcessor processor = null;
 
             if (rateThis) {
                 if (chartProcessor == null) {
@@ -253,37 +254,13 @@ namespace ChartStatistics {
                 
                 processor = chartProcessor;
             }
-            else if (!ChartProcessor.TryLoadChart(path, out processor, difficulty)) {
+            else if (!TryLoadChart(path, difficulty, ref processor)) {
                 Console.WriteLine("Could not load this file");
-                
+
                 return;
             }
-            
+
             Console.WriteLine($"Difficulty: {processor.GetDifficultyRating()}");
-        }
-
-        private void RateAllCharts(Difficulty difficulty) {
-            var data = new List<KeyValuePair<string, int>>();
-            string[] allPaths = FileHelper.GetAllSrtbs().ToArray();
-
-            for (int i = 0; i < allPaths.Length; i++) {
-                string path = allPaths[i];
-                
-                if (!ChartProcessor.TryLoadChart(path, out var processor, difficulty))
-                    continue;
-
-                data.Add(new KeyValuePair<string, int>(processor.ChartTitle, processor.GetDifficultyRating()));
-                Console.WriteLine($"Scanned chart {i} of {allPaths.Length}");
-                Console.SetCursorPosition(0, Console.CursorTop - 1);
-            }
-
-            Console.Write(new string(' ', Console.BufferWidth));
-            data.Sort((a, b) => a.Value.CompareTo(b.Value));
-
-            foreach (var pair in data)
-                Console.WriteLine($"{pair.Value} - {pair.Key}");
-            
-            Console.WriteLine();
         }
 
         private void DrawChart() {
@@ -339,7 +316,48 @@ namespace ChartStatistics {
             graphicsPanel.Redraw();
         }
 
-        private bool TryParseDifficulty(string arg, out Difficulty difficulty) {
+        private float ColumnToY(float column) => chartCenter + chartHeight * column / -8f;
+
+        private static void RateAllCharts(Difficulty difficulty) {
+            var data = new List<KeyValuePair<string, int>>();
+            var processor = new ChartProcessor();
+            string[] allPaths = FileHelper.GetAllSrtbs().ToArray();
+
+            for (int i = 0; i < allPaths.Length; i++) {
+                string path = allPaths[i];
+                
+                if (!TryLoadChart(path, difficulty, ref processor))
+                    continue;
+
+                data.Add(new KeyValuePair<string, int>(processor.Title, processor.GetDifficultyRating()));
+                Console.WriteLine($"Scanned chart {i} of {allPaths.Length}");
+                Console.SetCursorPosition(0, Console.CursorTop - 1);
+            }
+
+            Console.Write(new string(' ', Console.BufferWidth));
+            data.Sort((a, b) => a.Value.CompareTo(b.Value));
+
+            foreach (var pair in data)
+                Console.WriteLine($"{pair.Value} - {pair.Key}");
+            
+            Console.WriteLine();
+        }
+        
+        private static bool TryLoadChart(string path, Difficulty difficulty, ref ChartProcessor processor) {
+            if (!ChartData.TryCreateFromFile(path, out var chartData, difficulty))
+                return false;
+
+            var trackData = chartData.TrackData[difficulty];
+
+            if (processor == null)
+                processor = new ChartProcessor();
+            
+            processor.SetData(chartData.Title, trackData.DifficultyRating, trackData.Notes);
+
+            return true;
+        }
+        
+        private static bool TryParseDifficulty(string arg, out Difficulty difficulty) {
             difficulty = Difficulty.XD;
 
             if (string.IsNullOrWhiteSpace(arg) || Enum.TryParse(arg, true, out difficulty))
@@ -350,7 +368,5 @@ namespace ChartStatistics {
             return false;
 
         }
-
-        private float ColumnToY(float column) => chartCenter + chartHeight * column / -8f;
     }
 }

@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Reflection;
-using ChartHelper;
-using Util;
+﻿using ChartHelper.Types;
 
 namespace ChartMetrics {
     public class TapBeatComplexity : ComplexityMetric {

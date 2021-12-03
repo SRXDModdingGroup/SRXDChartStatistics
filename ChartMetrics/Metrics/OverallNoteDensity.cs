@@ -1,4 +1,4 @@
-﻿using ChartHelper;
+﻿using ChartHelper.Types;
 
 namespace ChartMetrics {
     internal class OverallNoteDensity : DensityMetric {

@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
-using ChartHelper;
+using ChartHelper.Types;
 using Util;
 using Math = System.Math;
 

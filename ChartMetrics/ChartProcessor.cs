@@ -1,17 +1,17 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using ChartHelper;
-using ChartAutoRating;
+using ChartHelper.Types;
 using Util;
 
 namespace ChartMetrics {
     public class ChartProcessor {
-        private static readonly float SIMPLIFY_RATIO = 1.005f;
-        private static readonly float MIN_PHRASE_LENGTH = 1f;
+        private static readonly float SIMPLIFY_RATIO = 1.05f;
+        private static readonly float MIN_PHRASE_LENGTH = 0.25f;
         private static readonly Metric[] METRICS = {
             new OverallNoteDensity(),
             new TapBeatDensity(),
@@ -238,30 +238,28 @@ namespace ChartMetrics {
             }
         }
         
-        public string ChartTitle { get; }
+        public string Title { get; private set; }
         
-        public ReadOnlyCollection<Note> Notes { get; }
-
+        public int DifficultyRating { get; private set; }
+        
+        public ReadOnlyCollection<Note> Notes { get; private set; }
+        
         private Dictionary<string, Result> results;
-        private ReadOnlyCollection<ReadOnlyCollection<WheelPath.Point>> pathsExact;
-        private ReadOnlyCollection<ReadOnlyCollection<WheelPath.Point>> pathsSimplified;
+        private List<ReadOnlyCollection<WheelPath.Point>> exactPaths;
+        private List<ReadOnlyCollection<WheelPath.Point>> simplifiedPaths;
 
-        public ChartProcessor(string chartTitle, ReadOnlyCollection<Note> notes) {
-            ChartTitle = chartTitle;
-            Notes = notes;
+        public ChartProcessor() {
             results = new Dictionary<string, Result>();
+            exactPaths = new List<ReadOnlyCollection<WheelPath.Point>>();
+            simplifiedPaths = new List<ReadOnlyCollection<WheelPath.Point>>();
         }
 
-        public static bool TryLoadChart(string path, out ChartProcessor processor, Difficulty difficulty = Difficulty.XD) {
-            if (!ChartData.TryCreateFromFile(path, out var chartData, difficulty) || !chartData.TrackData.TryGetValue(difficulty, out var trackData) || trackData.Notes.Count == 0) {
-                processor = null;
-                
-                return false;
-            }
-
-            processor = new ChartProcessor(chartData.Title, trackData.Notes);
-
-            return true;
+        public void SetData(string title, int difficultyRating, IList<Note> notes) {
+            Title = title;
+            DifficultyRating = difficultyRating;
+            Notes = new ReadOnlyCollection<Note>(notes);
+            exactPaths.Clear();
+            simplifiedPaths.Clear();
         }
 
         public bool TryGetMetric(string name, out Result result) {
@@ -297,7 +295,7 @@ namespace ChartMetrics {
         }
 
         public Data CreateData(IReadOnlyList<Metric> metrics) {
-            var data = Data.Create(metrics.Count, i => {
+            var data = Data.Create(Title, DifficultyRating, metrics.Count, i => {
                 TryGetMetric(metrics[i].Name, out var result);
 
                 var samples = result.Samples;
@@ -310,11 +308,10 @@ namespace ChartMetrics {
         }
 
         public ReadOnlyCollection<ReadOnlyCollection<WheelPath.Point>> GetExactPaths() {
-            if (pathsExact != null)
-                return pathsExact;
+            if (exactPaths.Count > 0)
+                return new ReadOnlyCollection<ReadOnlyCollection<WheelPath.Point>>(exactPaths);
 
             int startIndex = -1;
-            var paths = new List<ReadOnlyCollection<WheelPath.Point>>();
 
             for (int i = 0; i < Notes.Count; i++) {
                 var note = Notes[i];
@@ -322,33 +319,26 @@ namespace ChartMetrics {
                 
                 if (startIndex >= 0 && (type == NoteType.SpinLeft || type == NoteType.SpinRight || type == NoteType.Scratch || i == Notes.Count  || i == Notes.Count - 1)) {
                     foreach (var path in WheelPath.GeneratePaths(Notes, startIndex, i))
-                        paths.Add(new ReadOnlyCollection<WheelPath.Point>(path));
+                        exactPaths.Add(new ReadOnlyCollection<WheelPath.Point>(path));
 
                     startIndex = -1;
                 }
-                else if (note.IsAutoSnap || paths.Count == 0 && startIndex < 0
+                else if (note.IsAutoSnap || exactPaths.Count == 0 && startIndex < 0
                     && (type == NoteType.Tap || type == NoteType.Hold || type == NoteType.Match))
                     startIndex = i;
             }
 
-            pathsExact = new ReadOnlyCollection<ReadOnlyCollection<WheelPath.Point>>(paths);
-
-            return pathsExact;
+            return new ReadOnlyCollection<ReadOnlyCollection<WheelPath.Point>>(exactPaths);
         }
 
         public ReadOnlyCollection<ReadOnlyCollection<WheelPath.Point>> GetSimplifiedPaths(int iterations = -1) {
-            if (iterations < 0 && pathsSimplified != null)
-                return pathsSimplified;
+            if (iterations < 0 && simplifiedPaths.Count > 0)
+                return new ReadOnlyCollection<ReadOnlyCollection<WheelPath.Point>>(simplifiedPaths);
             
-            var paths = new List<ReadOnlyCollection<WheelPath.Point>>();
-
             foreach (var path in GetExactPaths())
-                paths.Add(new ReadOnlyCollection<WheelPath.Point>(WheelPath.Simplify(path, iterations)));
-
-            if (iterations < 0)
-                pathsSimplified = new ReadOnlyCollection<ReadOnlyCollection<WheelPath.Point>>(paths);
-
-            return pathsSimplified;
+                simplifiedPaths.Add(new ReadOnlyCollection<WheelPath.Point>(WheelPath.Simplify(path, iterations)));
+            
+            return new ReadOnlyCollection<ReadOnlyCollection<WheelPath.Point>>(simplifiedPaths);
         }
 
         private Result CalculateMetric(Metric metric) {

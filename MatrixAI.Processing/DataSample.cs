@@ -1,18 +1,14 @@
 ﻿using System.Collections.Generic;
 
-namespace ChartAutoRating {
-    internal class DataSample {
+namespace MatrixAI.Processing {
+    public class DataSample {
         public double[] Values { get; }
 
         public double Weight { get; }
 
-        public Matrix Vector { get; }
-
         public DataSample(double[] values, double weight) {
             Values = values;
             Weight = weight;
-            Vector = new Matrix(Values.Length);
-            Matrix.GetVector(Vector, Values);
         }
 
         public class Comparer : IComparer<DataSample> {
