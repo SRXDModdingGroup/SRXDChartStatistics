@@ -160,25 +160,9 @@ namespace MatrixAI.Processing {
             double sumWeight = 0d;
 
             foreach (var sample in samples) {
-                double value = 0d;
-                double weight = 0d;
-                
-                for (int i = 0; i < SampleSize; i++) {
-                    double a = sample.Values[i];
+                double weight = sample.Weight * matrix.GetWeight(sample.Values);
 
-                    weight += Coefficients.Compute(a * a, matrix.WeightCoefficients[i]);
-                }
-
-                weight *= sample.Weight;
-                
-                for (int i = 0; i < SampleSize; i++) {
-                    double a = sample.Values[i];
-
-                    for (int j = i; j < SampleSize; j++)
-                        value += Coefficients.Compute(a * sample.Values[j], matrix.ValueCoefficients[i, j]);
-                }
-
-                sumValue += weight * value;
+                sumValue += weight * matrix.GetValue(sample.Values);
                 sumWeight += weight;
             }
 

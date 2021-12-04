@@ -28,7 +28,7 @@ namespace MatrixAI.Training {
                 var sample = data.Samples[i];
                 var matrix = new Matrix(data.SampleSize);
 
-                Matrix.GetVector(matrix, sample.Values);
+                MatrixExtensions.GetVector(matrix, sample.Values);
                 wrapper.vectors[i] = matrix;
             }
 
@@ -70,23 +70,8 @@ namespace MatrixAI.Training {
             for (int i = 0; i < data.Samples.Count; i++) {
                 var sample = data.Samples[i];
                 var vector = vectors[i];
-                double value = 0d;
-                double weight = 0d;
-
-                for (int j = 0; j < data.SampleSize; j++) {
-                    double a = sample.Values[j];
-
-                    for (int k = j; k < data.SampleSize; k++)
-                        value += Coefficients.Compute(a * sample.Values[k], matrix.ValueCoefficients[j, k]);
-                }
-
-                for (int j = 0; j < data.SampleSize; j++) {
-                    double a = sample.Values[j];
-
-                    weight += Coefficients.Compute(a * a, matrix.WeightCoefficients[j]);
-                }
-
-                weight *= sample.Weight;
+                double value = matrix.GetValue(sample.Values);
+                double weight = sample.Weight * matrix.GetWeight(sample.Values);
 
                 for (int j = 0; j < data.SampleSize; j++) {
                     for (int k = j; k < data.SampleSize; k++)

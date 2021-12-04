@@ -2,6 +2,8 @@
 
 namespace MatrixAI.Processing {
     public readonly struct Coefficients {
+        public static Coefficients Zero { get; } = new Coefficients(0d, 0d, 0d, 0d, 0d);
+        
         public double X1 { get; }
             
         public double X2 { get; }
