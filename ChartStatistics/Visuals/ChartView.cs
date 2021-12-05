@@ -352,7 +352,7 @@ namespace ChartStatistics {
             if (processor == null)
                 processor = new ChartProcessor();
             
-            processor.SetData(chartData.Title, trackData.DifficultyRating, trackData.Notes);
+            processor.SetData(chartData.Title, trackData.Notes);
 
             return true;
         }

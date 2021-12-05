@@ -18,6 +18,8 @@ namespace MatrixAI.Processing {
         }
         
         public string Name { get; }
+        
+        public int Size { get; }
 
         public int SampleSize { get; }
         
@@ -25,10 +27,11 @@ namespace MatrixAI.Processing {
 
         private DataSample[] samples;
 
-        private Data(string name, int sampleSize, int sampleCount) {
+        private Data(string name, int size, int sampleSize) {
             Name = name;
+            Size = size;
             SampleSize = sampleSize;
-            samples = new DataSample[sampleCount];
+            samples = new DataSample[size];
             Samples = new ReadOnlyCollection<DataSample>(samples);
         }
 
@@ -93,7 +96,7 @@ namespace MatrixAI.Processing {
             
             tempSamples.Add(new TempDataSample(currentValues, currentTime));
 
-            var data = new Data(name, sampleSize, tempSamples.Count - 1);
+            var data = new Data(name, tempSamples.Count - 1, sampleSize);
             var samples = data.samples;
             double scale = 1d / (tempSamples[tempSamples.Count - 1].Time - tempSamples[0].Time);
 
@@ -110,7 +113,7 @@ namespace MatrixAI.Processing {
             string name = reader.ReadString();
             int sampleSize = reader.ReadInt32();
             int sampleCount = reader.ReadInt32();
-            var data = new Data(name, sampleSize, sampleCount);
+            var data = new Data(name, sampleCount, sampleSize);
 
             for (int i = 0; i < sampleCount; i++) {
                 double[] newValues = new double[sampleSize];

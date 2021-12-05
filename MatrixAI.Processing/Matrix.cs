@@ -119,7 +119,7 @@ namespace MatrixAI.Processing {
         public double GetWeight(double[] values) {
             double sum = 0d;
 
-            for (int i = 0; i < sum; i++)
+            for (int i = 0; i < SampleSize; i++)
                 sum += Coefficients.Compute(values[i], WeightCoefficients[i]);
 
             return sum;
