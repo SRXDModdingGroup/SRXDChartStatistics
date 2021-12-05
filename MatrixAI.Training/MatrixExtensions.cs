@@ -27,7 +27,7 @@ namespace MatrixAI.Training {
 
             double scale = 1d / sum;
             
-            for (int i = 0; i < target.SampleSize; i++)
+            for (int i = 0; i < target.TotalSize; i++)
                 target.ValueCoefficients[i] *= scale;
 
             sum = 0d;

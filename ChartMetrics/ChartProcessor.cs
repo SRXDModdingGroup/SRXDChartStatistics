@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
@@ -13,7 +12,7 @@ namespace ChartMetrics {
     public class ChartProcessor {
         private static readonly string ASSEMBLY_DIRECTORY = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
         private static readonly float SIMPLIFY_RATIO = 1.05f;
-        private static readonly float MIN_PHRASE_LENGTH = 0.25f;
+        private static readonly float MIN_PHRASE_LENGTH = 1f;
         private static readonly Metric[] METRICS = {
             new OverallNoteDensity(),
             new TapBeatDensity(),
@@ -246,9 +245,10 @@ namespace ChartMetrics {
             simplifiedPaths = new List<ReadOnlyCollection<WheelPath.Point>>();
         }
 
-        public void SetData(string title, int difficultyRating, IList<Note> notes) {
+        public void SetData(string title, IList<Note> notes) {
             Title = title;
             Notes = new ReadOnlyCollection<Note>(notes);
+            results.Clear();
             exactPaths.Clear();
             simplifiedPaths.Clear();
         }
@@ -428,7 +428,7 @@ namespace ChartMetrics {
         }
         
         private IEnumerable<(double, double)> GetMetricSamples(int metricIndex) {
-            TryGetMetric(ChartProcessor.DifficultyMetrics[metricIndex].Name, out var result);
+            TryGetMetric(DifficultyMetrics[metricIndex].Name, out var result);
 
             var samples = result.Samples;
             var last = samples[samples.Count - 1];

@@ -2,7 +2,7 @@
 
 namespace ChartMetrics {
     public class SpinDensity : DensityMetric {
-        public override string Description { get; }
+        public override string Description => string.Empty;
 
         protected override bool CandidateFilter(Note note) => note.Type == NoteType.SpinLeft
                                                               || note.Type == NoteType.SpinRight
