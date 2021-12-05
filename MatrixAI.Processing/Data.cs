@@ -16,6 +16,8 @@ namespace MatrixAI.Processing {
                 Time = time;
             }
         }
+        
+        public string Name { get; }
 
         public int SampleSize { get; }
         
@@ -23,13 +25,14 @@ namespace MatrixAI.Processing {
 
         private DataSample[] samples;
 
-        private Data(int sampleSize, int sampleCount) {
+        private Data(string name, int sampleSize, int sampleCount) {
+            Name = name;
             SampleSize = sampleSize;
             samples = new DataSample[sampleCount];
             Samples = new ReadOnlyCollection<DataSample>(samples);
         }
 
-        public static Data Create(int sampleSize, Func<int, IEnumerable<(double, double)>> selector) {
+        public static Data Create(string name, int sampleSize, Func<int, IEnumerable<(double, double)>> selector) {
             var enumerators = new IEnumerator<(double, double)>[sampleSize];
             bool[] remaining = new bool[sampleSize];
 
@@ -90,7 +93,7 @@ namespace MatrixAI.Processing {
             
             tempSamples.Add(new TempDataSample(currentValues, currentTime));
 
-            var data = new Data(sampleSize, tempSamples.Count - 1);
+            var data = new Data(name, sampleSize, tempSamples.Count - 1);
             var samples = data.samples;
             double scale = 1d / (tempSamples[tempSamples.Count - 1].Time - tempSamples[0].Time);
 
@@ -105,10 +108,9 @@ namespace MatrixAI.Processing {
 
         public static Data Deserialize(BinaryReader reader) {
             string name = reader.ReadString();
-            double expectedResult = reader.ReadDouble();
             int sampleSize = reader.ReadInt32();
             int sampleCount = reader.ReadInt32();
-            var data = new Data(sampleSize, sampleCount);
+            var data = new Data(name, sampleSize, sampleCount);
 
             for (int i = 0; i < sampleCount; i++) {
                 double[] newValues = new double[sampleSize];
@@ -125,6 +127,7 @@ namespace MatrixAI.Processing {
         }
 
         public void Serialize(BinaryWriter writer) {
+            writer.Write(Name);
             writer.Write(SampleSize);
             writer.Write(samples.Length);
 

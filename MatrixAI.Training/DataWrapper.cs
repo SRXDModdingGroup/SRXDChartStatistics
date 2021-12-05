@@ -4,6 +4,8 @@ using MatrixAI.Processing;
 
 namespace MatrixAI.Training {
     public class DataWrapper {
+        public string Name => data.Name;
+        
         public double ExpectedResult { get; }
 
         public int SampleSize => data.SampleSize;

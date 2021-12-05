@@ -6,10 +6,12 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using ChartHelper.Types;
+using MatrixAI.Processing;
 using Util;
 
 namespace ChartMetrics {
     public class ChartProcessor {
+        private static readonly string ASSEMBLY_DIRECTORY = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
         private static readonly float SIMPLIFY_RATIO = 1.05f;
         private static readonly float MIN_PHRASE_LENGTH = 0.25f;
         private static readonly Metric[] METRICS = {
@@ -40,7 +42,6 @@ namespace ChartMetrics {
         public static ReadOnlyCollection<Metric> DifficultyMetrics { get; } = new ReadOnlyCollection<Metric>(DIFFICULTY_METRICS);
 
         private static Matrix matrix;
-        private static double[] baseCoefficients;
         private static double bias;
         private static double scale;
         private static bool parametersLoaded;
@@ -60,18 +61,13 @@ namespace ChartMetrics {
         private static void LoadParameters() {
             if (parametersLoaded)
                 return;
-            
-            baseCoefficients = new double[DIFFICULTY_METRICS.Length];
 
-            string path = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "parameters.dat");
+            string path = Path.Combine(ASSEMBLY_DIRECTORY, "parameters.dat");
             
             if (!File.Exists(path))
                 return;
 
             using (var reader = new BinaryReader(File.Open(path, FileMode.Open))) {
-                for (int i = 0; i < DIFFICULTY_METRICS.Length; i++)
-                    baseCoefficients[i] = reader.ReadDouble();
-                
                 matrix = Matrix.Deserialize(reader);
                 bias = reader.ReadDouble();
                 scale = reader.ReadDouble();
@@ -237,9 +233,7 @@ namespace ChartMetrics {
         }
         
         public string Title { get; private set; }
-        
-        public int DifficultyRating { get; private set; }
-        
+
         public ReadOnlyCollection<Note> Notes { get; private set; }
         
         private Dictionary<string, Result> results;
@@ -254,7 +248,6 @@ namespace ChartMetrics {
 
         public void SetData(string title, int difficultyRating, IList<Note> notes) {
             Title = title;
-            DifficultyRating = difficultyRating;
             Notes = new ReadOnlyCollection<Note>(notes);
             exactPaths.Clear();
             simplifiedPaths.Clear();
@@ -281,7 +274,7 @@ namespace ChartMetrics {
         public int GetDifficultyRating() {
             LoadParameters();
 
-            double value = CreateNormalizedData().GetResult(matrix);
+            double value = CreateRatingData().GetResult(matrix);
 
             if (value < 0d)
                 return 0;
@@ -290,19 +283,6 @@ namespace ChartMetrics {
                 return 100;
 
             return (int) Math.Round(100d * (value - bias) / scale);
-        }
-
-        public Data CreateData(IReadOnlyList<Metric> metrics) {
-            var data = Data.Create(Title, DifficultyRating, metrics.Count, i => {
-                TryGetMetric(metrics[i].Name, out var result);
-
-                var samples = result.Samples;
-                var last = samples[samples.Count - 1];
-
-                return samples.Select(sample => ((double) sample.Value, (double) sample.Time)).Append((0d, last.Time + last.Length));
-            });
-            
-            return data;
         }
 
         public ReadOnlyCollection<ReadOnlyCollection<WheelPath.Point>> GetExactPaths() {
@@ -338,6 +318,8 @@ namespace ChartMetrics {
             
             return new ReadOnlyCollection<ReadOnlyCollection<WheelPath.Point>>(simplifiedPaths);
         }
+
+        public Data CreateRatingData() => Data.Create(Title, DIFFICULTY_METRICS.Length, GetMetricSamples);
 
         private Result CalculateMetric(Metric metric) {
             IList<Metric.Point> candidates;
@@ -444,18 +426,14 @@ namespace ChartMetrics {
                 Subdivide(bestIndex, end);
             }
         }
+        
+        private IEnumerable<(double, double)> GetMetricSamples(int metricIndex) {
+            TryGetMetric(ChartProcessor.DifficultyMetrics[metricIndex].Name, out var result);
 
-        private Data CreateNormalizedData() {
-            LoadParameters();
-            
-            var data = CreateData(DIFFICULTY_METRICS);
-            
-            for (int i = 0; i < DIFFICULTY_METRICS.Length; i++)
-                data.Clamp(i, data.GetQuantile(i, 0.975d));
-            
-            data.Normalize(baseCoefficients);
+            var samples = result.Samples;
+            var last = samples[samples.Count - 1];
 
-            return data;
+            return samples.Select(sample => ((double) sample.Value, (double) sample.Time)).Append((0d, last.Time + last.Length));
         }
     }
 }
