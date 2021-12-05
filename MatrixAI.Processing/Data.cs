@@ -29,7 +29,7 @@ namespace MatrixAI.Processing {
             Samples = new ReadOnlyCollection<DataSample>(samples);
         }
 
-        public static Data Create(string name, double expectedResult, int sampleSize, Func<int, IEnumerable<(double, double)>> selector) {
+        public static Data Create(int sampleSize, Func<int, IEnumerable<(double, double)>> selector) {
             var enumerators = new IEnumerator<(double, double)>[sampleSize];
             bool[] remaining = new bool[sampleSize];
 
@@ -138,20 +138,11 @@ namespace MatrixAI.Processing {
             }
         }
 
-        public void Normalize(double[] baseCoefficients) {
-            foreach (var sample in samples) {
-                double[] values = sample.Values;
-                
-                for (int i = 0; i < SampleSize; i++)
-                    values[i] = Math.Sqrt(Math.Min(baseCoefficients[i] * values[i], 1d));
-            }
-        }
-
-        public void Clamp(int metricIndex, double max) {
+        public void Clamp(int valueIndex, double max) {
             foreach (var sample in samples) {
                 double[] values = sample.Values;
 
-                values[metricIndex] = Math.Min(values[metricIndex], max);
+                values[valueIndex] = Math.Min(values[valueIndex], max);
             }
         }
 
@@ -169,13 +160,13 @@ namespace MatrixAI.Processing {
             return sumValue / sumWeight;
         }
 
-        public double GetQuantile(int metricIndex, double quantile) {
+        public double GetQuantile(int valueIndex, double quantile) {
             var sorted = new DataSample[samples.Length];
 
             for (int i = 0; i < samples.Length; i++)
                 sorted[i] = samples[i];
                 
-            Array.Sort(sorted, new DataSample.Comparer(metricIndex));
+            Array.Sort(sorted, new DataSample.Comparer(valueIndex));
 
             double[] cumulativeWeights = new double[sorted.Length];
             double sum = 0d;
@@ -189,12 +180,12 @@ namespace MatrixAI.Processing {
             var first = sorted[0];
                 
             if (targetTotal < 0.5f * first.Weight)
-                return first.Values[metricIndex];
+                return first.Values[valueIndex];
 
             var last = sorted[sorted.Length - 1];
 
             if (targetTotal > sum - 0.5f * last.Weight)
-                return last.Values[metricIndex];
+                return last.Values[valueIndex];
                 
             for (int i = 0; i < sorted.Length - 1; i++) {
                 double end = cumulativeWeights[i] + 0.5f * sorted[i + 1].Weight;
@@ -204,21 +195,10 @@ namespace MatrixAI.Processing {
 
                 double start = cumulativeWeights[i] - 0.5f * sorted[i].Weight;
 
-                return MathU.Remap(targetTotal, start, end, sorted[i].Values[metricIndex], sorted[i + 1].Values[metricIndex]);
+                return MathU.Remap(targetTotal, start, end, sorted[i].Values[valueIndex], sorted[i + 1].Values[valueIndex]);
             }
 
-            return sorted[sorted.Length - 1].Values[metricIndex];
-        }
-
-        public double GetMaxValue(int metricIndex) {
-            double max = 0d;
-            
-            foreach (var sample in samples) {
-                if (sample.Values[metricIndex] > max)
-                    max = sample.Values[metricIndex];
-            }
-
-            return max;
+            return sorted[sorted.Length - 1].Values[valueIndex];
         }
     }
 }

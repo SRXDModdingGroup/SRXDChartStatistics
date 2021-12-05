@@ -13,20 +13,22 @@ namespace MatrixAI.Training {
         private Data data;
         private Matrix[] vectors;
         private Matrix overallVector;
+        private int matrixDimensions;
 
-        public DataWrapper(Data data, double expectedResult) {
+        private DataWrapper(Data data, double expectedResult, int matrixDimensions) {
             this.data = data;
             ExpectedResult = expectedResult;
             vectors = new Matrix[data.Samples.Count];
-            overallVector = new Matrix(data.SampleSize);
+            overallVector = new Matrix(data.SampleSize, matrixDimensions);
+            this.matrixDimensions = matrixDimensions;
         }
 
-        public static DataWrapper Create(Data data, double expectedResult) {
-            var wrapper = new DataWrapper(data, expectedResult);
+        public static DataWrapper Create(Data data, double expectedResult, int matrixDimensions) {
+            var wrapper = new DataWrapper(data, expectedResult, matrixDimensions);
             
             for (int i = 0; i < data.Samples.Count; i++) {
                 var sample = data.Samples[i];
-                var matrix = new Matrix(data.SampleSize);
+                var matrix = new Matrix(data.SampleSize, matrixDimensions);
 
                 MatrixExtensions.GetVector(matrix, sample.Values);
                 wrapper.vectors[i] = matrix;
@@ -36,9 +38,10 @@ namespace MatrixAI.Training {
         }
 
         public static DataWrapper Deserialize(BinaryReader reader) {
-            double expectedResult = reader.ReadDouble();
             var data = Data.Deserialize(reader);
-            var wrapper = new DataWrapper(data, expectedResult);
+            double expectedResult = reader.ReadDouble();
+            int matrixDimensions = reader.ReadInt32();
+            var wrapper = new DataWrapper(data, expectedResult, matrixDimensions);
             
             for (int i = 0; i < data.Samples.Count; i++)
                 wrapper.vectors[i] = Matrix.Deserialize(reader);
@@ -47,38 +50,39 @@ namespace MatrixAI.Training {
         }
 
         public void Serialize(BinaryWriter writer) {
-            writer.Write(ExpectedResult);
             data.Serialize(writer);
+            writer.Write(ExpectedResult);
+            writer.Write(matrixDimensions);
 
             foreach (var vector in vectors)
                 vector.Serialize(writer);
         }
 
-        public double GetResultAndVector(Matrix matrix, out Matrix overallVector) {
+        public void Clamp(int valueIndex, double max) => data.Clamp(valueIndex, max);
+
+        public double GetQuantile(int valueIndex, double quantile) => data.GetQuantile(valueIndex, quantile);
+
+        public double GetResult(Matrix matrix) => data.GetResult(matrix);
+
+        public double GetResultAndVector(Matrix matrix, out Matrix vector) {
             double sumValue = 0d;
             double sumWeight = 0d;
             
-            overallVector = this.overallVector;
-
-            for (int i = 0; i < data.SampleSize; i++) {
-                for (int j = i; j < data.SampleSize; j++)
-                    overallVector.ValueCoefficients[i, j] = new Coefficients(0d, 0d, 0d, 0d, 0d);
-
-                overallVector.WeightCoefficients[i] = new Coefficients(0d, 0d, 0d, 0d, 0d);
-            }
+            vector = overallVector;
+            
+            MatrixExtensions.Zero(vector);
 
             for (int i = 0; i < data.Samples.Count; i++) {
                 var sample = data.Samples[i];
-                var vector = vectors[i];
+                var sampleVector = vectors[i];
                 double value = matrix.GetValue(sample.Values);
                 double weight = sample.Weight * matrix.GetWeight(sample.Values);
 
-                for (int j = 0; j < data.SampleSize; j++) {
-                    for (int k = j; k < data.SampleSize; k++)
-                        overallVector.ValueCoefficients[j, k] += weight * vector.ValueCoefficients[j, k];
+                for (int j = 0; j < vector.TotalSize; j++)
+                    vector.ValueCoefficients[j] += weight * sampleVector.ValueCoefficients[j];
 
-                    overallVector.WeightCoefficients[j] += sample.Weight * value * vector.WeightCoefficients[j];
-                }
+                for (int j = 0; j < vector.SampleSize; j++)
+                    vector.WeightCoefficients[j] += sample.Weight * value * sampleVector.WeightCoefficients[j];
 
                 sumValue += weight * value;
                 sumWeight += weight;
@@ -86,12 +90,11 @@ namespace MatrixAI.Training {
 
             double scale = 1d / sumWeight;
 
-            for (int i = 0; i < data.SampleSize; i++) {
-                for (int j = i; j < data.SampleSize; j++)
-                    overallVector.ValueCoefficients[i, j] *= scale;
+            for (int i = 0; i < vector.TotalSize; i++)
+                vector.ValueCoefficients[i] *= scale;
 
-                overallVector.WeightCoefficients[i] *= scale;
-            }
+            for (int i = 0; i < vector.SampleSize; i++)
+                vector.WeightCoefficients[i] *= scale;
 
             return scale * sumValue;
         }

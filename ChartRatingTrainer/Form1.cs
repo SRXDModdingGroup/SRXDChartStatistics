@@ -1,9 +1,12 @@
 ﻿using System;
 using System.Drawing;
 using System.Windows.Forms;
+using ChartMetrics;
+using MatrixAI.Processing;
 
 namespace ChartRatingTrainer {
     public partial class Form1 : Form {
+        private static readonly int METRIC_COUNT = ChartProcessor.DifficultyMetrics.Count;
         private static readonly int PADDING = 8;
         private static readonly int BOX_SIZE = 8;
         private static readonly int EXPECTED_RETURNED_SIZE = 512;
@@ -21,13 +24,13 @@ namespace ChartRatingTrainer {
         public Form1() {
             InitializeComponent();
             
-            spacingX = (Calculator.METRIC_COUNT + 2) * BOX_SIZE + PADDING;
-            width = (Program.POPULATION_SIZE - 1) * spacingX + (Calculator.METRIC_COUNT + 2) * BOX_SIZE;
-            expectedReturnedStart = 2 * PADDING + Calculator.METRIC_COUNT * BOX_SIZE;
+            spacingX = (METRIC_COUNT + 2) * BOX_SIZE + PADDING;
+            width = (Program.POPULATION_SIZE - 1) * spacingX + (METRIC_COUNT + 2) * BOX_SIZE;
+            expectedReturnedStart = 2 * PADDING + METRIC_COUNT * BOX_SIZE;
             Size = new Size(2 * PADDING + width + 18, expectedReturnedStart + EXPECTED_RETURNED_SIZE + PADDING + 38);
         }
 
-        public void Draw(DrawInfoItem[] drawInfo, PointF[] expectedReturned, double best, double worst) {
+        public void Draw(double fitness, Matrix matrix, PointF[] expectedReturned, double best, double worst) {
             if (buffer == null) {
                 buffer?.Dispose();
                 buffer = BufferedGraphicsManager.Current.Allocate(panel1.CreateGraphics(), panel1.Bounds);
@@ -37,54 +40,48 @@ namespace ChartRatingTrainer {
             
             graphics.Clear(CLEAR_COLOR);
 
-            for (int i = 0; i < Program.POPULATION_SIZE; i++) {
-                var info = drawInfo[i];  
-                int startX = i * spacingX + PADDING;
-                double interp = (info.Fitness - worst) / (best - worst);
-
-                if (interp < 0d)
-                    interp = 0d;
-
-                if (interp > 1d)
-                    interp = 1d;
-                    
-                int value = (int) (255d * interp);
-
-                DrawBox(0, 0, Color.FromArgb(value, value, value));
-                DrawBox(1, 0, info.Color);
-
-                for (int row = 0; row < Calculator.METRIC_COUNT; row++) {
-                    for (int column = row; column < Calculator.METRIC_COUNT; column++)
-                        DrawBoxForCurve(column + 1, info.ValueCurves[row, column]);
-
-                    DrawBoxForCurve(Calculator.METRIC_COUNT + 1, info.WeightCurves[row]);
-
-                    void DrawBoxForCurve(int index, Curve curve) {
-                        double magnitude = curve.Magnitude;
-                        double r = (curve.A + 2d * curve.B) / 3d;
-                        double g = (curve.C + 2d * curve.D) / 3d;
-                        double b = (curve.E + 2d * curve.F) / 3d;
-
-                        double scale = 0d;
-
-                        if (magnitude > 0d) {
-                            double max = Math.Max(r, Math.Max(g, b));
-                                
-                            scale = 255d * Math.Min(Math.Sqrt(magnitude), 1d) / max;
-                        }
-                            
-                        DrawBox(row, index, Color.FromArgb(
-                            (int) (scale * r),
-                            (int) (scale * g),
-                            (int) (scale * b)));
-                    }
-                }
-                
-                void DrawBox(int row, int column, Color color) {
-                    BRUSH.Color = color;
-                    graphics.FillRectangle(BRUSH, startX + column * BOX_SIZE, PADDING + row * BOX_SIZE, BOX_SIZE, BOX_SIZE);
-                }
-            }
+            // for (int i = 0; i < Program.POPULATION_SIZE; i++) {
+            //     int startX = i * spacingX + PADDING;
+            //     double interp = (fitness - worst) / (best - worst);
+            //
+            //     if (interp < 0d)
+            //         interp = 0d;
+            //
+            //     if (interp > 1d)
+            //         interp = 1d;
+            //         
+            //     int value = (int) (255d * interp);
+            //
+            //     DrawBox(0, 0, Color.FromArgb(value, value, value));
+            //
+            //     for (int row = 0; row < METRIC_COUNT; row++) {
+            //         for (int column = row; column < METRIC_COUNT; column++)
+            //             DrawBoxForCoefficients(column + 1, matrix.ValueCoefficients[row, column]);
+            //
+            //         DrawBoxForCoefficients(METRIC_COUNT + 1, matrix.WeightCoefficients[row]);
+            //
+            //         void DrawBoxForCoefficients(int index, Coefficients coefficients) {
+            //             double magnitude = coefficients.Magnitude;
+            //
+            //             coefficients /= Math.Max(Math.Max(Math.Max(Math.Max(coefficients.X1, coefficients.X2), coefficients.X3), coefficients.X4), coefficients.X5);
+            //             
+            //             double r = 0.5d * ((coefficients.X1 + 2d * coefficients.X2) / 3d + 1d);
+            //             double g = 0.5d * ((coefficients.X3 + 2d * coefficients.X4) / 3d + 1d);
+            //             double b = 0.5d * ((coefficients.X5 + 2d * coefficients.X6) / 3d + 1d);
+            //             double scale = 225d * Math.Min(magnitude, 1d);
+            //             
+            //             DrawBox(row, index, Color.FromArgb(
+            //                 (int) (scale * r),
+            //                 (int) (scale * g),
+            //                 (int) (scale * b)));
+            //         }
+            //     }
+            //     
+            //     void DrawBox(int row, int column, Color color) {
+            //         BRUSH.Color = color;
+            //         graphics.FillRectangle(BRUSH, startX + column * BOX_SIZE, PADDING + row * BOX_SIZE, BOX_SIZE, BOX_SIZE);
+            //     }
+            // }
             
             BRUSH.Color = Color.White;
             graphics.DrawLine(PEN, PADDING, expectedReturnedStart + EXPECTED_RETURNED_SIZE, PADDING + width, expectedReturnedStart);

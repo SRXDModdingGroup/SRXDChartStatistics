@@ -26,10 +26,8 @@ namespace ChartMetrics {
             new OverallNoteDensity(),
             new TapBeatDensity(),
             new MovementNoteDensity(),
-            new SpinDensity(),
             new RequiredMovement(),
             new Acceleration(),
-            new Drift(),
             new MovementComplexity(),
             new SequenceComplexity(),
             new TapBeatComplexity()

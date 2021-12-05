@@ -1,20 +1,17 @@
 ﻿using System;
 using System.Drawing;
+using MatrixAI.Processing;
 
 namespace ChartRatingTrainer {
     public class Individual : IComparable<Individual> {
-        public Calculator Calculator { get; }
+        public Matrix Matrix { get; }
         
         public Color IdColor { get; set; }
             
         public double Fitness { get; set; }
-        
-        public double CrossChance { get; set; }
-            
-        public Individual Next { get; set; }
 
-        public Individual(Calculator calculator, Color idColor) {
-            Calculator = calculator;
+        public Individual(Matrix matrix, Color idColor) {
+            Matrix = matrix;
             IdColor = idColor;
         }
 
