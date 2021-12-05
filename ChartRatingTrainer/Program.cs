@@ -17,11 +17,12 @@ using MatrixAI.Training;
 
 namespace ChartRatingTrainer {
     public static class Program {
-        public static readonly int POPULATION_SIZE = 16;
+        public static readonly int POPULATION_SIZE = 1;
         
         private static readonly string ASSEMBLY_DIRECTORY = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
         private static readonly int METRIC_COUNT = ChartProcessor.DifficultyMetrics.Count;
-        private static readonly int MATRIX_DIMENSIONS = 4;
+        private static readonly int MATRIX_DIMENSIONS = 1;
+        private static readonly double APPROACH_FACTOR = 0.005d;
 
         public static void Main(string[] args) {
             var random = new Random();
@@ -29,16 +30,21 @@ namespace ChartRatingTrainer {
 
             dataSet.Trim(0.975d);
 
-            var population = GetPopulation(random);
+            double[] baseCoefficients = dataSet.GetBaseCoefficients();
+            
+            dataSet.Normalize(baseCoefficients);
+
+            var population = GetPopulation();
             var form = new Form1();
 
             Array.Sort(population);
-            Parallel.Invoke(() => MainThread(population, dataSet, random, form), () => FormThread(form));
+            //MainThread(population, dataSet, form);
+            Parallel.Invoke(() => MainThread(population, dataSet, form), () => FormThread(form));
             Array.Sort(population);
 
             var best = population[0];
 
-            dataSet.GetResult(best.Matrix, out _, out double[] results, out double scale, out double bias);
+            double[] results = dataSet.GetResults(best.Matrix, out double scale, out double bias);
             SavePopulation(population);
             OutputDetailedInfo(best, dataSet, results);
             SaveParameters(best.Matrix, bias, scale);
@@ -46,43 +52,47 @@ namespace ChartRatingTrainer {
             Console.ReadKey(true);
         }
 
-        private static void MainThread(Individual[] population, DataSet dataSet, Random random, Form1 form) {
+        private static void MainThread(Individual[] population, DataSet dataSet, Form1 form) {
             var lastBestTime = DateTime.Now;
             var drawExpectedReturned = new PointF[dataSet.Size];
-            double lastBest = population[0].Fitness;
             int generation = 0;
             var drawWatch = new Stopwatch();
             var checkWatch = new Stopwatch();
             var autoSaveWatch = new Stopwatch();
+            var individual = population[0];
+            var matrix = individual.Matrix;
+
+            individual.Fitness = dataSet.GetFitnessAndVector(matrix, out _);
+            Console.WriteLine($"Initial fitness: {individual.Fitness:0.00000000}");
+            
+            double lastBest = population[0].Fitness;
             
             drawWatch.Start();
             checkWatch.Start();
             autoSaveWatch.Start();
 
             while (!Console.KeyAvailable || Console.ReadKey(true).Key != ConsoleKey.Enter) {
-                if (Form.ActiveForm == form && drawWatch.ElapsedMilliseconds > 166) {
-                    double best = population[0].Fitness;
-                    var matrix = population[0].Matrix;
-                    int l = 0;
+                individual.Fitness = dataSet.GetFitnessAndVector(matrix, out var vector);
+                MatrixExtensions.AddWeighted(matrix, APPROACH_FACTOR, vector);
+                MatrixExtensions.Normalize(matrix);
 
-                    foreach (var data in dataSet.Data) {
-                        drawExpectedReturned[l] = new PointF(
-                            (float) data.GetResult(matrix),
-                            (float) data.ExpectedResult);
-                        l++;
+                if (Form.ActiveForm == form && drawWatch.ElapsedMilliseconds > 166) {
+                    double[] results = _ = dataSet.GetResults(matrix, out _, out _);
+
+                    for (int i = 0; i < dataSet.Data.Length; i++) {
+                        drawExpectedReturned[i] = new PointF(
+                            (float) dataSet.Data[i].ExpectedResult,
+                            (float) results[i]);
                     }
 
-                    form.Draw(population[0].Fitness, population[0].Matrix, drawExpectedReturned, best, best - 0.01d);
+                    form.Draw(drawExpectedReturned);
                     drawWatch.Restart();
                 }
 
-                if (checkWatch.ElapsedMilliseconds > 60000) {
-                    double currentBest = population[0].Fitness;
+                if (checkWatch.ElapsedMilliseconds > 10000) {
+                    double currentBest = individual.Fitness;
 
                     Console.WriteLine($"{DateTime.Now:hh\\:mm\\:ss} Generation {generation}: {currentBest:0.00000000} (+{(currentBest - lastBest) / (DateTime.Now - lastBestTime).TotalMinutes:0.00000000} / m)");
-                    
-                    if (currentBest < lastBest)
-                        Console.WriteLine();
                     
                     if (currentBest > lastBest) {
                         lastBest = currentBest;
@@ -186,12 +196,12 @@ namespace ChartRatingTrainer {
         }
 
         private static DataSet GetDataSet() {
-            string cachePath = Path.Combine(ASSEMBLY_DIRECTORY, "Cache.txt");
+            string cachePath = Path.Combine(ASSEMBLY_DIRECTORY, "Cache.dat");
             DataSet dataSet;
 
             if (File.Exists(cachePath)) {
                 using (var reader = new BinaryReader(File.OpenRead(cachePath)))
-                    dataSet = DataSet.Deserialize(reader);
+                    dataSet = DataSet.Deserialize(reader, MATRIX_DIMENSIONS);
 
                 return dataSet;
             }
@@ -205,7 +215,7 @@ namespace ChartRatingTrainer {
                         string directory = reader.ReadLine();
                         
                         if (Directory.Exists(directory))
-                            directories.Add(reader.ReadLine());
+                            directories.Add(directory);
                     }
                 }
             }
@@ -239,8 +249,10 @@ namespace ChartRatingTrainer {
                         ratings.Remove(trim);
                     else if (ratings.TryGetValue($"{trim} ({chartData.Charter})", out rating))
                         ratings.Remove($"{trim} ({chartData.Charter})");
-            
-                    processor.SetData(string.Empty, 0, chartData.TrackData[Difficulty.XD].Notes);
+                    else
+                        continue;
+
+                    processor.SetData(string.Empty, chartData.TrackData[Difficulty.XD].Notes);
                     dataList.Add((processor.CreateRatingData(), 0.01d * rating));
                 }
 
@@ -255,7 +267,7 @@ namespace ChartRatingTrainer {
             return dataSet;
         }
 
-        private static Individual[] GetPopulation(Random random) {
+        private static Individual[] GetPopulation() {
             var population = new Individual[POPULATION_SIZE];
             string path = Path.Combine(ASSEMBLY_DIRECTORY, "results.dat");
             int count = 0;
@@ -270,7 +282,7 @@ namespace ChartRatingTrainer {
             }
 
             for (int i = count; i < POPULATION_SIZE; i++)
-                population[i] = new Individual(MatrixExtensions.Random(METRIC_COUNT, MATRIX_DIMENSIONS, random));
+                population[i] = new Individual(MatrixExtensions.Identity(METRIC_COUNT, MATRIX_DIMENSIONS));
 
             return population;
         }

@@ -1,4 +1,5 @@
-﻿using System.Collections.ObjectModel;
+﻿using System;
+using System.Collections.ObjectModel;
 using System.IO;
 using MatrixAI.Processing;
 
@@ -39,10 +40,9 @@ namespace MatrixAI.Training {
             return wrapper;
         }
 
-        public static DataWrapper Deserialize(BinaryReader reader) {
+        public static DataWrapper Deserialize(BinaryReader reader, int matrixDimensions) {
             var data = Data.Deserialize(reader);
             double expectedResult = reader.ReadDouble();
-            int matrixDimensions = reader.ReadInt32();
             var wrapper = new DataWrapper(data, expectedResult, matrixDimensions);
             
             for (int i = 0; i < data.Samples.Count; i++)
@@ -54,13 +54,34 @@ namespace MatrixAI.Training {
         public void Serialize(BinaryWriter writer) {
             data.Serialize(writer);
             writer.Write(ExpectedResult);
-            writer.Write(matrixDimensions);
 
             foreach (var vector in vectors)
                 vector.Serialize(writer);
         }
 
         public void Clamp(int valueIndex, double max) => data.Clamp(valueIndex, max);
+        
+        public void Normalize(double[] baseCoefficients) {
+            double power = 1d / matrixDimensions;
+            
+            foreach (var sample in data.Samples) {
+                for (int i = 0; i < sample.Values.Length; i++)
+                    sample.Values[i] = Math.Pow(baseCoefficients[i] * sample.Values[i], power);
+            }
+        }
+
+        public double GetMaxValue(int valueIndex) {
+            double max = 0d;
+            
+            foreach (var sample in data.Samples) {
+                double value = sample.Values[valueIndex];
+                
+                if (value > max)
+                    max = value;
+            }
+
+            return max;
+        }
 
         public double GetQuantile(int valueIndex, double quantile) => data.GetQuantile(valueIndex, quantile);
 

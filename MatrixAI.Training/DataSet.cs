@@ -42,17 +42,16 @@ namespace MatrixAI.Training {
             return dataSet;
         }
 
-        public static DataSet Deserialize(BinaryReader reader) {
+        public static DataSet Deserialize(BinaryReader reader, int matrixDimensions) {
             int size = reader.ReadInt32();
             int sampleSize = reader.ReadInt32();
-            int matrixDimensions = reader.ReadInt32();
             var dataSet = new DataSet(size, sampleSize, matrixDimensions);
 
             dataSet.sumExpected = reader.ReadDouble();
             dataSet.sumExpected2 = reader.ReadDouble();
 
             for (int i = 0; i < size; i++)
-                dataSet.Data[i] = DataWrapper.Deserialize(reader);
+                dataSet.Data[i] = DataWrapper.Deserialize(reader, matrixDimensions);
 
             return dataSet;
         }
@@ -60,7 +59,6 @@ namespace MatrixAI.Training {
         public void Serialize(BinaryWriter writer) {
             writer.Write(Size);
             writer.Write(sampleSize);
-            writer.Write(matrixDimensions);
             writer.Write(sumExpected);
             writer.Write(sumExpected2);
 
@@ -74,10 +72,64 @@ namespace MatrixAI.Training {
                     data.Clamp(i, data.GetQuantile(i, upperQuantile));
             }
         }
+        
+        public void Normalize(double[] baseCoefficients) {
+            foreach (var data in Data)
+                data.Normalize(baseCoefficients);
+        }
 
-        public double GetResult(Matrix matrix, out Matrix vector, out double[] results, out double scale, out double bias) {
-            Parallel.For(0, Size, i => this.results[i] = Data[i].GetResultAndVector(matrix, out vectors[i]));
-            results = this.results;
+        public double[] GetBaseCoefficients() {
+            double[] baseCoefficients = new double[sampleSize];
+
+            for (int i = 0; i < sampleSize; i++) {
+                double max = 0d;
+
+                foreach (var data in Data) {
+                    double newMax = data.GetMaxValue(i);
+
+                    if (newMax > max)
+                        max = newMax;
+                }
+                
+                baseCoefficients[i] = 1d / max;
+            }
+
+            return baseCoefficients;
+        }
+        
+        public double[] GetResults(Matrix matrix, out double scale, out double bias) {
+            for (int i = 0; i < Size; i++)
+                results[i] = Data[i].GetResultAndVector(matrix, out vectors[i]);
+
+            //Parallel.For(0, Size, i => results[i] = Data[i].GetResultAndVector(matrix, out vectors[i]));
+            
+            double sumReturned = 0d;
+            double sumProduct = 0d;
+            int count = 0;
+            
+            for (int i = 0; i < Size; i++) {
+                var data = Data[i];
+                double result = results[i];
+                
+                sumReturned += result;
+                sumProduct += result * data.ExpectedResult;
+                count += data.Samples.Count;
+            }
+            
+            scale = (count * sumExpected2 - sumExpected * sumExpected) / (count * sumProduct - sumExpected * sumReturned);
+            bias = (sumReturned * sumExpected2 - sumProduct * sumExpected) / (sumExpected * sumExpected - count * sumExpected2);
+            
+            for (int i = 0; i < Size; i++) {
+                double adjusted = scale * (results[i] + bias);
+                
+                results[i] = adjusted;
+            }
+            
+            return results;
+        }
+
+        public double GetFitnessAndVector(Matrix matrix, out Matrix vector) {
+            Parallel.For(0, Size, i => results[i] = Data[i].GetResultAndVector(matrix, out vectors[i]));
             
             double sumReturned = 0d;
             double sumProduct = 0d;
@@ -94,17 +146,13 @@ namespace MatrixAI.Training {
 
             vector = overallVector;
             MatrixExtensions.Zero(vector);
-            scale = (count * sumExpected2 - sumExpected * sumExpected) / (count * sumProduct - sumExpected * sumReturned);
-            bias = (sumReturned * sumExpected2 - sumProduct * sumExpected) / (sumExpected * sumExpected - count * sumExpected2);
             
+            double scale = (count * sumExpected2 - sumExpected * sumExpected) / (count * sumProduct - sumExpected * sumReturned);
+            double bias = (sumReturned * sumExpected2 - sumProduct * sumExpected) / (sumExpected * sumExpected - count * sumExpected2);
             double sumSqError = 0d;
 
             for (int i = 0; i < Size; i++) {
-                double adjusted = scale * (results[i] + bias);
-                
-                results[i] = adjusted;
-
-                double error = Data[i].ExpectedResult - adjusted;
+                double error = Data[i].ExpectedResult - scale * (results[i] + bias);
                 double sqError = error * error;
                 
                 MatrixExtensions.AddWeighted(vector, Math.Sign(error) * sqError, vectors[i]);
