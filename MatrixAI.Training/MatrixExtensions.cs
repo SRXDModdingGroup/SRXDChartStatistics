@@ -90,5 +90,34 @@ namespace MatrixAI.Training {
             
             return matrix;
         }
+
+        public static Matrix Identity(int sampleSize, int dimensions) {
+            var matrix = new Matrix(sampleSize, dimensions);
+            int counter = 0;
+
+            for (int i = 0; i < sampleSize; i++)
+                Recurse(i, i, 1);
+
+            for (int i = 0; i < sampleSize; i++)
+                matrix.WeightCoefficients[i] = Coefficients.Identity;
+            
+            Normalize(matrix);
+
+            return matrix;
+
+            void Recurse(int valueIndex, int start, int depth) {
+                if (depth == dimensions) {
+                    if (start == valueIndex)
+                        matrix.ValueCoefficients[counter] = Coefficients.Identity;
+
+                    counter++;
+
+                    return;
+                }
+                
+                for (int i = start; i < sampleSize; i++)
+                    Recurse(valueIndex, i, depth + 1);
+            }
+        }
     }
 }

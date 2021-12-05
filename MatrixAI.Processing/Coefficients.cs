@@ -3,6 +3,8 @@
 namespace MatrixAI.Processing {
     public readonly struct Coefficients {
         public static Coefficients Zero { get; } = new Coefficients(0d, 0d, 0d, 0d, 0d, 0d);
+        public static Coefficients One { get; } = new Coefficients(1d, 1d, 1d, 1d, 1d, 1d);
+        public static Coefficients Identity { get; } = new Coefficients(1d, 0d, 0d, 0d, 0d, 0d);
         
         public double X1 { get; }
             
@@ -29,12 +31,12 @@ namespace MatrixAI.Processing {
         }
 
         public static Coefficients Random(Random random) => new Coefficients(
-            2d * random.NextDouble() - 1d,
-            2d * random.NextDouble() - 1d,
-            2d * random.NextDouble() - 1d,
-            2d * random.NextDouble() - 1d,
-            2d * random.NextDouble() - 1d,
-            2d * random.NextDouble() - 1d);
+            random.NextDouble(),
+            random.NextDouble(),
+            random.NextDouble(),
+            random.NextDouble(),
+            random.NextDouble(),
+            random.NextDouble());
 
         public static double Compute(double x, Coefficients c) => x * (c.X1 + x * (c.X2 + x * (c.X3 + x * (c.X4 + x * (c.X5 + x * c.X6)))));
 
