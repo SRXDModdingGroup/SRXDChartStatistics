@@ -15,7 +15,7 @@ namespace ChartRatingTrainer {
             InitializeComponent();
         }
 
-        public void Draw(PointF[] expectedReturned) {
+        public void Draw(PointF[] expectedReturned, double slope, double intercept) {
             if (buffer == null) {
                 buffer?.Dispose();
                 buffer = BufferedGraphicsManager.Current.Allocate(panel1.CreateGraphics(), panel1.Bounds);
@@ -27,7 +27,11 @@ namespace ChartRatingTrainer {
             
             graphics.Clear(CLEAR_COLOR);
             BRUSH.Color = Color.White;
-            graphics.DrawLine(PEN, PADDING, height - PADDING, width - PADDING, PADDING);
+
+            int startY = (int) ((1d - intercept) * (height - 2 * PADDING));
+            int endY = (int) ((1d - intercept - slope) * (height - 2 * PADDING));
+            
+            graphics.DrawLine(PEN, PADDING, PADDING + startY, width - PADDING, PADDING + endY);
 
             foreach (var point in expectedReturned) {
                 int x = PADDING + (int) (point.X * (width - 2 * PADDING));

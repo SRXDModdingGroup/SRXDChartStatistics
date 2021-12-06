@@ -42,7 +42,6 @@
     </ItemGroup>
     <ItemGroup>
         <Compile Include="ExpectedReturned.cs" />
-        <Compile Include="Individual.cs" />
         <Compile Include="Form1.cs">
           <SubType>Form</SubType>
         </Compile>

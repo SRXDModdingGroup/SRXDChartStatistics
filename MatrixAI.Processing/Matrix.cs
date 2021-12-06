@@ -5,19 +5,17 @@ namespace MatrixAI.Processing {
         public int SampleSize { get; }
         
         public int TotalSize { get; }
-        
+
         public int Dimensions { get; }
         
-        public Coefficients[] ValueCoefficients { get; }
-        
-        public Coefficients[] WeightCoefficients { get; }
+        public double[] Coefficients { get; }
 
         public Matrix(int sampleSize, int dimensions) {
             SampleSize = sampleSize;
             
             int num = 1;
 
-            for (int i = sampleSize; i < sampleSize + dimensions; i++)
+            for (int i = sampleSize + 1; i < sampleSize + dimensions + 1; i++)
                 num *= i;
 
             int den = 1;
@@ -27,16 +25,14 @@ namespace MatrixAI.Processing {
             
             TotalSize = num / den;
             Dimensions = dimensions;
-            ValueCoefficients = new Coefficients[TotalSize];
-            WeightCoefficients = new Coefficients[sampleSize];
+            Coefficients = new double[TotalSize];
         }
 
         private Matrix(int sampleSize, int totalSize, int dimensions) {
             SampleSize = sampleSize;
             TotalSize = totalSize;
             Dimensions = dimensions;
-            ValueCoefficients = new Coefficients[totalSize];
-            WeightCoefficients = new Coefficients[sampleSize];
+            Coefficients = new double[totalSize];
         }
 
         public static Matrix Deserialize(BinaryReader reader) {
@@ -45,27 +41,8 @@ namespace MatrixAI.Processing {
             int dimensions = reader.ReadInt32();
             var matrix = new Matrix(sampleSize, totalSize, dimensions);
             
-            for (int i = 0; i < totalSize; i++) {
-                double x1 = reader.ReadDouble();
-                double x2 = reader.ReadDouble();
-                double x3 = reader.ReadDouble();
-                double x4 = reader.ReadDouble();
-                double x5 = reader.ReadDouble();
-                double x6 = reader.ReadDouble();
-
-                matrix.ValueCoefficients[i] = new Coefficients(x1, x2, x3, x4, x5, x6);
-            }
-            
-            for (int i = 0; i < sampleSize; i++) {
-                double x1 = reader.ReadDouble();
-                double x2 = reader.ReadDouble();
-                double x3 = reader.ReadDouble();
-                double x4 = reader.ReadDouble();
-                double x5 = reader.ReadDouble();
-                double x6 = reader.ReadDouble();
-
-                matrix.WeightCoefficients[i] = new Coefficients(x1, x2, x3, x4, x5, x6);
-            }
+            for (int i = 0; i < totalSize; i++)
+                matrix.Coefficients[i] = reader.ReadDouble();
 
             return matrix;
         }
@@ -75,23 +52,8 @@ namespace MatrixAI.Processing {
             writer.Write(TotalSize);
             writer.Write(Dimensions);
 
-            foreach (var coeff in ValueCoefficients) {
-                writer.Write(coeff.X1);
-                writer.Write(coeff.X2);
-                writer.Write(coeff.X3);
-                writer.Write(coeff.X4);
-                writer.Write(coeff.X5);
-                writer.Write(coeff.X6);
-            }
-
-            foreach (var coeff in WeightCoefficients) {
-                writer.Write(coeff.X1);
-                writer.Write(coeff.X2);
-                writer.Write(coeff.X3);
-                writer.Write(coeff.X4);
-                writer.Write(coeff.X5);
-                writer.Write(coeff.X6);
-            }
+            foreach (double coeff in Coefficients)
+                writer.Write(coeff);
         }
 
         public double GetValue(double[] values) {
@@ -101,28 +63,19 @@ namespace MatrixAI.Processing {
             for (int i = 0; i < SampleSize; i++)
                 Recurse(values[i], i, 1);
 
+            sum += Coefficients[counter];
+
             return sum;
 
             void Recurse(double product, int start, int depth) {
-                if (depth == Dimensions) {
-                    sum += Coefficients.Compute(product, ValueCoefficients[counter]);
-                    counter++;
-
-                    return;
+                if (depth < Dimensions) {
+                    for (int i = start; i < SampleSize; i++)
+                        Recurse(values[i] * product, i, depth + 1);
                 }
-
-                for (int i = start; i < SampleSize; i++)
-                    Recurse(values[i] * product, i, depth + 1);
+                
+                sum += Coefficients[counter] * product;
+                counter++;
             }
-        }
-
-        public double GetWeight(double[] values) {
-            double sum = 0d;
-
-            for (int i = 0; i < SampleSize; i++)
-                sum += Coefficients.Compute(values[i], WeightCoefficients[i]);
-
-            return sum;
         }
     }
 }

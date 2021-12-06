@@ -45,7 +45,7 @@ namespace ChartHelper {
                 var dict = new Dictionary<string, string>();
                 
                 if (File.Exists(settingsPath)) {
-                    var contents = File.ReadAllText(settingsPath).Split(new[] { Environment.NewLine }, StringSplitOptions.RemoveEmptyEntries);
+                    string[] contents = File.ReadAllText(settingsPath).Split(new[] { Environment.NewLine }, StringSplitOptions.RemoveEmptyEntries);
 
                     foreach (string line in contents) {
                         if (line[0] == '#')

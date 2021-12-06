@@ -41,7 +41,6 @@
         <Reference Include="System.Xml" />
     </ItemGroup>
     <ItemGroup>
-        <Compile Include="Coefficients.cs" />
         <Compile Include="DataSample.cs" />
         <Compile Include="Data.cs" />
         <Compile Include="Matrix.cs" />

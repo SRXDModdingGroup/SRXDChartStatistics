@@ -6,37 +6,37 @@ using MatrixAI.Processing;
 
 namespace MatrixAI.Training {
     public class DataSet {
+        private static readonly int BATCH_COUNT = 32;
+        
         public int Size { get; }
         
         public DataWrapper[] Data { get; }
 
         private int sampleSize;
-        private int matrixDimensions;
-        private double sumExpected;
-        private double sumExpected2;
+        private int batchSize;
         private double[] results;
-        private Matrix[] vectors;
-        private Matrix overallVector;
+        private double[] weightScales;
+        private Matrix[] valueVectors;
+        private Matrix[] weightVectors;
 
-        private DataSet(int size, int sampleSize, int matrixDimensions) {
+        private DataSet(int size, int sampleSize) {
             Size = size;
             Data = new DataWrapper[size];
             this.sampleSize = sampleSize;
-            this.matrixDimensions = matrixDimensions;
+            batchSize = Size / BATCH_COUNT + 1;
             results = new double[size];
-            vectors = new Matrix[size];
-            overallVector = new Matrix(sampleSize, matrixDimensions);
+            weightScales = new double[size];
+            valueVectors = new Matrix[batchSize];
+            weightVectors = new Matrix[batchSize];
         }
 
         public static DataSet Create(int size, int sampleSize, int matrixDimensions, IList<(Data, double)> dataList) {
-            var dataSet = new DataSet(size, sampleSize, matrixDimensions);
+            var dataSet = new DataSet(size, sampleSize);
 
             for (int i = 0; i < size; i++) {
                 (var data, double expectedResult) = dataList[i];
 
-                dataSet.Data[i] = DataWrapper.Create(data, expectedResult, matrixDimensions);
-                dataSet.sumExpected += expectedResult;
-                dataSet.sumExpected2 += expectedResult * expectedResult;
+                dataSet.Data[i] = new DataWrapper(data, expectedResult, matrixDimensions);
             }
 
             return dataSet;
@@ -45,10 +45,7 @@ namespace MatrixAI.Training {
         public static DataSet Deserialize(BinaryReader reader, int matrixDimensions) {
             int size = reader.ReadInt32();
             int sampleSize = reader.ReadInt32();
-            var dataSet = new DataSet(size, sampleSize, matrixDimensions);
-
-            dataSet.sumExpected = reader.ReadDouble();
-            dataSet.sumExpected2 = reader.ReadDouble();
+            var dataSet = new DataSet(size, sampleSize);
 
             for (int i = 0; i < size; i++)
                 dataSet.Data[i] = DataWrapper.Deserialize(reader, matrixDimensions);
@@ -59,11 +56,17 @@ namespace MatrixAI.Training {
         public void Serialize(BinaryWriter writer) {
             writer.Write(Size);
             writer.Write(sampleSize);
-            writer.Write(sumExpected);
-            writer.Write(sumExpected2);
 
             foreach (var data in Data)
                 data.Serialize(writer);
+        }
+
+        public void Shuffle(Random random) {
+            for (int i = Size - 1; i > 2; i--) {
+                int index = random.Next(i - 1);
+
+                (Data[i], Data[index]) = (Data[index], Data[i]);
+            }
         }
         
         public void Trim(double upperQuantile) {
@@ -73,9 +76,61 @@ namespace MatrixAI.Training {
             }
         }
         
-        public void Normalize(double[] baseCoefficients) {
+        public void Normalize(double[] scales) {
             foreach (var data in Data)
-                data.Normalize(baseCoefficients);
+                data.Normalize(scales);
+        }
+
+        public double Generate(Matrix valueMatrix, Matrix weightMatrix, double approachFactor, Random random) {
+            Shuffle(random);
+            Parallel.For(0, Size, i => results[i] = Data[i].GetResult(valueMatrix, weightMatrix, out weightScales[i]));
+            
+            double sx = 0d;
+            double sy = 0d;
+            double sxx = 0d;
+            double sxy = 0d;
+
+            for (int i = 0; i < Size; i++) {
+                double expected = Data[i].ExpectedResult;
+                double returned = results[i];
+
+                sx += expected;
+                sy += returned;
+                sxx += expected * expected;
+                sxy += expected * returned;
+            }
+
+            double scale = (Size * sxx - sx * sx) / (Size * sxy - sx * sy);
+            double bias = (sy * sxx - sxy * sx) / (sx * sx - Size * sxx);
+            double totalError = 0d;
+
+            for (int i = 0; i < BATCH_COUNT; i++) {
+                int batchStart = batchSize * i;
+                int batchEnd;
+
+                if (i == BATCH_COUNT - 1)
+                    batchEnd = Size;
+                else
+                    batchEnd = batchStart + batchSize;
+
+                Parallel.For(batchStart, batchEnd, j => Data[j].GetVectors(valueMatrix, weightMatrix, weightScales[j], out valueVectors[j - batchStart], out weightVectors[j - batchStart]));
+
+                for (int j = batchStart; j < batchEnd; j++) {
+                    double error = Data[j].ExpectedResult - scale * (results[j] + bias);
+                    double sqError = error * error;
+                    double vectorWeight = approachFactor * Math.Sign(error) * sqError;
+                    
+                    MatrixExtensions.AddWeighted(valueMatrix, vectorWeight, valueVectors[j - batchStart]);
+                    MatrixExtensions.AddWeighted(weightMatrix, vectorWeight, weightVectors[j - batchStart]);
+                    
+                    totalError += sqError;
+                }
+            }
+
+            MatrixExtensions.Normalize(valueMatrix);
+            MatrixExtensions.Normalize(weightMatrix);
+
+            return 1d - Math.Sqrt(totalError / Size);
         }
 
         public double[] GetBaseCoefficients() {
@@ -97,69 +152,31 @@ namespace MatrixAI.Training {
             return baseCoefficients;
         }
         
-        public double[] GetResults(Matrix matrix, out double scale, out double bias) {
+        public double[] GetResults(Matrix valueMatrix, Matrix weightMatrix, out double scale, out double bias) {
+            Parallel.For(0, Size, j => results[j] = Data[j].GetResult(valueMatrix, weightMatrix, out _));
+
+            double sx = 0d;
+            double sy = 0d;
+            double sxx = 0d;
+            double sxy = 0d;
+            
+            for (int i = 0; i < Size; i++) {
+                double expected = Data[i].ExpectedResult;
+                double returned = results[i];
+
+                sx += expected;
+                sy += returned;
+                sxx += expected * expected;
+                sxy += expected * returned;
+            }
+            
+            scale = (Size * sxx - sx * sx) / (Size * sxy - sx * sy);
+            bias = (sy * sxx - sxy * sx) / (sx * sx - Size * sxx);
+            
             for (int i = 0; i < Size; i++)
-                results[i] = Data[i].GetResultAndVector(matrix, out vectors[i]);
+                results[i] = scale * (results[i] + bias);
 
-            //Parallel.For(0, Size, i => results[i] = Data[i].GetResultAndVector(matrix, out vectors[i]));
-            
-            double sumReturned = 0d;
-            double sumProduct = 0d;
-            int count = 0;
-            
-            for (int i = 0; i < Size; i++) {
-                var data = Data[i];
-                double result = results[i];
-                
-                sumReturned += result;
-                sumProduct += result * data.ExpectedResult;
-                count += data.Samples.Count;
-            }
-            
-            scale = (count * sumExpected2 - sumExpected * sumExpected) / (count * sumProduct - sumExpected * sumReturned);
-            bias = (sumReturned * sumExpected2 - sumProduct * sumExpected) / (sumExpected * sumExpected - count * sumExpected2);
-            
-            for (int i = 0; i < Size; i++) {
-                double adjusted = scale * (results[i] + bias);
-                
-                results[i] = adjusted;
-            }
-            
             return results;
-        }
-
-        public double GetFitnessAndVector(Matrix matrix, out Matrix vector) {
-            Parallel.For(0, Size, i => results[i] = Data[i].GetResultAndVector(matrix, out vectors[i]));
-            
-            double sumReturned = 0d;
-            double sumProduct = 0d;
-            int count = 0;
-            
-            for (int i = 0; i < Size; i++) {
-                var data = Data[i];
-                double result = results[i];
-                
-                sumReturned += result;
-                sumProduct += result * data.ExpectedResult;
-                count += data.Samples.Count;
-            }
-
-            vector = overallVector;
-            MatrixExtensions.Zero(vector);
-            
-            double scale = (count * sumExpected2 - sumExpected * sumExpected) / (count * sumProduct - sumExpected * sumReturned);
-            double bias = (sumReturned * sumExpected2 - sumProduct * sumExpected) / (sumExpected * sumExpected - count * sumExpected2);
-            double sumSqError = 0d;
-
-            for (int i = 0; i < Size; i++) {
-                double error = Data[i].ExpectedResult - scale * (results[i] + bias);
-                double sqError = error * error;
-                
-                MatrixExtensions.AddWeighted(vector, Math.Sign(error) * sqError, vectors[i]);
-                sumSqError += sqError;
-            }
-            
-            return 1d - Math.Sqrt(sumSqError / Size);
         }
     }
 }

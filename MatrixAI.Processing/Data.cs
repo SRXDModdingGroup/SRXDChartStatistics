@@ -152,18 +152,20 @@ namespace MatrixAI.Processing {
             }
         }
 
-        public double GetResult(Matrix matrix) {
+        public double GetResult(Matrix valueMatrix, Matrix weightMatrix, out double weightScale) {
             double sumValue = 0d;
             double sumWeight = 0d;
 
             foreach (var sample in samples) {
-                double weight = sample.Weight * matrix.GetWeight(sample.Values);
+                double weight = sample.Weight * weightMatrix.GetValue(sample.Values);
 
-                sumValue += weight * matrix.GetValue(sample.Values);
+                sumValue += weight * valueMatrix.GetValue(sample.Values);
                 sumWeight += weight;
             }
 
-            return sumValue / sumWeight;
+            weightScale = 1d / sumWeight;
+
+            return weightScale * sumValue;
         }
 
         public double GetQuantile(int valueIndex, double quantile) {

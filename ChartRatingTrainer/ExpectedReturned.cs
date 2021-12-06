@@ -2,14 +2,14 @@
 
 namespace ChartRatingTrainer {
     public class ExpectedReturned : IComparable<ExpectedReturned> {
-        public int Index { get; set; }
+        public string Name { get; }
             
-        public double Expected { get; set; }
+        public double Expected { get; }
         
-        public double Returned { get; set; }
+        public double Returned { get; }
 
-        public ExpectedReturned(int index, double expected, double returned) {
-            Index = index;
+        public ExpectedReturned(string name, double expected, double returned) {
+            Name = name;
             Expected = expected;
             Returned = returned;
         }

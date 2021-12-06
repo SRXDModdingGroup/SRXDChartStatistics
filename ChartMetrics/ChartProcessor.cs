@@ -40,7 +40,8 @@ namespace ChartMetrics {
         public static ReadOnlyCollection<Metric> Metrics { get; } = new ReadOnlyCollection<Metric>(METRICS);
         public static ReadOnlyCollection<Metric> DifficultyMetrics { get; } = new ReadOnlyCollection<Metric>(DIFFICULTY_METRICS);
 
-        private static Matrix matrix;
+        private static Matrix valueMatrix;
+        private static Matrix weightMatrix;
         private static double bias;
         private static double scale;
         private static bool parametersLoaded;
@@ -67,7 +68,8 @@ namespace ChartMetrics {
                 return;
 
             using (var reader = new BinaryReader(File.Open(path, FileMode.Open))) {
-                matrix = Matrix.Deserialize(reader);
+                valueMatrix = Matrix.Deserialize(reader);
+                weightMatrix = Matrix.Deserialize(reader);
                 bias = reader.ReadDouble();
                 scale = reader.ReadDouble();
             }
@@ -274,7 +276,7 @@ namespace ChartMetrics {
         public int GetDifficultyRating() {
             LoadParameters();
 
-            double value = CreateRatingData().GetResult(matrix);
+            double value = CreateRatingData().GetResult(valueMatrix, weightMatrix, out _);
 
             if (value < 0d)
                 return 0;
