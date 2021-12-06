@@ -144,11 +144,15 @@ namespace MatrixAI.Processing {
             }
         }
 
-        public void Clamp(int valueIndex, double max) {
-            foreach (var sample in samples) {
-                double[] values = sample.Values;
+        public void Trim(double upperQuantile) {
+            for (int i = 0; i < SampleSize; i++)
+                Clamp(i, GetQuantile(i, upperQuantile));
+        }
 
-                values[valueIndex] = Math.Min(values[valueIndex], max);
+        public void Normalize(double[] scales, double[] powers) {
+            foreach (var sample in Samples) {
+                for (int i = 0; i < SampleSize; i++)
+                    sample.Values[i] = Math.Pow(scales[i] * sample.Values[i], powers[i]);
             }
         }
 
@@ -168,7 +172,15 @@ namespace MatrixAI.Processing {
             return weightScale * sumValue;
         }
 
-        public double GetQuantile(int valueIndex, double quantile) {
+        private void Clamp(int valueIndex, double max) {
+            foreach (var sample in samples) {
+                double[] values = sample.Values;
+
+                values[valueIndex] = Math.Min(values[valueIndex], max);
+            }
+        }
+
+        private double GetQuantile(int valueIndex, double quantile) {
             var sorted = new DataSample[samples.Length];
 
             for (int i = 0; i < samples.Length; i++)

@@ -93,12 +93,7 @@ namespace MatrixAI.Training {
         }
 
         internal static void Normalize(Matrix target) {
-            double sum = 0d;
-            
-            for (int i = 0; i < target.TotalSize; i++)
-                sum += Math.Abs(target.Coefficients[i]);
-
-            double scale = 1d / sum;
+            double scale = 1d / target.Magnitude();
             
             for (int i = 0; i < target.TotalSize; i++)
                 target.Coefficients[i] *= scale;
@@ -107,6 +102,15 @@ namespace MatrixAI.Training {
         internal static void AddWeighted(Matrix target, double weight, Matrix source) {
             for (int i = 0; i < target.TotalSize; i++)
                 target.Coefficients[i] += weight * source.Coefficients[i];
+        }
+
+        internal static double Magnitude(this Matrix matrix) {
+            double sum = 0d;
+            
+            for (int i = 0; i < matrix.TotalSize; i++)
+                sum += Math.Abs(matrix.Coefficients[i]);
+
+            return sum;
         }
 
         internal static double GetValueAndVector(this Matrix matrix, Matrix vector, double[] values) {

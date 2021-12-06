@@ -20,13 +20,16 @@ namespace ChartRatingTrainer {
         private static readonly string ASSEMBLY_DIRECTORY = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
         private static readonly int METRIC_COUNT = ChartProcessor.DifficultyMetrics.Count;
         private static readonly int MATRIX_DIMENSIONS = 4;
-        private static readonly double INITIAL_APPROACH_FACTOR = 0.0001d;
+        private static readonly double MIN_APPROACH_FACTOR = 0.001d;
+        private static readonly double MAX_APPROACH_FACTOR = 0.02d;
+        private static readonly double VECTOR_MAGNITUDE = 0.02d;
+        private static readonly double DAMPENING = 1.1d;
 
         public static void Main(string[] args) {
             var random = new Random();
             var dataSet = GetDataSet();
 
-            dataSet.Trim(0.975d);
+            dataSet.Trim(0.9d);
             dataSet.Shuffle(random);
             dataSet.GetBaseCoefficients(out double[] scales, out double[] powers);
             dataSet.Normalize(scales, powers);
@@ -37,12 +40,12 @@ namespace ChartRatingTrainer {
             //MainThread(population, dataSet, form);
             Parallel.Invoke(() => MainThread(valueMatrix, weightMatrix, dataSet, form, random), () => FormThread(form));
 
-            double fitness = dataSet.Adjust(valueMatrix, weightMatrix, 0d, random);
+            double fitness = dataSet.Adjust(valueMatrix, weightMatrix, 0d, 0d, random);
             double[] results = dataSet.GetResults(valueMatrix, weightMatrix, out double scale, out double bias);
             
             SaveMatrices(valueMatrix, weightMatrix);
             OutputDetailedInfo(fitness, valueMatrix, weightMatrix, dataSet, results);
-            SaveParameters(valueMatrix, weightMatrix, bias, scale);
+            SaveParameters(valueMatrix, weightMatrix, bias, scale, scales, powers);
             Console.WriteLine("Press any key to exit");
             Console.ReadKey(true);
         }
@@ -50,8 +53,8 @@ namespace ChartRatingTrainer {
         private static void MainThread(Matrix valueMatrix, Matrix weightMatrix, DataSet dataSet, Form1 form, Random random) {
             int generation = 0;
             int lastCheckedGeneration = 0;
-            double approachFactor = INITIAL_APPROACH_FACTOR;
-            double fitness = dataSet.Adjust(valueMatrix, weightMatrix, 0d, random);
+            double approachFactor = MAX_APPROACH_FACTOR;
+            double fitness = dataSet.Adjust(valueMatrix, weightMatrix, 0d, 0d, random);
             double currentBest = fitness;
             double lastCheckedBest = fitness;
             var lastCheckTime = DateTime.Now;
@@ -67,12 +70,12 @@ namespace ChartRatingTrainer {
             autoSaveWatch.Start();
 
             while (!Console.KeyAvailable || Console.ReadKey(true).Key != ConsoleKey.Enter) {
-                double newFitness = dataSet.Adjust(valueMatrix, weightMatrix, approachFactor, random);
+                double newFitness = dataSet.Adjust(valueMatrix, weightMatrix, approachFactor, VECTOR_MAGNITUDE, random);
 
                 if (newFitness > fitness)
-                    approachFactor = Math.Min(1.01d * approachFactor, INITIAL_APPROACH_FACTOR);
+                    approachFactor = Math.Min(DAMPENING * approachFactor, MAX_APPROACH_FACTOR);
                 else
-                    approachFactor *= 0.75d;
+                    approachFactor = Math.Max(MIN_APPROACH_FACTOR, approachFactor / DAMPENING);
 
                 fitness = newFitness;
 
@@ -129,12 +132,18 @@ namespace ChartRatingTrainer {
             Console.WriteLine();
         }
 
-        private static void SaveParameters(Matrix valueMatrix, Matrix weightMatrix, double bias, double scale) {
+        private static void SaveParameters(Matrix valueMatrix, Matrix weightMatrix, double bias, double scale, double[] baseScales, double[] basePowers) {
             using (var writer = new BinaryWriter(File.Open(Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "parameters.dat"), FileMode.Create))) {
                 valueMatrix.Serialize(writer);
                 weightMatrix.Serialize(writer);
                 writer.Write(bias);
                 writer.Write(scale);
+
+                foreach (double baseScale in baseScales)
+                    writer.Write(baseScale);
+                
+                foreach (double basePower in basePowers)
+                    writer.Write(basePower);
             }
             
             Console.WriteLine("Saved parameters successfully");

@@ -18,8 +18,10 @@ namespace MatrixAI.Training {
         private double[] weightScales;
         private Matrix[] valueVectors;
         private Matrix[] weightVectors;
+        private Matrix overallValueVector;
+        private Matrix overallWeightVector;
 
-        private DataSet(int size, int sampleSize) {
+        private DataSet(int size, int sampleSize, int matrixDimensions) {
             Size = size;
             Data = new DataWrapper[size];
             this.sampleSize = sampleSize;
@@ -28,10 +30,12 @@ namespace MatrixAI.Training {
             weightScales = new double[size];
             valueVectors = new Matrix[batchSize];
             weightVectors = new Matrix[batchSize];
+            overallValueVector = new Matrix(sampleSize, matrixDimensions);
+            overallWeightVector = new Matrix(sampleSize, matrixDimensions);
         }
 
         public static DataSet Create(int size, int sampleSize, int matrixDimensions, IList<(Data, double)> dataList) {
-            var dataSet = new DataSet(size, sampleSize);
+            var dataSet = new DataSet(size, sampleSize, matrixDimensions);
 
             for (int i = 0; i < size; i++) {
                 (var data, double expectedResult) = dataList[i];
@@ -45,7 +49,7 @@ namespace MatrixAI.Training {
         public static DataSet Deserialize(BinaryReader reader, int matrixDimensions) {
             int size = reader.ReadInt32();
             int sampleSize = reader.ReadInt32();
-            var dataSet = new DataSet(size, sampleSize);
+            var dataSet = new DataSet(size, sampleSize, matrixDimensions);
 
             for (int i = 0; i < size; i++)
                 dataSet.Data[i] = DataWrapper.Deserialize(reader, matrixDimensions);
@@ -70,10 +74,8 @@ namespace MatrixAI.Training {
         }
         
         public void Trim(double upperQuantile) {
-            foreach (var data in Data) {
-                for (int i = 0; i < sampleSize; i++)
-                    data.Clamp(i, data.GetQuantile(i, upperQuantile));
-            }
+            foreach (var data in Data)
+                data.Trim(upperQuantile);
         }
         
         public void Normalize(double[] scales, double[] powers) {
@@ -81,7 +83,7 @@ namespace MatrixAI.Training {
                 data.Normalize(scales, powers);
         }
 
-        public double Adjust(Matrix valueMatrix, Matrix weightMatrix, double approachFactor, Random random) {
+        public double Adjust(Matrix valueMatrix, Matrix weightMatrix, double approachFactor, double vectorMagnitude, Random random) {
             Shuffle(random);
             Parallel.For(0, Size, i => results[i] = Data[i].GetResult(valueMatrix, weightMatrix, out weightScales[i]));
             GetRegression(out double scale, out double bias);
@@ -98,19 +100,23 @@ namespace MatrixAI.Training {
                     batchEnd = batchStart + batchSize;
 
                 Parallel.For(batchStart, batchEnd, j => Data[j].GetVectors(valueMatrix, weightMatrix, weightScales[j], out valueVectors[j - batchStart], out weightVectors[j - batchStart]));
+                MatrixExtensions.Zero(overallValueVector);
+                MatrixExtensions.Zero(overallWeightVector);
 
                 for (int j = batchStart; j < batchEnd; j++) {
                     double error = Data[j].ExpectedResult - scale * (results[j] + bias);
                     double sqError = error * error;
-                    double vectorWeight = approachFactor * Math.Sign(error) * sqError;
+                    double vectorWeight = Math.Sign(error) * sqError;
                     
-                    MatrixExtensions.AddWeighted(valueMatrix, vectorWeight, valueVectors[j - batchStart]);
-                    MatrixExtensions.AddWeighted(weightMatrix, vectorWeight, weightVectors[j - batchStart]);
+                    MatrixExtensions.AddWeighted(overallValueVector, vectorWeight, valueVectors[j - batchStart]);
+                    MatrixExtensions.AddWeighted(overallWeightVector, vectorWeight, weightVectors[j - batchStart]);
                     
                     totalError += sqError;
                 }
             }
 
+            MatrixExtensions.AddWeighted(valueMatrix, approachFactor * vectorMagnitude / overallValueVector.Magnitude(), overallValueVector);
+            MatrixExtensions.AddWeighted(weightMatrix, approachFactor * vectorMagnitude / overallWeightVector.Magnitude(), overallWeightVector);
             valueMatrix.Coefficients[valueMatrix.TotalSize - 1] = 0d;
             MatrixExtensions.Normalize(valueMatrix);
             MatrixExtensions.Normalize(weightMatrix);

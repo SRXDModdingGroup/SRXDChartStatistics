@@ -45,15 +45,10 @@ namespace MatrixAI.Training {
             writer.Write(ExpectedResult);
         }
 
-        public void Clamp(int valueIndex, double max) => data.Clamp(valueIndex, max);
-        
-        public void Normalize(double[] scales, double[] powers) {
-            foreach (var sample in data.Samples) {
-                for (int i = 0; i < SampleSize; i++)
-                    sample.Values[i] = Math.Pow(scales[i] * sample.Values[i], powers[i]);
-            }
-        }
-        
+        public void Trim(double upperQuantile) => data.Trim(upperQuantile);
+
+        public void Normalize(double[] scales, double[] powers) => data.Normalize(scales, powers);
+
         public void GetVectors(Matrix valueMatrix, Matrix weightMatrix, double weightScale, out Matrix valueVector, out Matrix weightVector) {
             valueVector = overallValueVector;
             weightVector = overallWeightVector;
@@ -83,8 +78,8 @@ namespace MatrixAI.Training {
             return max;
         }
 
-        public double GetQuantile(int valueIndex, double quantile) => data.GetQuantile(valueIndex, quantile);
-
         public double GetResult(Matrix valueMatrix, Matrix weightMatrix, out double weightScale) => data.GetResult(valueMatrix, weightMatrix, out weightScale);
+        
+        
     }
 }

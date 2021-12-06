@@ -44,6 +44,8 @@ namespace ChartMetrics {
         private static Matrix weightMatrix;
         private static double bias;
         private static double scale;
+        private static double[] baseScales;
+        private static double[] basePowers;
         private static bool parametersLoaded;
 
         static ChartProcessor() {
@@ -67,11 +69,20 @@ namespace ChartMetrics {
             if (!File.Exists(path))
                 return;
 
+            baseScales = new double[DIFFICULTY_METRICS.Length];
+            basePowers = new double[DIFFICULTY_METRICS.Length];
+
             using (var reader = new BinaryReader(File.Open(path, FileMode.Open))) {
                 valueMatrix = Matrix.Deserialize(reader);
                 weightMatrix = Matrix.Deserialize(reader);
                 bias = reader.ReadDouble();
                 scale = reader.ReadDouble();
+
+                for (int i = 0; i < DIFFICULTY_METRICS.Length; i++)
+                    baseScales[i] = reader.ReadDouble();
+                
+                for (int i = 0; i < DIFFICULTY_METRICS.Length; i++)
+                    basePowers[i] = reader.ReadDouble();
             }
 
             parametersLoaded = true;
@@ -276,7 +287,12 @@ namespace ChartMetrics {
         public int GetDifficultyRating() {
             LoadParameters();
 
-            double value = CreateRatingData().GetResult(valueMatrix, weightMatrix, out _);
+            var data = CreateRatingData();
+            
+            data.Trim(0.9d);
+            data.Normalize(baseScales, basePowers);
+            
+            double value = data.GetResult(valueMatrix, weightMatrix, out _);
 
             if (value < 0d)
                 return 0;
@@ -284,7 +300,7 @@ namespace ChartMetrics {
             if (value > 1d)
                 return 100;
 
-            return (int) Math.Round(100d * (value - bias) / scale);
+            return (int) Math.Round(100d * scale * (value + bias));
         }
 
         public ReadOnlyCollection<ReadOnlyCollection<WheelPath.Point>> GetExactPaths() {
