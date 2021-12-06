@@ -1,16 +1,17 @@
-﻿using System.Collections.ObjectModel;
-using System.IO;
+﻿using System.IO;
 using MatrixAI.Processing;
 
 namespace MatrixAI.Training {
     public class DataWrapper {
         public string Name => data.Name;
+
+        public int Size => data.Size;
         
         public double ExpectedResult { get; }
+        
+        public double Weight { get; set; }
 
         public int SampleSize => data.SampleSize;
-
-        public ReadOnlyCollection<DataSample> Samples => data.Samples;
 
         private Data data;
         private Matrix sampleValueVector;

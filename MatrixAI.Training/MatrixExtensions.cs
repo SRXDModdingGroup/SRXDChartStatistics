@@ -1,4 +1,7 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
 using MatrixAI.Processing;
 
 namespace MatrixAI.Training {
@@ -38,6 +41,48 @@ namespace MatrixAI.Training {
                         Recurse(i, depth + 1);
                 }
                 
+                counter++;
+            }
+        }
+
+        public static List<(string, double)> EnumerateValues(Matrix matrix) {
+            int counter = 0;
+            var stack = new Stack<int>();
+            var builder = new StringBuilder();
+            var list = new List<(string, double)>();
+            
+            for (int i = 0; i < matrix.SampleSize; i++) {
+                stack.Push(i);
+                Recurse(i, 1);
+                stack.Pop();
+            }
+
+            list.Add(("()", matrix.Coefficients[counter]));
+
+            return list;
+            
+            void Recurse(int start, int depth) {
+                if (depth < matrix.Dimensions) {
+                    for (int i = start; i < matrix.SampleSize; i++) {
+                        stack.Push(i);
+                        Recurse(i, depth + 1);
+                        stack.Pop();
+                    }
+                }
+
+                int j = 0;
+
+                foreach (int k in stack.Reverse()) {
+                    builder.Append(k);
+
+                    if (j < stack.Count - 1)
+                        builder.Append(", ");
+
+                    j++;
+                }
+                
+                list.Add(($"({builder})", matrix.Coefficients[counter]));
+                builder.Clear();
                 counter++;
             }
         }

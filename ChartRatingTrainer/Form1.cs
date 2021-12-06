@@ -37,7 +37,7 @@ namespace ChartRatingTrainer {
                 int x = PADDING + (int) (point.X * (width - 2 * PADDING));
                 int y = PADDING + (int) ((1d - point.Y) * (height - 2 * PADDING));
                 float diff = point.Y - point.X;
-                int gb = (int) (255f * (1f - Math.Min(32f * diff * diff, 1f)));
+                int gb = (int) (255f * (1f - Math.Min(100f * diff * diff, 1f)));
                 
                 BRUSH.Color = Color.FromArgb(255, gb, gb);
                 graphics.FillRectangle(BRUSH, x, y, 2, 2);

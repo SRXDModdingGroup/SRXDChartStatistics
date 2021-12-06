@@ -39,7 +39,7 @@ namespace ChartRatingTrainer {
             //MainThread(population, dataSet, form);
             Parallel.Invoke(() => MainThread(valueMatrix, weightMatrix, dataSet, form, random), () => FormThread(form));
 
-            double fitness = dataSet.Generate(valueMatrix, weightMatrix, 0d, random);
+            double fitness = dataSet.Adjust(valueMatrix, weightMatrix, 0d, random);
             double[] results = dataSet.GetResults(valueMatrix, weightMatrix, out double scale, out double bias);
             
             SaveMatrices(valueMatrix, weightMatrix);
@@ -53,7 +53,7 @@ namespace ChartRatingTrainer {
             int generation = 0;
             int lastCheckedGeneration = 0;
             double approachFactor = INITIAL_APPROACH_FACTOR;
-            double fitness = dataSet.Generate(valueMatrix, weightMatrix, 0d, random);
+            double fitness = dataSet.Adjust(valueMatrix, weightMatrix, 0d, random);
             double currentBest = fitness;
             double lastCheckedBest = fitness;
             var lastCheckTime = DateTime.Now;
@@ -69,12 +69,12 @@ namespace ChartRatingTrainer {
             autoSaveWatch.Start();
 
             while (!Console.KeyAvailable || Console.ReadKey(true).Key != ConsoleKey.Enter) {
-                double newFitness = dataSet.Generate(valueMatrix, weightMatrix, approachFactor, random);
+                double newFitness = dataSet.Adjust(valueMatrix, weightMatrix, approachFactor, random);
 
                 if (newFitness > fitness)
                     approachFactor = Math.Min(1.01d * approachFactor, INITIAL_APPROACH_FACTOR);
                 else
-                    approachFactor *= 0.5d;
+                    approachFactor *= 0.75d;
 
                 fitness = newFitness;
 
@@ -94,7 +94,7 @@ namespace ChartRatingTrainer {
                     drawWatch.Restart();
                 }
 
-                if (checkWatch.ElapsedMilliseconds > 1000 && currentBest > lastCheckedBest) {
+                if (checkWatch.ElapsedMilliseconds > 10000 && currentBest > lastCheckedBest) {
                     Console.WriteLine($"{DateTime.Now:hh\\:mm\\:ss} Generation {generation} ({(generation - lastCheckedGeneration) / (DateTime.Now - lastCheckTime).TotalSeconds:0.00} / s): {currentBest:0.00000000} (+{(currentBest - lastCheckedBest) / (DateTime.Now - lastCheckTime).TotalMinutes:0.00000000} / m)");
                     lastCheckedGeneration = generation;
                     lastCheckedBest = currentBest;
@@ -148,17 +148,22 @@ namespace ChartRatingTrainer {
             Console.WriteLine($"Fitness: {fitness:0.00000000}");
             Console.WriteLine("Values:");
 
-            double[] valueCoefficients = valueMatrix.Coefficients;
-            double[] weightCoefficients = weightMatrix.Coefficients;
+            var valueList = MatrixExtensions.EnumerateValues(valueMatrix);
             
-            for (int i = 0; i < valueMatrix.TotalSize; i++)
-                Console.WriteLine($"{valueCoefficients[i]:0.0000}");
-            
+            valueList.Sort((a, b) => -a.Item2.CompareTo(b.Item2));
+
+            foreach ((string index, double value) in valueList)
+                Console.WriteLine($"{index} {value:0.0000}");
+
             Console.WriteLine();
+            
+            var weightList = MatrixExtensions.EnumerateValues(weightMatrix);
+            
+            weightList.Sort((a, b) => -a.Item2.CompareTo(b.Item2));
 
-            for (int i = 0; i < weightMatrix.TotalSize; i++)
-                Console.WriteLine($"{weightCoefficients[i]:0.0000}");
-
+            foreach ((string index, double value) in weightList)
+                Console.WriteLine($"{index} {value:0.0000}");
+            
             Console.WriteLine();
 
             var datas = dataSet.Data;
@@ -274,10 +279,10 @@ namespace ChartRatingTrainer {
                 }
             }
             else {
-                // valueMatrix = MatrixExtensions.Random(METRIC_COUNT, MATRIX_DIMENSIONS, random);
-                // weightMatrix = MatrixExtensions.Random(METRIC_COUNT, MATRIX_DIMENSIONS, random);
-                valueMatrix = MatrixExtensions.Identity(METRIC_COUNT, MATRIX_DIMENSIONS);
-                weightMatrix = MatrixExtensions.Identity(METRIC_COUNT, MATRIX_DIMENSIONS);
+                valueMatrix = MatrixExtensions.Random(METRIC_COUNT, MATRIX_DIMENSIONS, random);
+                weightMatrix = MatrixExtensions.Random(METRIC_COUNT, MATRIX_DIMENSIONS, random);
+                // valueMatrix = MatrixExtensions.Identity(METRIC_COUNT, MATRIX_DIMENSIONS);
+                // weightMatrix = MatrixExtensions.Identity(METRIC_COUNT, MATRIX_DIMENSIONS);
             }
         }
     }
