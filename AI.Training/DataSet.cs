@@ -2,9 +2,9 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
-using MatrixAI.Processing;
+using AI.Processing;
 
-namespace MatrixAI.Training {
+namespace AI.Training {
     public class DataSet {
         private static readonly int BATCH_COUNT = 4;
         

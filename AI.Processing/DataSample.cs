@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-namespace MatrixAI.Processing {
+namespace AI.Processing {
     public class DataSample {
         public double[] Values { get; }
 

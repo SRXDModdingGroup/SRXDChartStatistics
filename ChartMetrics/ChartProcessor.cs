@@ -5,7 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using ChartHelper.Types;
-using MatrixAI.Processing;
+using AI.Processing;
 using Util;
 
 namespace ChartMetrics {

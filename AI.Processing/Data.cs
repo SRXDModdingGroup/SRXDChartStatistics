@@ -4,7 +4,7 @@ using System.Collections.ObjectModel;
 using System.IO;
 using Util;
 
-namespace MatrixAI.Processing {
+namespace AI.Processing {
     public class Data {
         private readonly struct TempDataSample {
             public double[] Values { get; }

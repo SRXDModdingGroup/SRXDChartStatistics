@@ -4,11 +4,11 @@ using System.Runtime.InteropServices;
 // General Information about an assembly is controlled through the following 
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
-[assembly: AssemblyTitle("MatrixAI.Processing.Training")]
+[assembly: AssemblyTitle("AI.Processing")]
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("")]
-[assembly: AssemblyProduct("MatrixAI.Processing.Training")]
+[assembly: AssemblyProduct("AI.Processing")]
 [assembly: AssemblyCopyright("Copyright ©  2021")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
@@ -19,7 +19,7 @@ using System.Runtime.InteropServices;
 [assembly: ComVisible(false)]
 
 // The following GUID is for the ID of the typelib if this project is exposed to COM
-[assembly: Guid("01A2B1C8-5824-4EBB-9A2C-FC302EA059A3")]
+[assembly: Guid("A826CE3B-8722-418F-BEC2-CE1A4D5EBAE6")]
 
 // Version information for an assembly consists of the following four values:
 //

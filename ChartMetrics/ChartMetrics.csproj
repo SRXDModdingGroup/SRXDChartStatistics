@@ -61,9 +61,9 @@
         <Project>{eb2bbcf3-fd29-4762-ba8d-25667463111c}</Project>
         <Name>ChartHelper.Types</Name>
       </ProjectReference>
-      <ProjectReference Include="..\MatrixAI.Processing\MatrixAI.Processing.csproj">
+      <ProjectReference Include="..\AI.Processing\AI.Processing.csproj">
         <Project>{a826ce3b-8722-418f-bec2-ce1a4d5ebae6}</Project>
-        <Name>MatrixAI.Processing</Name>
+        <Name>AI.Processing</Name>
       </ProjectReference>
       <ProjectReference Include="..\Util\Util.csproj">
         <Project>{5f1de6d7-64af-47fa-b183-84d451f7f90f}</Project>

@@ -7,8 +7,8 @@
         <ProjectGuid>{01A2B1C8-5824-4EBB-9A2C-FC302EA059A3}</ProjectGuid>
         <OutputType>Library</OutputType>
         <AppDesignerFolder>Properties</AppDesignerFolder>
-        <RootNamespace>MatrixAI.Training</RootNamespace>
-        <AssemblyName>MatrixAI.Training</AssemblyName>
+        <RootNamespace>AI.Training</RootNamespace>
+        <AssemblyName>AI.Training</AssemblyName>
         <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
         <FileAlignment>512</FileAlignment>
     </PropertyGroup>
@@ -44,9 +44,9 @@
         <Compile Include="Properties\AssemblyInfo.cs" />
     </ItemGroup>
     <ItemGroup>
-      <ProjectReference Include="..\MatrixAI.Processing\MatrixAI.Processing.csproj">
+      <ProjectReference Include="..\AI.Processing\AI.Processing.csproj">
         <Project>{a826ce3b-8722-418f-bec2-ce1a4d5ebae6}</Project>
-        <Name>MatrixAI.Processing</Name>
+        <Name>AI.Processing</Name>
       </ProjectReference>
     </ItemGroup>
     <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

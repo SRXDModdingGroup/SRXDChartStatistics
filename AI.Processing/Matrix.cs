@@ -1,6 +1,6 @@
 ﻿using System.IO;
 
-namespace MatrixAI.Processing {
+namespace AI.Processing {
     public class Matrix {
         public int SampleSize { get; }
         

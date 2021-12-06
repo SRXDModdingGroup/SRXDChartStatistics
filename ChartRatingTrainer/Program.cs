@@ -12,8 +12,8 @@ using ChartHelper;
 using ChartHelper.Parsing;
 using ChartHelper.Types;
 using ChartMetrics;
-using MatrixAI.Processing;
-using MatrixAI.Training;
+using AI.Processing;
+using AI.Training;
 
 namespace ChartRatingTrainer {
     public static class Program {

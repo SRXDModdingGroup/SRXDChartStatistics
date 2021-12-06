@@ -6,7 +6,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ChartMetrics", "ChartMetric
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ChartRatingTrainer", "ChartRatingTrainer\ChartRatingTrainer.csproj", "{16859F1C-59BF-41FA-BA46-7FB227AF5D3F}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MatrixAI.Processing", "MatrixAI.Processing\MatrixAI.Processing.csproj", "{A826CE3B-8722-418F-BEC2-CE1A4D5EBAE6}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AI.Processing", "AI.Processing\AI.Processing.csproj", "{A826CE3B-8722-418F-BEC2-CE1A4D5EBAE6}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Util", "Util\Util.csproj", "{5F1DE6D7-64AF-47FA-B183-84D451F7F90F}"
 EndProject
@@ -14,7 +14,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ChartHelper.Parsing", "Char
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ChartHelper.Types", "ChartHelper.Types\ChartHelper.Types.csproj", "{EB2BBCF3-FD29-4762-BA8D-25667463111C}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MatrixAI.Training", "MatrixAI.Training\MatrixAI.Training.csproj", "{01A2B1C8-5824-4EBB-9A2C-FC302EA059A3}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AI.Training", "AI.Training\AI.Training.csproj", "{01A2B1C8-5824-4EBB-9A2C-FC302EA059A3}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

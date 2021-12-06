@@ -2,16 +2,16 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using MatrixAI.Processing;
+using AI.Processing;
 
-namespace MatrixAI.Training {
+namespace AI.Training {
     public static class MatrixExtensions {
         public static Matrix Random(int sampleSize, int dimensions, Random random) {
             var matrix = new Matrix(sampleSize, dimensions);
 
             for (int i = 0; i < matrix.TotalSize; i++)
                 matrix.Coefficients[i] = random.NextDouble();
-            
+
             Normalize(matrix);
 
             return matrix;
@@ -40,7 +40,7 @@ namespace MatrixAI.Training {
                     for (int i = start; i < matrix.SampleSize; i++)
                         Recurse(i, depth + 1);
                 }
-                
+
                 counter++;
             }
         }
@@ -50,7 +50,7 @@ namespace MatrixAI.Training {
             var stack = new Stack<int>();
             var builder = new StringBuilder();
             var list = new List<(string, double)>();
-            
+
             for (int i = 0; i < matrix.SampleSize; i++) {
                 stack.Push(i);
                 Recurse(i, 1);
@@ -60,7 +60,7 @@ namespace MatrixAI.Training {
             list.Add(("()", matrix.Coefficients[counter]));
 
             return list;
-            
+
             void Recurse(int start, int depth) {
                 if (depth < matrix.Dimensions) {
                     for (int i = start; i < matrix.SampleSize; i++) {
@@ -80,7 +80,7 @@ namespace MatrixAI.Training {
 
                     j++;
                 }
-                
+
                 list.Add(($"({builder})", matrix.Coefficients[counter]));
                 builder.Clear();
                 counter++;
@@ -94,7 +94,7 @@ namespace MatrixAI.Training {
 
         internal static void Normalize(Matrix target) {
             double scale = 1d / target.Magnitude();
-            
+
             for (int i = 0; i < target.TotalSize; i++)
                 target.Coefficients[i] *= scale;
         }
@@ -106,7 +106,7 @@ namespace MatrixAI.Training {
 
         internal static double Magnitude(this Matrix matrix) {
             double sum = 0d;
-            
+
             for (int i = 0; i < matrix.TotalSize; i++)
                 sum += Math.Abs(matrix.Coefficients[i]);
 
