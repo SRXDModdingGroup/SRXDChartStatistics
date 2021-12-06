@@ -1,4 +1,6 @@
-﻿using System.IO;
+﻿using System;
+using System.Collections.ObjectModel;
+using System.IO;
 using MatrixAI.Processing;
 
 namespace MatrixAI.Training {
@@ -12,6 +14,8 @@ namespace MatrixAI.Training {
         public double Weight { get; set; }
 
         public int SampleSize => data.SampleSize;
+        
+        public ReadOnlyCollection<DataSample> Samples { get; }
 
         private Data data;
         private Matrix sampleValueVector;
@@ -22,6 +26,7 @@ namespace MatrixAI.Training {
         public DataWrapper(Data data, double expectedResult, int matrixDimensions) {
             this.data = data;
             ExpectedResult = expectedResult;
+            Samples = new ReadOnlyCollection<DataSample>(data.Samples);
             sampleValueVector = new Matrix(data.SampleSize, matrixDimensions);
             sampleWeightVector = new Matrix(data.SampleSize, matrixDimensions);
             overallValueVector = new Matrix(data.SampleSize, matrixDimensions);
@@ -42,10 +47,10 @@ namespace MatrixAI.Training {
 
         public void Clamp(int valueIndex, double max) => data.Clamp(valueIndex, max);
         
-        public void Normalize(double[] baseCoefficients) {
+        public void Normalize(double[] scales, double[] powers) {
             foreach (var sample in data.Samples) {
                 for (int i = 0; i < SampleSize; i++)
-                    sample.Values[i] *= baseCoefficients[i];
+                    sample.Values[i] = Math.Pow(scales[i] * sample.Values[i], powers[i]);
             }
         }
         
