@@ -292,7 +292,7 @@ namespace ChartMetrics {
             data.Trim(0.9d);
             data.Normalize(baseScales, basePowers);
             
-            double value = data.GetResult(valueMatrix, weightMatrix, out _);
+            double value = data.GetResult(valueMatrix, weightMatrix);
 
             if (value < 0d)
                 return 0;

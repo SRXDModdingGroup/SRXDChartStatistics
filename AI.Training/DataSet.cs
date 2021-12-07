@@ -27,7 +27,7 @@ namespace AI.Training {
             this.sampleSize = sampleSize;
             batchSize = Size / BATCH_COUNT + 1;
             results = new double[size];
-            weightScales = new double[size];
+            weightScales = new double[batchSize];
             valueVectors = new Matrix[batchSize];
             weightVectors = new Matrix[batchSize];
             overallValueVector = new Matrix(sampleSize, matrixDimensions);
@@ -169,8 +169,6 @@ namespace AI.Training {
 
         public double Adjust(Matrix valueMatrix, Matrix weightMatrix, double approachFactor, double vectorMagnitude, Random random) {
             Shuffle(random);
-            Parallel.For(0, Size, i => results[i] = Data[i].GetResult(valueMatrix, weightMatrix, out weightScales[i]));
-            GetRegression(out double scale, out double bias);
             
             double totalError = 0d;
 
@@ -183,34 +181,35 @@ namespace AI.Training {
                 else
                     batchEnd = batchStart + batchSize;
 
-                Parallel.For(batchStart, batchEnd, j => Data[j].GetVectors(valueMatrix, weightMatrix, weightScales[j], out valueVectors[j - batchStart], out weightVectors[j - batchStart]));
-                MatrixExtensions.Zero(overallValueVector);
-                MatrixExtensions.Zero(overallWeightVector);
+                Parallel.For(batchStart, batchEnd, j => results[j] = Data[j].GetResultAndVectors(valueMatrix, weightMatrix, out weightScales[j - batchStart], out valueVectors[j - batchStart], out weightVectors[j - batchStart]));
+                overallValueVector.Zero();
+                overallWeightVector.Zero();
+                GetRegression(batchStart, batchEnd, out double scale, out double bias);
 
                 for (int j = batchStart; j < batchEnd; j++) {
                     double error = Data[j].ExpectedResult - scale * (results[j] + bias);
                     double sqError = error * error;
-                    double vectorWeight = Math.Sign(error) * sqError;
+                    double vectorWeight = weightScales[j - batchStart] * Math.Sign(error) * sqError;
                     
-                    MatrixExtensions.AddWeighted(overallValueVector, vectorWeight, valueVectors[j - batchStart]);
-                    MatrixExtensions.AddWeighted(overallWeightVector, vectorWeight, weightVectors[j - batchStart]);
+                    overallValueVector.AddWeighted(vectorWeight, valueVectors[j - batchStart]);
+                    overallWeightVector.AddWeighted(vectorWeight, weightVectors[j - batchStart]);
                     
                     totalError += sqError;
                 }
+                
+                valueMatrix.AddWeighted(approachFactor * vectorMagnitude / overallValueVector.Magnitude(), overallValueVector);
+                weightMatrix.AddWeighted(approachFactor * vectorMagnitude / overallWeightVector.Magnitude(), overallWeightVector);
+                valueMatrix.Coefficients[valueMatrix.TotalSize - 1] = 0d;
+                valueMatrix.Normalize();
+                weightMatrix.Normalize();
             }
-
-            MatrixExtensions.AddWeighted(valueMatrix, approachFactor * vectorMagnitude / overallValueVector.Magnitude(), overallValueVector);
-            MatrixExtensions.AddWeighted(weightMatrix, approachFactor * vectorMagnitude / overallWeightVector.Magnitude(), overallWeightVector);
-            valueMatrix.Coefficients[valueMatrix.TotalSize - 1] = 0d;
-            MatrixExtensions.Normalize(valueMatrix);
-            MatrixExtensions.Normalize(weightMatrix);
 
             return 1d - Math.Sqrt(totalError / Size);
         }
 
         public double[] GetResults(Matrix valueMatrix, Matrix weightMatrix, out double scale, out double bias) {
-            Parallel.For(0, Size, i => results[i] = Data[i].GetResult(valueMatrix, weightMatrix, out _));
-            GetRegression(out scale, out bias);
+            Parallel.For(0, Size, i => results[i] = Data[i].GetResult(valueMatrix, weightMatrix));
+            GetRegression(0, Size, out scale, out bias);
 
             for (int i = 0; i < Size; i++)
                 results[i] = scale * (results[i] + bias);
@@ -226,13 +225,14 @@ namespace AI.Training {
             }
         }
 
-        private void GetRegression(out double scale, out double bias) {
+        private void GetRegression(int start, int end, out double scale, out double bias) {
+            int count = end - start;
             double sx = 0d;
             double sy = 0d;
             double sxx = 0d;
             double sxy = 0d;
 
-            for (int i = 0; i < Size; i++) {
+            for (int i = start; i < end; i++) {
                 double expected = Data[i].ExpectedResult;
                 double returned = results[i];
 
@@ -242,8 +242,8 @@ namespace AI.Training {
                 sxy += expected * returned;
             }
 
-            scale = (Size * sxx - sx * sx) / (Size * sxy - sx * sy);
-            bias = (sy * sxx - sxy * sx) / (sx * sx - Size * sxx);
+            scale = (count * sxx - sx * sx) / (count * sxy - sx * sy);
+            bias = (sy * sxx - sxy * sx) / (sx * sx - count * sxx);
         }
     }
 }

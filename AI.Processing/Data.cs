@@ -164,7 +164,7 @@ namespace AI.Processing {
             }
         }
 
-        public double GetResult(Matrix valueMatrix, Matrix weightMatrix, out double weightScale) {
+        public double GetResult(Matrix valueMatrix, Matrix weightMatrix) {
             double sumValue = 0d;
             double sumWeight = 0d;
 
@@ -175,9 +175,7 @@ namespace AI.Processing {
                 sumWeight += weight;
             }
 
-            weightScale = 1d / sumWeight;
-
-            return weightScale * sumValue;
+            return sumValue / sumWeight;
         }
 
         public double GetQuantile(int valueIndex, double quantile) {

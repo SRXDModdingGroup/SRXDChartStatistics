@@ -56,24 +56,33 @@ namespace AI.Training {
             return max;
         }
 
-        internal double GetResult(Matrix valueMatrix, Matrix weightMatrix, out double weightScale) => data.GetResult(valueMatrix, weightMatrix, out weightScale);
+        internal double GetResult(Matrix valueMatrix, Matrix weightMatrix) => data.GetResult(valueMatrix, weightMatrix);
 
         internal double GetQuantile(int valueIndex, double quantile) => data.GetQuantile(valueIndex, quantile);
 
-        internal void GetVectors(Matrix valueMatrix, Matrix weightMatrix, double weightScale, out Matrix valueVector, out Matrix weightVector) {
+        internal double GetResultAndVectors(Matrix valueMatrix, Matrix weightMatrix, out double weightScale, out Matrix valueVector, out Matrix weightVector) {
+            double sumValue = 0d;
+            double sumWeight = 0d;
+            
             valueVector = overallValueVector;
             weightVector = overallWeightVector;
-            MatrixExtensions.Zero(valueVector);
-            MatrixExtensions.Zero(weightVector);
+            valueVector.Zero();
+            weightVector.Zero();
 
             for (int i = 0; i < data.Samples.Count; i++) {
                 var sample = data.Samples[i];
                 double value = valueMatrix.GetValueAndVector(sampleValueVector, sample.Values);
                 double weight = sample.Weight * weightMatrix.GetValueAndVector(sampleWeightVector, sample.Values);
 
-                MatrixExtensions.AddWeighted(valueVector, weightScale * weight, sampleValueVector);
-                MatrixExtensions.AddWeighted(weightVector, weightScale * sample.Weight * value, sampleWeightVector);
+                valueVector.AddWeighted(weight, sampleValueVector);
+                weightVector.AddWeighted(sample.Weight * value, sampleWeightVector);
+                sumValue += weight * value;
+                sumWeight += weight;
             }
+            
+            weightScale = 1d / sumWeight;
+
+            return weightScale * sumValue;
         }
     }
 }

@@ -12,7 +12,7 @@ namespace AI.Training {
             for (int i = 0; i < matrix.TotalSize; i++)
                 matrix.Coefficients[i] = random.NextDouble();
 
-            Normalize(matrix);
+            matrix.Normalize();
 
             return matrix;
         }
@@ -31,7 +31,7 @@ namespace AI.Training {
                 counter++;
             }
 
-            Normalize(matrix);
+            matrix.Normalize();
 
             return matrix;
 
@@ -87,19 +87,19 @@ namespace AI.Training {
             }
         }
 
-        internal static void Zero(Matrix target) {
+        internal static void Zero(this Matrix target) {
             for (int i = 0; i < target.TotalSize; i++)
                 target.Coefficients[i] = 0d;
         }
 
-        internal static void Normalize(Matrix target) {
+        internal static void Normalize(this Matrix target) {
             double scale = 1d / target.Magnitude();
 
             for (int i = 0; i < target.TotalSize; i++)
                 target.Coefficients[i] *= scale;
         }
 
-        internal static void AddWeighted(Matrix target, double weight, Matrix source) {
+        internal static void AddWeighted(this Matrix target, double weight, Matrix source) {
             for (int i = 0; i < target.TotalSize; i++)
                 target.Coefficients[i] += weight * source.Coefficients[i];
         }

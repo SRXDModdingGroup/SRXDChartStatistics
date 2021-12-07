@@ -20,10 +20,10 @@ namespace ChartRatingTrainer {
         private static readonly string ASSEMBLY_DIRECTORY = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
         private static readonly int METRIC_COUNT = ChartProcessor.DifficultyMetrics.Count;
         private static readonly int MATRIX_DIMENSIONS = 4;
-        private static readonly double MIN_APPROACH_FACTOR = 0.001d;
-        private static readonly double MAX_APPROACH_FACTOR = 0.05d;
-        private static readonly double VECTOR_MAGNITUDE = 0.2d;
-        private static readonly double DAMPENING = 1.5d;
+        private static readonly double MIN_APPROACH_FACTOR = 0.00025d;
+        private static readonly double MAX_APPROACH_FACTOR = 0.01d;
+        private static readonly double VECTOR_MAGNITUDE = 0.05d;
+        private static readonly double DAMPENING = 2d;
 
         public static void Main(string[] args) {
             var random = new Random();
