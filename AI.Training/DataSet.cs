@@ -97,6 +97,76 @@ namespace AI.Training {
                 data.Normalize(scales, powers);
         }
 
+        public void GetBaseParameters(out double[] scales, out double[] powers) {
+            scales = new double[sampleSize];
+
+            for (int i = 0; i < sampleSize; i++) {
+                double max = 0d;
+
+                foreach (var data in Data) {
+                    double newMax = data.GetMaxValue(i);
+
+                    if (newMax > max)
+                        max = newMax;
+                }
+                
+                scales[i] = 1d / max;
+            }
+
+            int count = 0;
+
+            foreach (var data in Data)
+                count += data.Size;
+            
+            double[] values = new double[count];
+
+            powers = new double[sampleSize];
+
+            for (int i = 0; i < sampleSize; i++) {
+                int counter = 0;
+
+                foreach (var data in Data) {
+                    foreach (var sample in data.Samples) {
+                        values[counter] = sample.Values[i];
+                        counter++;
+                    }
+                }
+                
+                Array.Sort(values);
+
+                double min = 0d;
+                double max = 2d;
+                double bestPow = 1d;
+                double bestError = double.PositiveInfinity;
+                double baseCoeff = scales[i];
+
+                for (int j = 0; j < 16; j++) {
+                    double sumError = 0d;
+                    double pow = 0.5d * (min + max);
+
+                    for (int k = 0; k < count; k++) {
+                        double error = (double) k / (count - 1) - Math.Pow(baseCoeff * values[k], pow);
+                        double sqError = error * error;
+
+                        sumError += Math.Sign(error) * sqError;
+                    }
+
+                    if (sumError > 0d)
+                        max = 0.5d * (max + pow);
+                    else
+                        min = 0.5d * (min + pow);
+
+                    if (Math.Abs(sumError) > bestError)
+                        continue;
+                    
+                    bestError = Math.Abs(sumError);
+                    bestPow = pow;
+                }
+
+                powers[i] = bestPow;
+            }
+        }
+
         public double Adjust(Matrix valueMatrix, Matrix weightMatrix, double approachFactor, double vectorMagnitude, Random random) {
             Shuffle(random);
             Parallel.For(0, Size, i => results[i] = Data[i].GetResult(valueMatrix, weightMatrix, out weightScales[i]));
@@ -136,76 +206,6 @@ namespace AI.Training {
             MatrixExtensions.Normalize(weightMatrix);
 
             return 1d - Math.Sqrt(totalError / Size);
-        }
-
-        public void GetBaseCoefficients(out double[] baseCoefficients, out double[] powers) {
-            baseCoefficients = new double[sampleSize];
-
-            for (int i = 0; i < sampleSize; i++) {
-                double max = 0d;
-
-                foreach (var data in Data) {
-                    double newMax = data.GetMaxValue(i);
-
-                    if (newMax > max)
-                        max = newMax;
-                }
-                
-                baseCoefficients[i] = 1d / max;
-            }
-
-            int count = 0;
-
-            foreach (var data in Data)
-                count += data.Size;
-            
-            double[] values = new double[count];
-
-            powers = new double[sampleSize];
-
-            for (int i = 0; i < sampleSize; i++) {
-                int counter = 0;
-
-                foreach (var data in Data) {
-                    foreach (var sample in data.Samples) {
-                        values[counter] = sample.Values[i];
-                        counter++;
-                    }
-                }
-                
-                Array.Sort(values);
-
-                double min = 0d;
-                double max = 2d;
-                double bestPow = 1d;
-                double bestError = double.PositiveInfinity;
-                double baseCoeff = baseCoefficients[i];
-
-                for (int j = 0; j < 16; j++) {
-                    double sumError = 0d;
-                    double pow = 0.5d * (min + max);
-
-                    for (int k = 0; k < count; k++) {
-                        double error = (double) k / (count - 1) - Math.Pow(baseCoeff * values[k], pow);
-                        double sqError = error * error;
-
-                        sumError += Math.Sign(error) * sqError;
-                    }
-
-                    if (sumError > 0d)
-                        max = 0.5d * (max + pow);
-                    else
-                        min = 0.5d * (min + pow);
-
-                    if (Math.Abs(sumError) > bestError)
-                        continue;
-                    
-                    bestError = Math.Abs(sumError);
-                    bestPow = pow;
-                }
-
-                powers[i] = bestPow;
-            }
         }
 
         public double[] GetResults(Matrix valueMatrix, Matrix weightMatrix, out double scale, out double bias) {

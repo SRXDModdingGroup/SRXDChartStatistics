@@ -30,7 +30,7 @@ namespace ChartRatingTrainer {
             var dataSet = GetDataSet();
 
             dataSet.Trim(0.9d, 0.95d);
-            dataSet.GetBaseCoefficients(out double[] scales, out double[] powers);
+            dataSet.GetBaseParameters(out double[] scales, out double[] powers);
             dataSet.Normalize(scales, powers);
             GetMatrices(random, out var valueMatrix, out var weightMatrix);
             
