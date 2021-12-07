@@ -100,7 +100,7 @@ namespace AI.Processing {
             var samples = data.samples;
             double scale = 1d / (tempSamples[tempSamples.Count - 1].Time - tempSamples[0].Time);
 
-            for (int i = 0; i < samples.Length; i++) {
+            for (int i = 0; i < data.Size; i++) {
                 var tempSample = tempSamples[i];
 
                 samples[i] = new DataSample(tempSample.Values, scale * (tempSamples[i + 1].Time - tempSample.Time));
@@ -111,11 +111,11 @@ namespace AI.Processing {
 
         public static Data Deserialize(BinaryReader reader) {
             string name = reader.ReadString();
+            int size = reader.ReadInt32();
             int sampleSize = reader.ReadInt32();
-            int sampleCount = reader.ReadInt32();
-            var data = new Data(name, sampleCount, sampleSize);
+            var data = new Data(name, size, sampleSize);
 
-            for (int i = 0; i < sampleCount; i++) {
+            for (int i = 0; i < size; i++) {
                 double[] newValues = new double[sampleSize];
 
                 for (int j = 0; j < sampleSize; j++)
@@ -131,8 +131,8 @@ namespace AI.Processing {
 
         public void Serialize(BinaryWriter writer) {
             writer.Write(Name);
+            writer.Write(Size);
             writer.Write(SampleSize);
-            writer.Write(samples.Length);
 
             foreach (var sample in samples) {
                 double[] values = sample.Values;
@@ -141,6 +141,14 @@ namespace AI.Processing {
                     writer.Write(values[j]);
                 
                 writer.Write(sample.Weight);
+            }
+        }
+
+        public void Clamp(int valueIndex, double max) {
+            foreach (var sample in samples) {
+                double[] values = sample.Values;
+
+                values[valueIndex] = Math.Min(values[valueIndex], max);
             }
         }
 
@@ -172,15 +180,7 @@ namespace AI.Processing {
             return weightScale * sumValue;
         }
 
-        private void Clamp(int valueIndex, double max) {
-            foreach (var sample in samples) {
-                double[] values = sample.Values;
-
-                values[valueIndex] = Math.Min(values[valueIndex], max);
-            }
-        }
-
-        private double GetQuantile(int valueIndex, double quantile) {
+        public double GetQuantile(int valueIndex, double quantile) {
             var sorted = new DataSample[samples.Length];
 
             for (int i = 0; i < samples.Length; i++)

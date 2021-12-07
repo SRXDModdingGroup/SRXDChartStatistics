@@ -21,16 +21,15 @@ namespace ChartRatingTrainer {
         private static readonly int METRIC_COUNT = ChartProcessor.DifficultyMetrics.Count;
         private static readonly int MATRIX_DIMENSIONS = 4;
         private static readonly double MIN_APPROACH_FACTOR = 0.001d;
-        private static readonly double MAX_APPROACH_FACTOR = 0.02d;
-        private static readonly double VECTOR_MAGNITUDE = 0.02d;
-        private static readonly double DAMPENING = 1.1d;
+        private static readonly double MAX_APPROACH_FACTOR = 0.05d;
+        private static readonly double VECTOR_MAGNITUDE = 0.2d;
+        private static readonly double DAMPENING = 1.5d;
 
         public static void Main(string[] args) {
             var random = new Random();
             var dataSet = GetDataSet();
 
-            dataSet.Trim(0.9d);
-            dataSet.Shuffle(random);
+            dataSet.Trim(0.9d, 0.95d);
             dataSet.GetBaseCoefficients(out double[] scales, out double[] powers);
             dataSet.Normalize(scales, powers);
             GetMatrices(random, out var valueMatrix, out var weightMatrix);

@@ -65,19 +65,33 @@ namespace AI.Training {
                 data.Serialize(writer);
         }
 
-        public void Shuffle(Random random) {
-            for (int i = Size - 1; i > 2; i--) {
-                int index = random.Next(i - 1);
+        public void Trim(double localLimit, double globalLimit) {
+            int totalSize = 0;
 
-                (Data[i], Data[index]) = (Data[index], Data[i]);
+            foreach (var data in Data)
+                totalSize += data.Size;
+
+            double[] values = new double[totalSize];
+
+            for (int i = 0; i < sampleSize; i++) {
+                int counter = 0;
+                
+                foreach (var data in Data) {
+                    foreach (var sample in data.Samples) {
+                        values[counter] = sample.Values[i];
+                        counter++;
+                    }
+                }
+                
+                Array.Sort(values);
+
+                double limit = values[(int) (globalLimit * (totalSize - 1))];
+
+                foreach (var data in Data)
+                    data.Clamp(i, Math.Min(data.GetQuantile(i, localLimit), limit));
             }
         }
-        
-        public void Trim(double upperQuantile) {
-            foreach (var data in Data)
-                data.Trim(upperQuantile);
-        }
-        
+
         public void Normalize(double[] scales, double[] powers) {
             foreach (var data in Data)
                 data.Normalize(scales, powers);
@@ -193,7 +207,7 @@ namespace AI.Training {
                 powers[i] = bestPow;
             }
         }
-        
+
         public double[] GetResults(Matrix valueMatrix, Matrix weightMatrix, out double scale, out double bias) {
             Parallel.For(0, Size, i => results[i] = Data[i].GetResult(valueMatrix, weightMatrix, out _));
             GetRegression(out scale, out bias);
@@ -202,6 +216,14 @@ namespace AI.Training {
                 results[i] = scale * (results[i] + bias);
 
             return results;
+        }
+
+        private void Shuffle(Random random) {
+            for (int i = Size - 1; i > 2; i--) {
+                int index = random.Next(i - 1);
+
+                (Data[i], Data[index]) = (Data[index], Data[i]);
+            }
         }
 
         private void GetRegression(out double scale, out double bias) {

@@ -44,7 +44,7 @@ namespace AI.Training {
             writer.Write(ExpectedResult);
         }
 
-        public void Trim(double upperQuantile) => data.Trim(upperQuantile);
+        public void Clamp(int valueIndex, double max) => data.Clamp(valueIndex, max);
 
         public void Normalize(double[] scales, double[] powers) => data.Normalize(scales, powers);
 
@@ -78,5 +78,7 @@ namespace AI.Training {
         }
 
         public double GetResult(Matrix valueMatrix, Matrix weightMatrix, out double weightScale) => data.GetResult(valueMatrix, weightMatrix, out weightScale);
+
+        public double GetQuantile(int valueIndex, double quantile) => data.GetQuantile(valueIndex, quantile);
     }
 }
