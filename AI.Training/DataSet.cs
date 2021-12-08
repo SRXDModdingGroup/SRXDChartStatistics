@@ -37,7 +37,7 @@ namespace AI.Training {
                 for (int j = batchStart; j < batchEnd; j++) {
                     double error = Data[j].ExpectedResult - scale * (Results[j] + bias);
                     
-                    Parallel.For(0, instances.Length, k => GetVectorForGroup(k, Math.Sign(error) * error * error));
+                    Parallel.For(0, instances.Length, k => GetVectorForGroup(k, error));
                 }
 
                 var overallVector = vectors[0];

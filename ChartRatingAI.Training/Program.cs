@@ -11,12 +11,14 @@ using ChartHelper;
 using ChartHelper.Types;
 using ChartMetrics;
 using AI.Training;
+using ChartHelper.Parsing;
 
 namespace ChartRatingAI.Training {
     public static class Program {
         private static readonly string ASSEMBLY_DIRECTORY = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
         private static readonly int METRIC_COUNT = ChartProcessor.DifficultyMetrics.Count;
         private static readonly int MATRIX_DIMENSIONS = 4;
+        private static readonly int BATCH_COUNT = 4;
         private static readonly double MIN_APPROACH_FACTOR = 0.00025d;
         private static readonly double MAX_APPROACH_FACTOR = 0.01d;
         private static readonly double VECTOR_MAGNITUDE = 0.05d;
@@ -46,7 +48,7 @@ namespace ChartRatingAI.Training {
             Console.ReadKey(true);
         }
 
-        private static void MainThread(Compiler valueCompiler, Compiler weightCompiler, DataSet<,> dataSet, Form1 form, Random random) {
+        private static void MainThread(Compiler valueCompiler, Compiler weightCompiler, DataSet dataSet, Form1 form, Random random) {
             int generation = 0;
             int lastCheckedGeneration = 0;
             double approachFactor = MAX_APPROACH_FACTOR;
@@ -200,13 +202,13 @@ namespace ChartRatingAI.Training {
             }
         }
 
-        private static DataSet<,> GetDataSet() {
+        private static DataSet GetDataSet() {
             string cachePath = Path.Combine(ASSEMBLY_DIRECTORY, "Cache.dat");
-            DataSet<,> dataSet;
+            DataSet dataSet;
 
             if (File.Exists(cachePath)) {
                 using (var reader = new BinaryReader(File.OpenRead(cachePath)))
-                    dataSet = DataSet<,>.Deserialize(reader, MATRIX_DIMENSIONS);
+                    dataSet = DataSet.Deserialize(reader, BATCH_COUNT, MATRIX_DIMENSIONS);
 
                 return dataSet;
             }
@@ -229,7 +231,7 @@ namespace ChartRatingAI.Training {
 
             var processor = new ChartProcessor();
             var ratings = new Dictionary<string, int>();
-            var dataList = new List<(AI.Processing.Data, double)>();
+            var dataList = new List<(Data, double)>();
 
             foreach (string directory in directories) {
                 var regex = new Regex(@"(\d+)\t(.*)");
@@ -245,7 +247,7 @@ namespace ChartRatingAI.Training {
                 }
 
                 foreach (string path in FileHelper.GetAllSrtbs(directory)) {
-                    if (!Data.TryCreateFromFile(path, out var chartData, Difficulty.XD))
+                    if (!ChartData.TryCreateFromFile(path, out var chartData, Difficulty.XD))
                         continue;
 
                     string trim = chartData.Title.Trim();
@@ -264,7 +266,7 @@ namespace ChartRatingAI.Training {
                 ratings.Clear();
             }
             
-            dataSet = DataSet<,>.Create(dataList.Count, METRIC_COUNT, MATRIX_DIMENSIONS, dataList);
+            dataSet = DataSet.Create(dataList.Count, BATCH_COUNT, METRIC_COUNT, MATRIX_DIMENSIONS, dataList);
 
             using (var writer = new BinaryWriter(File.OpenWrite(cachePath)))
                 dataSet.Serialize(writer);

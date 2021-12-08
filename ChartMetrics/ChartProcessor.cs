@@ -5,7 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using ChartHelper.Types;
-using AI.Processing;
+using ChartRatingAI.Training;
 using Util;
 
 namespace ChartMetrics {
@@ -40,8 +40,6 @@ namespace ChartMetrics {
         public static ReadOnlyCollection<Metric> Metrics { get; } = new ReadOnlyCollection<Metric>(METRICS);
         public static ReadOnlyCollection<Metric> DifficultyMetrics { get; } = new ReadOnlyCollection<Metric>(DIFFICULTY_METRICS);
 
-        private static Compiler valueCompiler;
-        private static Compiler weightCompiler;
         private static double bias;
         private static double scale;
         private static double[] baseScales;
@@ -73,8 +71,6 @@ namespace ChartMetrics {
             basePowers = new double[DIFFICULTY_METRICS.Length];
 
             using (var reader = new BinaryReader(File.Open(path, FileMode.Open))) {
-                valueCompiler = Compiler.DeserializeModel(reader);
-                weightCompiler = Compiler.DeserializeModel(reader);
                 bias = reader.ReadDouble();
                 scale = reader.ReadDouble();
 

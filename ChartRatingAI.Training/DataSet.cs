@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Threading.Tasks;
 using AI.Training;
+using ChartRatingAI.Processing;
 
 namespace ChartRatingAI.Training {
     public class DataSet : DataSet<Data> {
@@ -162,7 +162,5 @@ namespace ChartRatingAI.Training {
                 powers[i] = bestPow;
             }
         }
-
-        
     }
 }

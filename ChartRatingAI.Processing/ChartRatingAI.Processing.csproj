@@ -38,13 +38,20 @@
         <Reference Include="System.Xml" />
     </ItemGroup>
     <ItemGroup>
+        <Compile Include="Algorithm.cs" />
+        <Compile Include="Data.cs" />
         <Compile Include="DataSample.cs" />
+        <Compile Include="Model.cs" />
         <Compile Include="Properties\AssemblyInfo.cs" />
     </ItemGroup>
     <ItemGroup>
       <ProjectReference Include="..\AI.Processing\AI.Processing.csproj">
         <Project>{a826ce3b-8722-418f-bec2-ce1a4d5ebae6}</Project>
         <Name>AI.Processing</Name>
+      </ProjectReference>
+      <ProjectReference Include="..\Util\Util.csproj">
+        <Project>{5f1de6d7-64af-47fa-b183-84d451f7f90f}</Project>
+        <Name>Util</Name>
       </ProjectReference>
     </ItemGroup>
     <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
