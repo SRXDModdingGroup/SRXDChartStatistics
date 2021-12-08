@@ -4,11 +4,11 @@ using System.Runtime.InteropServices;
 // General Information about an assembly is controlled through the following 
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
-[assembly: AssemblyTitle("ChartRatingTrainer")]
+[assembly: AssemblyTitle("ChartRatingAI.Processing")]
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("")]
-[assembly: AssemblyProduct("ChartRatingTrainer")]
+[assembly: AssemblyProduct("ChartRatingAI.Processing")]
 [assembly: AssemblyCopyright("Copyright ©  2021")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
@@ -19,7 +19,7 @@ using System.Runtime.InteropServices;
 [assembly: ComVisible(false)]
 
 // The following GUID is for the ID of the typelib if this project is exposed to COM
-[assembly: Guid("16859F1C-59BF-41FA-BA46-7FB227AF5D3F")]
+[assembly: Guid("1BCF324A-7E3A-4218-A7C8-4C5BB2508E0D")]
 
 // Version information for an assembly consists of the following four values:
 //

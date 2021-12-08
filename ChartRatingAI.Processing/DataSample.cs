@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-namespace AI.Processing {
+namespace ChartRatingAI.Processing {
     public class DataSample {
         public double[] Values { get; }
 
@@ -14,9 +14,7 @@ namespace AI.Processing {
         public class Comparer : IComparer<DataSample> {
             private int metricIndex;
 
-            public Comparer(int metricIndex) {
-                this.metricIndex = metricIndex;
-            }
+            public Comparer(int metricIndex) => this.metricIndex = metricIndex;
 
             public int Compare(DataSample x, DataSample y) => x.Values[metricIndex].CompareTo(y.Values[metricIndex]);
         }

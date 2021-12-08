@@ -2,7 +2,7 @@
 using System.Drawing;
 using System.Windows.Forms;
 
-namespace ChartRatingTrainer {
+namespace ChartRatingAI.Training {
     public partial class Form1 : Form {
         private static readonly int PADDING = 8;
         private static readonly Pen PEN = new Pen(Color.FromArgb(64, Color.White));

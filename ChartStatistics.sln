@@ -4,7 +4,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ChartStatistics", "ChartSta
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ChartMetrics", "ChartMetrics\ChartMetrics.csproj", "{C08A389F-34E7-45ED-B770-1F171679636A}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ChartRatingTrainer", "ChartRatingTrainer\ChartRatingTrainer.csproj", "{16859F1C-59BF-41FA-BA46-7FB227AF5D3F}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ChartRatingAI.Training", "ChartRatingAI.Training\ChartRatingAI.Training.csproj", "{16859F1C-59BF-41FA-BA46-7FB227AF5D3F}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AI.Processing", "AI.Processing\AI.Processing.csproj", "{A826CE3B-8722-418F-BEC2-CE1A4D5EBAE6}"
 EndProject
@@ -15,6 +15,8 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ChartHelper.Types", "ChartHelper.Types\ChartHelper.Types.csproj", "{EB2BBCF3-FD29-4762-BA8D-25667463111C}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AI.Training", "AI.Training\AI.Training.csproj", "{01A2B1C8-5824-4EBB-9A2C-FC302EA059A3}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ChartRatingAI.Processing", "ChartRatingAI.Processing\ChartRatingAI.Processing.csproj", "{1BCF324A-7E3A-4218-A7C8-4C5BB2508E0D}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -54,5 +56,9 @@ Global
 		{01A2B1C8-5824-4EBB-9A2C-FC302EA059A3}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{01A2B1C8-5824-4EBB-9A2C-FC302EA059A3}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{01A2B1C8-5824-4EBB-9A2C-FC302EA059A3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1BCF324A-7E3A-4218-A7C8-4C5BB2508E0D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1BCF324A-7E3A-4218-A7C8-4C5BB2508E0D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1BCF324A-7E3A-4218-A7C8-4C5BB2508E0D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1BCF324A-7E3A-4218-A7C8-4C5BB2508E0D}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

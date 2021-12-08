@@ -3,19 +3,16 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
-using System.Linq;
 using System.Reflection;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using ChartHelper;
-using ChartHelper.Parsing;
 using ChartHelper.Types;
 using ChartMetrics;
-using AI.Processing;
 using AI.Training;
 
-namespace ChartRatingTrainer {
+namespace ChartRatingAI.Training {
     public static class Program {
         private static readonly string ASSEMBLY_DIRECTORY = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
         private static readonly int METRIC_COUNT = ChartProcessor.DifficultyMetrics.Count;
@@ -49,11 +46,11 @@ namespace ChartRatingTrainer {
             Console.ReadKey(true);
         }
 
-        private static void MainThread(Matrix valueMatrix, Matrix weightMatrix, DataSet dataSet, Form1 form, Random random) {
+        private static void MainThread(Compiler valueCompiler, Compiler weightCompiler, DataSet<,> dataSet, Form1 form, Random random) {
             int generation = 0;
             int lastCheckedGeneration = 0;
             double approachFactor = MAX_APPROACH_FACTOR;
-            double fitness = dataSet.Adjust(valueMatrix, weightMatrix, 0d, 0d, random);
+            double fitness = dataSet.Adjust(valueCompiler, weightCompiler, 0d, 0d, random);
             double currentBest = fitness;
             double lastCheckedBest = fitness;
             var lastCheckTime = DateTime.Now;
@@ -69,7 +66,7 @@ namespace ChartRatingTrainer {
             autoSaveWatch.Start();
 
             while (!Console.KeyAvailable || Console.ReadKey(true).Key != ConsoleKey.Enter) {
-                double newFitness = dataSet.Adjust(valueMatrix, weightMatrix, approachFactor, VECTOR_MAGNITUDE, random);
+                double newFitness = dataSet.Adjust(valueCompiler, weightCompiler, approachFactor, VECTOR_MAGNITUDE, random);
 
                 if (newFitness > fitness)
                     approachFactor = Math.Min(DAMPENING * approachFactor, MAX_APPROACH_FACTOR);
@@ -82,7 +79,7 @@ namespace ChartRatingTrainer {
                     currentBest = fitness;
 
                 if (Form.ActiveForm == form && drawWatch.ElapsedMilliseconds > 166) {
-                    double[] results = dataSet.GetResults(valueMatrix, weightMatrix, out _, out _);
+                    double[] results = dataSet.GetResults(valueCompiler, weightCompiler, out _, out _);
 
                     for (int i = 0; i < dataSet.Data.Length; i++) {
                         drawExpectedReturned[i] = new PointF(
@@ -103,7 +100,7 @@ namespace ChartRatingTrainer {
                 }
 
                 if (autoSaveWatch.ElapsedMilliseconds > 300000) {
-                    SaveMatrices(valueMatrix, weightMatrix);
+                    SaveMatrices(valueCompiler, weightCompiler);
                     autoSaveWatch.Restart();
                 }
 
@@ -120,10 +117,10 @@ namespace ChartRatingTrainer {
             Application.Run(form);
         }
 
-        private static void SaveMatrices(Matrix valueMatrix, Matrix weightMatrix) {
-            using (var writer = new BinaryWriter(File.Open(Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "results.dat"), FileMode.Create))) {
-                valueMatrix.Serialize(writer);
-                weightMatrix.Serialize(writer);
+        private static void SaveMatrices(Compiler valueCompiler, Compiler weightCompiler) {
+            using (var writer = new BinaryWriter(File.Open(Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "Results.dat"), FileMode.Create))) {
+                valueCompiler.SerializeModel(writer);
+                weightCompiler.SerializeModel(writer);
             }
             
             Console.WriteLine();
@@ -131,10 +128,10 @@ namespace ChartRatingTrainer {
             Console.WriteLine();
         }
 
-        private static void SaveParameters(Matrix valueMatrix, Matrix weightMatrix, double bias, double scale, double[] baseScales, double[] basePowers) {
+        private static void SaveParameters(Compiler valueCompiler, Compiler weightCompiler, double bias, double scale, double[] baseScales, double[] basePowers) {
             using (var writer = new BinaryWriter(File.Open(Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "parameters.dat"), FileMode.Create))) {
-                valueMatrix.Serialize(writer);
-                weightMatrix.Serialize(writer);
+                valueCompiler.SerializeModel(writer);
+                weightCompiler.SerializeModel(writer);
                 writer.Write(bias);
                 writer.Write(scale);
 
@@ -149,12 +146,12 @@ namespace ChartRatingTrainer {
             Console.WriteLine();
         }
 
-        private static void OutputDetailedInfo(double fitness, Matrix valueMatrix, Matrix weightMatrix, DataSet dataSet, double[] results) {
+        private static void OutputDetailedInfo(double fitness, Compiler valueCompiler, Compiler weightCompiler, DataSet<,> dataSet, double[] results) {
             Console.WriteLine();
             Console.WriteLine($"Fitness: {fitness:0.00000000}");
             Console.WriteLine("Values:");
 
-            var valueList = MatrixExtensions.EnumerateValues(valueMatrix);
+            var valueList = ArrayExtensions.EnumerateValues(valueCompiler);
             
             valueList.Sort((a, b) => -a.Item2.CompareTo(b.Item2));
 
@@ -163,7 +160,7 @@ namespace ChartRatingTrainer {
 
             Console.WriteLine();
             
-            var weightList = MatrixExtensions.EnumerateValues(weightMatrix);
+            var weightList = ArrayExtensions.EnumerateValues(weightCompiler);
             
             weightList.Sort((a, b) => -a.Item2.CompareTo(b.Item2));
 
@@ -203,13 +200,13 @@ namespace ChartRatingTrainer {
             }
         }
 
-        private static DataSet GetDataSet() {
+        private static DataSet<,> GetDataSet() {
             string cachePath = Path.Combine(ASSEMBLY_DIRECTORY, "Cache.dat");
-            DataSet dataSet;
+            DataSet<,> dataSet;
 
             if (File.Exists(cachePath)) {
                 using (var reader = new BinaryReader(File.OpenRead(cachePath)))
-                    dataSet = DataSet.Deserialize(reader, MATRIX_DIMENSIONS);
+                    dataSet = DataSet<,>.Deserialize(reader, MATRIX_DIMENSIONS);
 
                 return dataSet;
             }
@@ -232,7 +229,7 @@ namespace ChartRatingTrainer {
 
             var processor = new ChartProcessor();
             var ratings = new Dictionary<string, int>();
-            var dataList = new List<(Data, double)>();
+            var dataList = new List<(AI.Processing.Data, double)>();
 
             foreach (string directory in directories) {
                 var regex = new Regex(@"(\d+)\t(.*)");
@@ -248,7 +245,7 @@ namespace ChartRatingTrainer {
                 }
 
                 foreach (string path in FileHelper.GetAllSrtbs(directory)) {
-                    if (!ChartData.TryCreateFromFile(path, out var chartData, Difficulty.XD))
+                    if (!Data.TryCreateFromFile(path, out var chartData, Difficulty.XD))
                         continue;
 
                     string trim = chartData.Title.Trim();
@@ -267,7 +264,7 @@ namespace ChartRatingTrainer {
                 ratings.Clear();
             }
             
-            dataSet = DataSet.Create(dataList.Count, METRIC_COUNT, MATRIX_DIMENSIONS, dataList);
+            dataSet = DataSet<,>.Create(dataList.Count, METRIC_COUNT, MATRIX_DIMENSIONS, dataList);
 
             using (var writer = new BinaryWriter(File.OpenWrite(cachePath)))
                 dataSet.Serialize(writer);
@@ -275,20 +272,20 @@ namespace ChartRatingTrainer {
             return dataSet;
         }
 
-        private static void GetMatrices(Random random, out Matrix valueMatrix, out Matrix weightMatrix) {
-            string path = Path.Combine(ASSEMBLY_DIRECTORY, "results.dat");
+        private static void GetMatrices(Random random, out Compiler valueCompiler, out Compiler weightCompiler) {
+            string path = Path.Combine(ASSEMBLY_DIRECTORY, "Results.dat");
 
             if (File.Exists(path)) {
                 using (var reader = new BinaryReader(File.Open(path, FileMode.Open))) {
-                    valueMatrix = Matrix.Deserialize(reader);
-                    weightMatrix = Matrix.Deserialize(reader);
+                    valueCompiler = Compiler.DeserializeModel(reader);
+                    weightCompiler = Compiler.DeserializeModel(reader);
                 }
             }
             else {
-                valueMatrix = MatrixExtensions.Random(METRIC_COUNT, MATRIX_DIMENSIONS, random);
-                weightMatrix = MatrixExtensions.Random(METRIC_COUNT, MATRIX_DIMENSIONS, random);
-                // valueMatrix = MatrixExtensions.Identity(METRIC_COUNT, MATRIX_DIMENSIONS);
-                // weightMatrix = MatrixExtensions.Identity(METRIC_COUNT, MATRIX_DIMENSIONS);
+                valueCompiler = ArrayExtensions.Random(METRIC_COUNT, MATRIX_DIMENSIONS, random);
+                weightCompiler = ArrayExtensions.Random(METRIC_COUNT, MATRIX_DIMENSIONS, random);
+                // valueCompiler = ArrayExtensions.Identity(METRIC_COUNT, MATRIX_DIMENSIONS);
+                // weightCompiler = ArrayExtensions.Identity(METRIC_COUNT, MATRIX_DIMENSIONS);
             }
         }
     }

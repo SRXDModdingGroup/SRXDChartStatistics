@@ -32,25 +32,17 @@
         <WarningLevel>4</WarningLevel>
     </PropertyGroup>
     <ItemGroup>
-        <Reference Include="ChartHelper, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null">
-          <HintPath>..\libs\ChartHelper.dll</HintPath>
-        </Reference>
         <Reference Include="System" />
         <Reference Include="System.Core" />
         <Reference Include="System.Data" />
         <Reference Include="System.Xml" />
     </ItemGroup>
     <ItemGroup>
-        <Compile Include="DataSample.cs" />
-        <Compile Include="Data.cs" />
-        <Compile Include="Matrix.cs" />
+        <Compile Include="ArrayModel.cs" />
+        <Compile Include="IAlgorithm.cs" />
+        <Compile Include="Compiler.cs" />
+        <Compile Include="IModel.cs" />
         <Compile Include="Properties\AssemblyInfo.cs" />
-    </ItemGroup>
-    <ItemGroup>
-      <ProjectReference Include="..\Util\Util.csproj">
-        <Project>{5f1de6d7-64af-47fa-b183-84d451f7f90f}</Project>
-        <Name>Util</Name>
-      </ProjectReference>
     </ItemGroup>
     <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
     <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace ChartRatingTrainer {
+namespace ChartRatingAI.Training {
     public class ExpectedReturned : IComparable<ExpectedReturned> {
         public string Name { get; }
             

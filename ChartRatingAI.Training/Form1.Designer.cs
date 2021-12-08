@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel;
 
-namespace ChartRatingTrainer {
+namespace ChartRatingAI.Training {
     partial class Form1 {
         /// <summary>
         /// Required designer variable.

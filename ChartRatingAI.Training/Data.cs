@@ -2,9 +2,11 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
+using AI.Processing;
+using ChartRatingAI.Processing;
 using Util;
 
-namespace AI.Processing {
+namespace ChartRatingAI.Training {
     public class Data {
         private readonly struct TempDataSample {
             public double[] Values { get; }
@@ -164,14 +166,14 @@ namespace AI.Processing {
             }
         }
 
-        public double GetResult(Matrix valueMatrix, Matrix weightMatrix) {
+        public double GetResult(Compiler valueCompiler, Compiler weightCompiler, double[] valueCoefficients, double[] weightCoefficients) {
             double sumValue = 0d;
             double sumWeight = 0d;
 
             foreach (var sample in samples) {
-                double weight = sample.Weight * weightMatrix.GetValue(sample.Values);
+                double weight = sample.Weight * weightCompiler.GetResult(sample.Values);
 
-                sumValue += weight * valueMatrix.GetValue(sample.Values);
+                sumValue += weight * valueCompiler.GetResult(sample.Values);
                 sumWeight += weight;
             }
 
