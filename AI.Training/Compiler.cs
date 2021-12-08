@@ -4,13 +4,6 @@ using AI.Processing;
 namespace AI.Training {
     public class Compiler : Processing.Compiler, IBackpropagator<double[], double, ArrayModel> {
         public Compiler(int inputSize, int dimensions) : base(inputSize, dimensions) { }
-        
-        public static void SerializeModel(double[] model, BinaryWriter writer) {
-            writer.Write(model.Length);
-            
-            foreach (double coeff in model)
-                writer.Write(coeff);
-        }
 
         public void Backpropagate(double outVector, double[] input, ArrayModel model, double[] inVector, ArrayModel modelVector) {
             double[] modelArray = model.Array;
@@ -38,7 +31,7 @@ namespace AI.Training {
                 counter++;
             }
         }
-        
+
         public void BackpropagateFinal(double outVector, double[] input, ArrayModel model, ArrayModel modelVector) {
             double[] modelArray = model.Array;
             int counter = 0;
@@ -60,5 +53,7 @@ namespace AI.Training {
                 counter++;
             }
         }
+
+        public double GetResult(double[] input, ArrayModel model) => base.GetResult(input, model);
     }
 }

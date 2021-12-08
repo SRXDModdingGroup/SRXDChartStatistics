@@ -266,7 +266,7 @@ namespace ChartRatingAI.Training {
                 ratings.Clear();
             }
             
-            dataSet = DataSet.Create(dataList.Count, BATCH_COUNT, METRIC_COUNT, MATRIX_DIMENSIONS, dataList);
+            dataSet = new DataSet(dataList.Count, BATCH_COUNT, METRIC_COUNT, MATRIX_DIMENSIONS, dataList);
 
             using (var writer = new BinaryWriter(File.OpenWrite(cachePath)))
                 dataSet.Serialize(writer);

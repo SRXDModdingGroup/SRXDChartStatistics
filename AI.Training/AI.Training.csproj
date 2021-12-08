@@ -38,11 +38,13 @@
         <Reference Include="System.Xml" />
     </ItemGroup>
     <ItemGroup>
+        <Compile Include="ArrayModel.cs" />
         <Compile Include="Compiler.cs" />
         <Compile Include="DataPair.cs" />
         <Compile Include="DataSet.cs" />
         <Compile Include="IBackpropagator.cs" />
         <Compile Include="ArrayExtensions.cs" />
+        <Compile Include="IModel.cs" />
         <Compile Include="Properties\AssemblyInfo.cs" />
     </ItemGroup>
     <ItemGroup>

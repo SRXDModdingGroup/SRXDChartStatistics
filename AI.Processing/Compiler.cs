@@ -24,16 +24,6 @@ namespace AI.Processing {
             
             ModelSize = num / den;
         }
-        
-        public static double[] DeserializeModel(BinaryReader reader) {
-            int modelSize = reader.ReadInt32();
-            double[] model = new double[modelSize];
-            
-            for (int i = 0; i < modelSize; i++)
-                model[i] = reader.ReadDouble();
-
-            return model;
-        }
 
         public double GetResult(double[] input, ArrayModel model) {
             double[] array = model.Array;

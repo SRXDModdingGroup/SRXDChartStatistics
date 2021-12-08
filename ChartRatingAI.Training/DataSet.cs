@@ -12,6 +12,15 @@ namespace ChartRatingAI.Training {
         private Compiler[] weightVectors;
         private Compiler overallValueVector;
         private Compiler overallWeightVector;
+
+        public DataSet(int size, int sampleSize, int batchCount, int matrixDimensions, IList<(Data, double)> dataList)
+            : this(size, sampleSize, batchCount, matrixDimensions) {
+            for (int i = 0; i < size; i++) {
+                (var data, double expectedResult) = dataList[i];
+
+                Data[i] = new DataPair<Data, double>(data, expectedResult);
+            }
+        }
         
         private DataSet(int size, int sampleSize, int batchCount, int matrixDimensions) : base(size, batchCount) {
             this.sampleSize = sampleSize;
@@ -20,18 +29,6 @@ namespace ChartRatingAI.Training {
             weightVectors = new Compiler[BatchSize];
             overallValueVector = new Compiler(sampleSize, matrixDimensions);
             overallWeightVector = new Compiler(sampleSize, matrixDimensions);
-        }
-        
-        public static DataSet Create(int size, int batchCount, int sampleSize, int matrixDimensions, IList<(Data, double)> dataList) {
-            var dataSet = new DataSet(size, batchCount, sampleSize, matrixDimensions);
-
-            for (int i = 0; i < size; i++) {
-                (var data, double expectedResult) = dataList[i];
-
-                dataSet.Data[i] = new DataPair<Data, double>(data, expectedResult);
-            }
-
-            return dataSet;
         }
         
         public static DataSet Deserialize(BinaryReader reader, int batchCount, int matrixDimensions) {

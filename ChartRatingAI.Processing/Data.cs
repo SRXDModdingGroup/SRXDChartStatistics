@@ -6,58 +6,56 @@ using Util;
 
 namespace ChartRatingAI.Processing {
     public class Data {
-        private readonly struct TempDataSample {
-            public double[] Values { get; }
-        
-            public double Time { get; }
-
-            public TempDataSample(double[] values, double time) {
-                Values = values;
-                Time = time;
-            }
-        }
-        
         public string Name { get; }
         
         public int Size { get; }
 
         public int SampleSize { get; }
-        
-        public ReadOnlyCollection<DataSample> Samples { get; }
 
-        protected DataSample[] SamplesArray { get; }
+        public DataSample[] Samples { get; }
+
+        public Data(string name, int sampleSize, DataSample[] samples) {
+            Name = name;
+            Size = samples.Length;
+            SampleSize = sampleSize;
+            Samples = samples;
+        }
+
+        public static Data Deserialize(BinaryReader reader) =>
+            Deserialize(reader, (name, size, sampleSize) => new Data(name, size, sampleSize));
 
         protected Data(string name, int size, int sampleSize) {
             Name = name;
             Size = size;
             SampleSize = sampleSize;
-            SamplesArray = new DataSample[size];
-            Samples = new ReadOnlyCollection<DataSample>(SamplesArray);
+            Samples = new DataSample[size];
         }
 
-        public static Data Create(string name, int sampleSize, Func<int, IEnumerable<(double, double)>> selector) =>
-            Create(name, sampleSize, selector, (n, ss, s) => new Data(n, s, ss));
-
         public void Clamp(int valueIndex, double max) {
-            foreach (var sample in SamplesArray) {
+            foreach (var sample in Samples) {
                 double[] values = sample.Values;
 
                 values[valueIndex] = Math.Min(values[valueIndex], max);
             }
         }
 
+        public void Trim(double localLimit, double[] globalLimits) {
+            for (int i = 0; i < SampleSize; i++)
+                Clamp(i, Math.Min(GetQuantile(i, localLimit), globalLimits[i]));
+        }
+
         public void Normalize(double[] scales, double[] powers) {
-            foreach (var sample in SamplesArray) {
+            foreach (var sample in Samples) {
                 for (int i = 0; i < SampleSize; i++)
                     sample.Values[i] = Math.Pow(scales[i] * sample.Values[i], powers[i]);
             }
         }
 
         public double GetQuantile(int valueIndex, double quantile) {
-            var sorted = new DataSample[SamplesArray.Length];
+            var sorted = new DataSample[Samples.Length];
 
-            for (int i = 0; i < SamplesArray.Length; i++)
-                sorted[i] = SamplesArray[i];
+            for (int i = 0; i < Samples.Length; i++)
+                sorted[i] = Samples[i];
                 
             Array.Sort(sorted, new DataSample.Comparer(valueIndex));
 
@@ -94,76 +92,21 @@ namespace ChartRatingAI.Processing {
             return sorted[sorted.Length - 1].Values[valueIndex];
         }
 
-        protected static T Create<T>(string name, int sampleSize, Func<int, IEnumerable<(double, double)>> selector,
-            Func<string, int, int, T> constructor) where T : Data {
-            var enumerators = new IEnumerator<(double, double)>[sampleSize];
-            bool[] remaining = new bool[sampleSize];
-
-            for (int i = 0; i < sampleSize; i++) {
-                var enumerator = selector(i).GetEnumerator();
-                
-                enumerators[i] = enumerator;
-                remaining[i] = enumerator.MoveNext();
-            }
-
-            var tempSamples = new List<TempDataSample>();
-            double[] currentValues = new double[sampleSize];
-            double currentTime = -1d;
-            bool firstFound = false;
-            bool anyRemaining;
-
-            do {
-                int soonestIndex = -1;
-                double soonestTime = double.MaxValue;
-
-                anyRemaining = false;
-
-                for (int i = 0; i < enumerators.Length; i++) {
-                    if (!remaining[i])
-                        continue;
-
-                    var enumerator = enumerators[i];
-                    double time = enumerator.Current.Item2;
-
-                    if (time >= soonestTime)
-                        continue;
-
-                    soonestIndex = i;
-                    soonestTime = time;
-                    anyRemaining = true;
-                }
-                
-                if (!anyRemaining)
-                    continue;
-
-                var soonest = enumerators[soonestIndex];
-
-                if (!firstFound || !MathU.AlmostEquals(soonestTime, currentTime)) {
-                    if (firstFound) {
-                        double[] newValues = new double[sampleSize];
-                        
-                        Array.Copy(currentValues, newValues, sampleSize);
-                        tempSamples.Add(new TempDataSample(newValues, currentTime));
-                    }
-
-                    currentTime = soonestTime;
-                    firstFound = true;
-                }
-
-                currentValues[soonestIndex] = soonest.Current.Item1;
-                remaining[soonestIndex] = soonest.MoveNext();
-            } while (anyRemaining);
+        protected static T Deserialize<T>(BinaryReader reader, Func<string, int, int, T> constructor) where T : Data {
+            string name = reader.ReadString();
+            int size = reader.ReadInt32();
+            int sampleSize = reader.ReadInt32();
+            var data = constructor(name, size, sampleSize);
             
-            tempSamples.Add(new TempDataSample(currentValues, currentTime));
+            for (int i = 0; i < size; i++) {
+                double[] newValues = new double[sampleSize];
 
-            var data = constructor(name, tempSamples.Count - 1, sampleSize);
-            var samples = data.SamplesArray;
-            double scale = 1d / (tempSamples[tempSamples.Count - 1].Time - tempSamples[0].Time);
+                for (int j = 0; j < sampleSize; j++)
+                    newValues[j] = reader.ReadDouble();
 
-            for (int i = 0; i < data.Size; i++) {
-                var tempSample = tempSamples[i];
-
-                samples[i] = new DataSample(tempSample.Values, scale * (tempSamples[i + 1].Time - tempSample.Time));
+                double weight = reader.ReadDouble();
+                
+                data.Samples[i] = new DataSample(newValues, weight);
             }
 
             return data;

@@ -5,7 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using ChartHelper.Types;
-using ChartRatingAI.Training;
+using ChartRatingAI.Processing;
 using Util;
 
 namespace ChartMetrics {
@@ -40,8 +40,11 @@ namespace ChartMetrics {
         public static ReadOnlyCollection<Metric> Metrics { get; } = new ReadOnlyCollection<Metric>(METRICS);
         public static ReadOnlyCollection<Metric> DifficultyMetrics { get; } = new ReadOnlyCollection<Metric>(DIFFICULTY_METRICS);
 
+        private static Algorithm algorithm;
+        private static Model model;
         private static double bias;
         private static double scale;
+        private static double[] globalLimits;
         private static double[] baseScales;
         private static double[] basePowers;
         private static bool parametersLoaded;
@@ -66,13 +69,18 @@ namespace ChartMetrics {
             
             if (!File.Exists(path))
                 return;
-
+            
+            globalLimits = new double[DIFFICULTY_METRICS.Length];
             baseScales = new double[DIFFICULTY_METRICS.Length];
             basePowers = new double[DIFFICULTY_METRICS.Length];
 
             using (var reader = new BinaryReader(File.Open(path, FileMode.Open))) {
+                model = Model.Deserialize(reader);
                 bias = reader.ReadDouble();
                 scale = reader.ReadDouble();
+                
+                for (int i = 0; i < DIFFICULTY_METRICS.Length; i++)
+                    globalLimits[i] = reader.ReadDouble();
 
                 for (int i = 0; i < DIFFICULTY_METRICS.Length; i++)
                     baseScales[i] = reader.ReadDouble();
@@ -283,12 +291,12 @@ namespace ChartMetrics {
         public int GetDifficultyRating() {
             LoadParameters();
 
-            var data = CreateRatingData();
+            var data = new Data(Title, DifficultyMetrics.Count, CreateRatingData());
             
-            data.Trim(0.9d);
+            data.Trim(0.9d, globalLimits);
             data.Normalize(baseScales, basePowers);
-            
-            double value = data.GetResult(valueCompiler, weightCompiler);
+
+            double value = algorithm.GetResult(data, model);
 
             if (value < 0d)
                 return 0;
@@ -332,8 +340,79 @@ namespace ChartMetrics {
             
             return new ReadOnlyCollection<ReadOnlyCollection<WheelPath.Point>>(simplifiedPaths);
         }
+        
+        public DataSample[] CreateRatingData() {
+            var enumerators = new IEnumerator<(double, double)>[DIFFICULTY_METRICS.Length];
+            bool[] remaining = new bool[DIFFICULTY_METRICS.Length];
 
-        public Data CreateRatingData() => Data.Create(Title, DIFFICULTY_METRICS.Length, GetMetricSamples);
+            for (int i = 0; i < DIFFICULTY_METRICS.Length; i++) {
+                var enumerator = GetMetricSamples(i);
+                
+                enumerators[i] = enumerator;
+                remaining[i] = enumerator.MoveNext();
+            }
+
+            var tempSamples = new List<(double[], double)>();
+            double[] currentValues = new double[DIFFICULTY_METRICS.Length];
+            double currentTime = -1d;
+            bool firstFound = false;
+            bool anyRemaining;
+
+            do {
+                int soonestIndex = -1;
+                double soonestTime = double.MaxValue;
+
+                anyRemaining = false;
+
+                for (int i = 0; i < enumerators.Length; i++) {
+                    if (!remaining[i])
+                        continue;
+
+                    var enumerator = enumerators[i];
+                    double time = enumerator.Current.Item2;
+
+                    if (time >= soonestTime)
+                        continue;
+
+                    soonestIndex = i;
+                    soonestTime = time;
+                    anyRemaining = true;
+                }
+                
+                if (!anyRemaining)
+                    continue;
+
+                var soonest = enumerators[soonestIndex];
+
+                if (!firstFound || !MathU.AlmostEquals(soonestTime, currentTime)) {
+                    if (firstFound) {
+                        double[] newValues = new double[DIFFICULTY_METRICS.Length];
+                        
+                        Array.Copy(currentValues, newValues, DIFFICULTY_METRICS.Length);
+                        tempSamples.Add((newValues, currentTime));
+                    }
+
+                    currentTime = soonestTime;
+                    firstFound = true;
+                }
+
+                currentValues[soonestIndex] = soonest.Current.Item1;
+                remaining[soonestIndex] = soonest.MoveNext();
+            } while (anyRemaining);
+            
+            tempSamples.Add((currentValues, currentTime));
+
+            var samples = new DataSample[tempSamples.Count - 1];
+            double scale = 1d / (tempSamples[tempSamples.Count - 1].Item2 - tempSamples[0].Item2);
+
+            for (int i = 0; i < samples.Length; i++) {
+                var tempSample = tempSamples[i];
+
+                samples[i] = new DataSample(tempSample.Item1, scale * (tempSamples[i + 1].Item2 - tempSample.Item2));
+            }
+
+            return samples;
+        }
 
         private Result CalculateMetric(Metric metric) {
             IList<Metric.Point> candidates;
@@ -441,13 +520,13 @@ namespace ChartMetrics {
             }
         }
         
-        private IEnumerable<(double, double)> GetMetricSamples(int metricIndex) {
+        private IEnumerator<(double, double)> GetMetricSamples(int metricIndex) {
             TryGetMetric(DifficultyMetrics[metricIndex].Name, out var result);
 
             var samples = result.Samples;
             var last = samples[samples.Count - 1];
 
-            return samples.Select(sample => ((double) sample.Value, (double) sample.Time)).Append((0d, last.Time + last.Length));
+            return samples.Select(sample => ((double) sample.Value, (double) sample.Time)).Append((0d, last.Time + last.Length)).GetEnumerator();
         }
     }
 }
