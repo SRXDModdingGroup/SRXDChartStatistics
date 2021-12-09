@@ -1,6 +1,4 @@
-﻿using System.IO;
-
-namespace AI.Processing {
+﻿namespace AI.Processing {
     public class Compiler : IAlgorithm<double[], double, ArrayModel> {
         public int InputSize { get; }
 

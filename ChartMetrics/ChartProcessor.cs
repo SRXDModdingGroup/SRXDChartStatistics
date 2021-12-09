@@ -69,12 +69,13 @@ namespace ChartMetrics {
             
             if (!File.Exists(path))
                 return;
-            
+
+            algorithm = new Algorithm(DIFFICULTY_METRICS.Length, 4);
             globalLimits = new double[DIFFICULTY_METRICS.Length];
             baseScales = new double[DIFFICULTY_METRICS.Length];
             basePowers = new double[DIFFICULTY_METRICS.Length];
 
-            using (var reader = new BinaryReader(File.Open(path, FileMode.Open))) {
+            using (var reader = new BinaryReader(File.OpenRead(path))) {
                 model = Model.Deserialize(reader);
                 bias = reader.ReadDouble();
                 scale = reader.ReadDouble();
@@ -403,12 +404,12 @@ namespace ChartMetrics {
             tempSamples.Add((currentValues, currentTime));
 
             var samples = new DataSample[tempSamples.Count - 1];
-            double scale = 1d / (tempSamples[tempSamples.Count - 1].Item2 - tempSamples[0].Item2);
+            double weightScale = 1d / (tempSamples[tempSamples.Count - 1].Item2 - tempSamples[0].Item2);
 
             for (int i = 0; i < samples.Length; i++) {
                 var tempSample = tempSamples[i];
 
-                samples[i] = new DataSample(tempSample.Item1, scale * (tempSamples[i + 1].Item2 - tempSample.Item2));
+                samples[i] = new DataSample(tempSample.Item1, weightScale * (tempSamples[i + 1].Item2 - tempSample.Item2));
             }
 
             return samples;

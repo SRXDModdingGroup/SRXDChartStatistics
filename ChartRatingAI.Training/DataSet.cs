@@ -2,19 +2,13 @@
 using System.Collections.Generic;
 using System.IO;
 using AI.Training;
-using ChartRatingAI.Processing;
 
 namespace ChartRatingAI.Training {
     public class DataSet : DataSet<Data> {
         private int sampleSize;
-        private double[] weightScales;
-        private Compiler[] valueVectors;
-        private Compiler[] weightVectors;
-        private Compiler overallValueVector;
-        private Compiler overallWeightVector;
 
-        public DataSet(int size, int sampleSize, int batchCount, int matrixDimensions, IList<(Data, double)> dataList)
-            : this(size, sampleSize, batchCount, matrixDimensions) {
+        public DataSet(int size, int sampleSize, int batchCount, IList<(Data, double)> dataList)
+            : this(size, sampleSize, batchCount) {
             for (int i = 0; i < size; i++) {
                 (var data, double expectedResult) = dataList[i];
 
@@ -22,19 +16,12 @@ namespace ChartRatingAI.Training {
             }
         }
         
-        private DataSet(int size, int sampleSize, int batchCount, int matrixDimensions) : base(size, batchCount) {
-            this.sampleSize = sampleSize;
-            weightScales = new double[BatchSize];
-            valueVectors = new Compiler[BatchSize];
-            weightVectors = new Compiler[BatchSize];
-            overallValueVector = new Compiler(sampleSize, matrixDimensions);
-            overallWeightVector = new Compiler(sampleSize, matrixDimensions);
-        }
-        
-        public static DataSet Deserialize(BinaryReader reader, int batchCount, int matrixDimensions) {
+        private DataSet(int size, int sampleSize, int batchCount) : base(size, batchCount) => this.sampleSize = sampleSize;
+
+        public static DataSet Deserialize(BinaryReader reader, int batchCount) {
             int size = reader.ReadInt32();
             int sampleSize = reader.ReadInt32();
-            var dataSet = new DataSet(size, batchCount, sampleSize, matrixDimensions);
+            var dataSet = new DataSet(size, sampleSize, batchCount);
 
             for (int i = 0; i < size; i++) {
                 var data = Training.Data.Deserialize(reader);

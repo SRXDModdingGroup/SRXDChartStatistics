@@ -33,7 +33,7 @@ namespace AI.Training {
 
             for (int i = 0; i < Array.Length; i++)
                 sum += Math.Abs(Array[i]);
-
+            
             double scale = magnitude / sum;
 
             for (int i = 0; i < Array.Length; i++)

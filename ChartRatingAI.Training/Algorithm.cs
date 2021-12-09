@@ -24,6 +24,7 @@ namespace ChartRatingAI.Training {
                 double[] values = sample.Values;
                 double value = valueCompiler.GetResult(values, weightCompilerModel);
                 double weight = sample.Weight * weightCompiler.GetResult(values, valueCompilerModel);
+                
                 sumValue += weight * valueCompiler.GetResult(values, weightCompilerModel);
                 sumWeight += weight;
                 input.CachedValues[i] = value;
@@ -54,7 +55,7 @@ namespace ChartRatingAI.Training {
                 double[] values = sample.Values;
 
                 valueCompiler.BackpropagateFinal(outVector / cachedWeights[i], values, valueCompilerModel, valueCompilerVector);
-                weightCompiler.BackpropagateFinal(outVector / cachedValues[i], values, weightCompilerModel, weightCompilerVector);
+                weightCompiler.BackpropagateFinal(outVector / (cachedValues[i] * sample.Weight), values, weightCompilerModel, weightCompilerVector);
             }
         }
     }

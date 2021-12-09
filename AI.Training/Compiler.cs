@@ -1,7 +1,4 @@
-﻿using System.IO;
-using AI.Processing;
-
-namespace AI.Training {
+﻿namespace AI.Training {
     public class Compiler : Processing.Compiler, IBackpropagator<double[], double, ArrayModel> {
         public Compiler(int inputSize, int dimensions) : base(inputSize, dimensions) { }
 

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -12,54 +13,67 @@ using ChartHelper.Types;
 using ChartMetrics;
 using AI.Training;
 using ChartHelper.Parsing;
+using ArrayModel = AI.Training.ArrayModel;
 
 namespace ChartRatingAI.Training {
     public static class Program {
         private static readonly string ASSEMBLY_DIRECTORY = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
         private static readonly int METRIC_COUNT = ChartProcessor.DifficultyMetrics.Count;
-        private static readonly int MATRIX_DIMENSIONS = 4;
+        private static readonly int INSTANCE_COUNT = 8;
+        private static readonly int COMPILER_DIMENSIONS = 3;
         private static readonly int BATCH_COUNT = 4;
-        private static readonly double MIN_APPROACH_FACTOR = 0.00025d;
-        private static readonly double MAX_APPROACH_FACTOR = 0.01d;
-        private static readonly double VECTOR_MAGNITUDE = 0.05d;
-        private static readonly double DAMPENING = 2d;
+        private static readonly double INITIAL_APPROACH_FACTOR = 0.05d;
+        private static readonly double MIN_APPROACH_FACTOR = 0.005d;
+        private static readonly double MAX_APPROACH_FACTOR = 0.1d;
+        private static readonly double DAMPING = 0.5d;
+        private static readonly double GROWTH = 1.25d;
 
         public static void Main(string[] args) {
             var random = new Random();
             var dataSet = GetDataSet();
 
-            dataSet.Trim(0.9d, 0.95d);
+            dataSet.Trim(0.95d, 0.975d);
             dataSet.GetBaseParameters(out double[] scales, out double[] powers);
             dataSet.Normalize(scales, powers);
-            GetMatrices(random, out var valueMatrix, out var weightMatrix);
-            
+
+            var instances = new Algorithm[INSTANCE_COUNT];
+            var model = GetModel(random);
             var form = new Form1();
 
-            //MainThread(population, dataSet, form);
-            Parallel.Invoke(() => MainThread(valueMatrix, weightMatrix, dataSet, form, random), () => FormThread(form));
+            for (int i = 0; i < INSTANCE_COUNT; i++)
+                instances[i] = new Algorithm(METRIC_COUNT, COMPILER_DIMENSIONS);
 
-            double fitness = dataSet.Adjust(valueMatrix, weightMatrix, 0d, 0d, random);
-            double[] results = dataSet.GetResults(valueMatrix, weightMatrix, out double scale, out double bias);
+            //MainThread(population, dataSet, form);
+            Parallel.Invoke(() => MainThread(instances, model, dataSet, form, random), () => FormThread(form));
+
+            double fitness = dataSet.GetFitnessAndResults(instances, model, out double scale, out double bias, out double[] results);
             
-            SaveMatrices(valueMatrix, weightMatrix);
-            OutputDetailedInfo(fitness, valueMatrix, weightMatrix, dataSet, results);
-            SaveParameters(valueMatrix, weightMatrix, bias, scale, scales, powers);
+            SaveModel(model);
+            OutputDetailedInfo(fitness, model, dataSet, results);
+            SaveParameters(model, bias, scale, scales, powers);
             Console.WriteLine("Press any key to exit");
             Console.ReadKey(true);
         }
 
-        private static void MainThread(Compiler valueCompiler, Compiler weightCompiler, DataSet dataSet, Form1 form, Random random) {
+        private static void MainThread(Algorithm[] instances, Model model, DataSet dataSet, Form1 form, Random random) {
             int generation = 0;
             int lastCheckedGeneration = 0;
-            double approachFactor = MAX_APPROACH_FACTOR;
-            double fitness = dataSet.Adjust(valueCompiler, weightCompiler, 0d, 0d, random);
+            double approachFactor = INITIAL_APPROACH_FACTOR;
+            double fitness = dataSet.GetFitnessAndResults(instances, model, out _, out _, out _);
             double currentBest = fitness;
             double lastCheckedBest = fitness;
-            var lastCheckTime = DateTime.Now;
+            var vectors = new Model[INSTANCE_COUNT];
             var drawExpectedReturned = new PointF[dataSet.Size];
+            var lastCheckTime = DateTime.Now;
             var drawWatch = new Stopwatch();
             var checkWatch = new Stopwatch();
             var autoSaveWatch = new Stopwatch();
+
+            for (int i = 0; i < INSTANCE_COUNT; i++) {
+                vectors[i] = new Model(
+                    new ArrayModel(new double[model.ValueCompilerModel.Array.Length]),
+                    new ArrayModel(new double[model.WeightCompilerModel.Array.Length]));
+            }
             
             Console.WriteLine($"Initial fitness: {fitness:0.00000000}");
 
@@ -68,21 +82,26 @@ namespace ChartRatingAI.Training {
             autoSaveWatch.Start();
 
             while (!Console.KeyAvailable || Console.ReadKey(true).Key != ConsoleKey.Enter) {
-                double newFitness = dataSet.Adjust(valueCompiler, weightCompiler, approachFactor, VECTOR_MAGNITUDE, random);
+                int batchIndex = generation % BATCH_COUNT;
+
+                if (batchIndex == 0)
+                    dataSet.Shuffle(random);
+                
+                dataSet.Backpropagate(instances, model, vectors, approachFactor, batchIndex);
+                
+                double newFitness = dataSet.GetFitnessAndResults(instances, model, out _, out _, out double[] results);
 
                 if (newFitness > fitness)
-                    approachFactor = Math.Min(DAMPENING * approachFactor, MAX_APPROACH_FACTOR);
+                    approachFactor = Math.Min(GROWTH * approachFactor, MAX_APPROACH_FACTOR);
                 else
-                    approachFactor = Math.Max(MIN_APPROACH_FACTOR, approachFactor / DAMPENING);
-
+                    approachFactor = Math.Max(MIN_APPROACH_FACTOR, DAMPING * approachFactor);
+                
                 fitness = newFitness;
-
+                
                 if (fitness > currentBest)
                     currentBest = fitness;
 
                 if (Form.ActiveForm == form && drawWatch.ElapsedMilliseconds > 166) {
-                    double[] results = dataSet.GetResults(valueCompiler, weightCompiler, out _, out _);
-
                     for (int i = 0; i < dataSet.Data.Length; i++) {
                         drawExpectedReturned[i] = new PointF(
                             (float) dataSet.Data[i].ExpectedResult,
@@ -102,7 +121,7 @@ namespace ChartRatingAI.Training {
                 }
 
                 if (autoSaveWatch.ElapsedMilliseconds > 300000) {
-                    SaveMatrices(valueCompiler, weightCompiler);
+                    SaveModel(model);
                     autoSaveWatch.Restart();
                 }
 
@@ -119,21 +138,18 @@ namespace ChartRatingAI.Training {
             Application.Run(form);
         }
 
-        private static void SaveMatrices(Compiler valueCompiler, Compiler weightCompiler) {
-            using (var writer = new BinaryWriter(File.Open(Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "Results.dat"), FileMode.Create))) {
-                valueCompiler.SerializeModel(writer);
-                weightCompiler.SerializeModel(writer);
-            }
-            
+        private static void SaveModel(Model model) {
+            using (var writer = new BinaryWriter(File.OpenWrite(Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "Results.dat"))))
+                model.Serialize(writer);
+
             Console.WriteLine();
             Console.WriteLine("Saved file successfully");
             Console.WriteLine();
         }
 
-        private static void SaveParameters(Compiler valueCompiler, Compiler weightCompiler, double bias, double scale, double[] baseScales, double[] basePowers) {
-            using (var writer = new BinaryWriter(File.Open(Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "parameters.dat"), FileMode.Create))) {
-                valueCompiler.SerializeModel(writer);
-                weightCompiler.SerializeModel(writer);
+        private static void SaveParameters(Model model, double bias, double scale, double[] baseScales, double[] basePowers) {
+            using (var writer = new BinaryWriter(File.OpenWrite(Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "parameters.dat")))) {
+                model.Serialize(writer);
                 writer.Write(bias);
                 writer.Write(scale);
 
@@ -148,12 +164,12 @@ namespace ChartRatingAI.Training {
             Console.WriteLine();
         }
 
-        private static void OutputDetailedInfo(double fitness, Compiler valueCompiler, Compiler weightCompiler, DataSet<,> dataSet, double[] results) {
+        private static void OutputDetailedInfo(double fitness, Model model, DataSet dataSet, double[] results) {
             Console.WriteLine();
             Console.WriteLine($"Fitness: {fitness:0.00000000}");
             Console.WriteLine("Values:");
 
-            var valueList = ArrayExtensions.EnumerateValues(valueCompiler);
+            var valueList = ArrayExtensions.EnumerateValues(model.ValueCompilerModel.Array, METRIC_COUNT, COMPILER_DIMENSIONS);
             
             valueList.Sort((a, b) => -a.Item2.CompareTo(b.Item2));
 
@@ -162,7 +178,7 @@ namespace ChartRatingAI.Training {
 
             Console.WriteLine();
             
-            var weightList = ArrayExtensions.EnumerateValues(weightCompiler);
+            var weightList = ArrayExtensions.EnumerateValues(model.WeightCompilerModel.Array, METRIC_COUNT, COMPILER_DIMENSIONS);
             
             weightList.Sort((a, b) => -a.Item2.CompareTo(b.Item2));
 
@@ -171,12 +187,12 @@ namespace ChartRatingAI.Training {
             
             Console.WriteLine();
 
-            var datas = dataSet.Data;
-            var expectedReturnedPairs = datas.Select((data, i) => new ExpectedReturned(data.Name, data.ExpectedResult, results[i])).ToArray();
+            var dataPairs = dataSet.Data;
+            var expectedReturnedPairs = dataPairs.Select((pair, i) => new ExpectedReturned(pair.Data.Name, pair.ExpectedResult, results[i])).ToArray();
             int longestName = 0;
 
             for (int i = 0; i < dataSet.Size; i++) {
-                int nameLength = dataSet.Data[i].Name.Length;
+                int nameLength = dataSet.Data[i].Data.Name.Length;
 
                 if (nameLength > longestName)
                     longestName = nameLength;
@@ -208,7 +224,7 @@ namespace ChartRatingAI.Training {
 
             if (File.Exists(cachePath)) {
                 using (var reader = new BinaryReader(File.OpenRead(cachePath)))
-                    dataSet = DataSet.Deserialize(reader, BATCH_COUNT, MATRIX_DIMENSIONS);
+                    dataSet = DataSet.Deserialize(reader, BATCH_COUNT);
 
                 return dataSet;
             }
@@ -266,7 +282,7 @@ namespace ChartRatingAI.Training {
                 ratings.Clear();
             }
             
-            dataSet = new DataSet(dataList.Count, BATCH_COUNT, METRIC_COUNT, MATRIX_DIMENSIONS, dataList);
+            dataSet = new DataSet(dataList.Count, METRIC_COUNT, BATCH_COUNT, dataList);
 
             using (var writer = new BinaryWriter(File.OpenWrite(cachePath)))
                 dataSet.Serialize(writer);
@@ -274,21 +290,27 @@ namespace ChartRatingAI.Training {
             return dataSet;
         }
 
-        private static void GetMatrices(Random random, out Compiler valueCompiler, out Compiler weightCompiler) {
+        private static Model GetModel(Random random) {
             string path = Path.Combine(ASSEMBLY_DIRECTORY, "Results.dat");
 
             if (File.Exists(path)) {
-                using (var reader = new BinaryReader(File.Open(path, FileMode.Open))) {
-                    valueCompiler = Compiler.DeserializeModel(reader);
-                    weightCompiler = Compiler.DeserializeModel(reader);
-                }
+                using (var reader = new BinaryReader(File.OpenRead(path)))
+                    return Model.Deserialize(reader);
             }
-            else {
-                valueCompiler = ArrayExtensions.Random(METRIC_COUNT, MATRIX_DIMENSIONS, random);
-                weightCompiler = ArrayExtensions.Random(METRIC_COUNT, MATRIX_DIMENSIONS, random);
-                // ValueCompiler = ArrayExtensions.Identity(METRIC_COUNT, MATRIX_DIMENSIONS);
-                // WeightCompiler = ArrayExtensions.Identity(METRIC_COUNT, MATRIX_DIMENSIONS);
-            }
+
+            int num = 1;
+
+            for (int i = METRIC_COUNT + 1; i < METRIC_COUNT + COMPILER_DIMENSIONS + 1; i++)
+                num *= i;
+
+            int den = 1;
+
+            for (int i = 2; i <= COMPILER_DIMENSIONS; i++)
+                den *= i;
+            
+            int size = num / den;
+                
+            return new Model(new ArrayModel(ArrayExtensions.Random(size, random)), new ArrayModel(ArrayExtensions.Random(size, random)));
         }
     }
 }
