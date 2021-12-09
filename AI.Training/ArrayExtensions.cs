@@ -11,7 +11,15 @@ namespace AI.Training {
             for (int i = 0; i < size; i++)
                 array[i] = random.NextDouble();
 
-            array.Normalize();
+            double sum = 0d;
+
+            for (int i = 0; i < array.Length; i++)
+                sum += Math.Abs(array[i]);
+            
+            double scale = 1d / sum;
+
+            for (int i = 0; i < array.Length; i++)
+                array[i] *= scale;
 
             return array;
         }
@@ -56,32 +64,6 @@ namespace AI.Training {
                 builder.Clear();
                 counter++;
             }
-        }
-
-        internal static void Zero(this double[] array) {
-            for (int i = 0; i < array.Length; i++)
-                array[i] = 0d;
-        }
-
-        internal static void Normalize(this double[] array) {
-            double scale = 1d / array.Magnitude();
-
-            for (int i = 0; i < array.Length; i++)
-                array[i] *= scale;
-        }
-
-        internal static void AddWeighted(this double[] target, double weight, double[] source) {
-            for (int i = 0; i < target.Length; i++)
-                target[i] += weight * source[i];
-        }
-
-        internal static double Magnitude(this double[] array) {
-            double sum = 0d;
-
-            for (int i = 0; i < array.Length; i++)
-                sum += Math.Abs(array[i]);
-
-            return sum;
         }
     }
 }
