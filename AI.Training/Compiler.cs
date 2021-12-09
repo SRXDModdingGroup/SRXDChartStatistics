@@ -33,13 +33,13 @@ namespace AI.Training {
         }
 
         public void BackpropagateFinal(double outVector, double[] input, ArrayModel model, ArrayModel modelVector) {
-            double[] modelArray = model.Array;
+            double[] vectorArray = modelVector.Array;
             int counter = 0;
 
             for (int i = 0; i < InputSize; i++)
                 Recurse(input[i], i, 1);
 
-            modelArray[counter] += outVector;
+            vectorArray[counter] += outVector;
 
             void Recurse(double product, int start, int depth) {
                 if (depth < Dimensions) {
@@ -48,7 +48,7 @@ namespace AI.Training {
                 }
                 
                 if (product > 0d)
-                    modelArray[counter] += outVector / product;
+                    vectorArray[counter] += outVector / product;
 
                 counter++;
             }

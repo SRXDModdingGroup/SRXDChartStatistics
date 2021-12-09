@@ -260,7 +260,7 @@ namespace ChartRatingAI.Training {
                         continue;
 
                     processor.SetData(chartData.Title, chartData.TrackData[Difficulty.XD].Notes);
-                    dataList.Add((processor.CreateRatingData(), 0.01d * rating));
+                    dataList.Add((new Data(processor.Title, METRIC_COUNT, processor.CreateRatingData()), 0.01d * rating));
                 }
 
                 ratings.Clear();
@@ -286,8 +286,8 @@ namespace ChartRatingAI.Training {
             else {
                 valueCompiler = ArrayExtensions.Random(METRIC_COUNT, MATRIX_DIMENSIONS, random);
                 weightCompiler = ArrayExtensions.Random(METRIC_COUNT, MATRIX_DIMENSIONS, random);
-                // valueCompiler = ArrayExtensions.Identity(METRIC_COUNT, MATRIX_DIMENSIONS);
-                // weightCompiler = ArrayExtensions.Identity(METRIC_COUNT, MATRIX_DIMENSIONS);
+                // ValueCompiler = ArrayExtensions.Identity(METRIC_COUNT, MATRIX_DIMENSIONS);
+                // WeightCompiler = ArrayExtensions.Identity(METRIC_COUNT, MATRIX_DIMENSIONS);
             }
         }
     }

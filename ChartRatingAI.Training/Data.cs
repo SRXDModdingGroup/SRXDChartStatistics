@@ -5,14 +5,19 @@ using ChartRatingAI.Processing;
 
 namespace ChartRatingAI.Training {
     public class Data : Processing.Data {
-        private double[] cachedValues;
-        private double[] cachedWeights;
+        public double[] CachedValues { get; }
+        public double[] CachedWeights { get; }
+        
+        public double CachedSumWeight { get; set; }
 
-        public Data(string name, int sampleSize, DataSample[] samples) : base(name, sampleSize, samples) { }
+        public Data(string name, int sampleSize, DataSample[] samples) : base(name, sampleSize, samples) {
+            CachedValues = new double[Size];
+            CachedWeights = new double[Size];
+        }
 
         private Data(string name, int size, int sampleSize) : base(name, size, sampleSize) {
-            cachedValues = new double[size];
-            cachedWeights = new double[size];
+            CachedValues = new double[size];
+            CachedWeights = new double[size];
         }
         
         public new static Data Deserialize(BinaryReader reader) =>

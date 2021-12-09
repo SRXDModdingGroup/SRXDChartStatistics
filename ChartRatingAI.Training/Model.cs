@@ -4,12 +4,12 @@ using ArrayModel = AI.Training.ArrayModel;
 
 namespace ChartRatingAI.Training {
     public class Model : Processing.Model, IModel<Model> {
-        private ArrayModel valueCompilerModel;
-        private ArrayModel weightCompilerModel;
+        public new ArrayModel ValueCompilerModel { get; }
+        public new ArrayModel WeightCompilerModel { get; }
         
         public Model(ArrayModel valueCompilerModel, ArrayModel weightCompilerModel) : base(valueCompilerModel, weightCompilerModel) {
-            this.valueCompilerModel = valueCompilerModel;
-            this.weightCompilerModel = weightCompilerModel;
+            ValueCompilerModel = valueCompilerModel;
+            WeightCompilerModel = weightCompilerModel;
         }
         
         public new static Model Deserialize(BinaryReader reader) {
@@ -20,28 +20,28 @@ namespace ChartRatingAI.Training {
         }
 
         public void Serialize(BinaryWriter writer) {
-            valueCompilerModel.Serialize(writer);
-            weightCompilerModel.Serialize(writer);
+            ValueCompilerModel.Serialize(writer);
+            WeightCompilerModel.Serialize(writer);
         }
 
         public void Zero() {
-            valueCompilerModel.Zero();
-            weightCompilerModel.Zero();
+            ValueCompilerModel.Zero();
+            WeightCompilerModel.Zero();
         }
 
         public void Normalize(double magnitude) {
-            valueCompilerModel.Normalize(magnitude);
-            weightCompilerModel.Normalize(magnitude);
+            ValueCompilerModel.Normalize(magnitude);
+            WeightCompilerModel.Normalize(magnitude);
         }
 
         public void Add(Model source) {
-            valueCompilerModel.Add(source.valueCompilerModel);
-            weightCompilerModel.Add(source.weightCompilerModel);
+            ValueCompilerModel.Add(source.ValueCompilerModel);
+            WeightCompilerModel.Add(source.WeightCompilerModel);
         }
 
         public void AddWeighted(double weight, Model source) {
-            valueCompilerModel.AddWeighted(weight, source.valueCompilerModel);
-            weightCompilerModel.AddWeighted(weight, source.weightCompilerModel);
+            ValueCompilerModel.AddWeighted(weight, source.ValueCompilerModel);
+            WeightCompilerModel.AddWeighted(weight, source.WeightCompilerModel);
         }
     }
 }
