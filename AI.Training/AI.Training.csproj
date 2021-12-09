@@ -45,6 +45,7 @@
         <Compile Include="IBackpropagator.cs" />
         <Compile Include="ArrayExtensions.cs" />
         <Compile Include="IModel.cs" />
+        <Compile Include="NetworkModel.cs" />
         <Compile Include="Properties\AssemblyInfo.cs" />
     </ItemGroup>
     <ItemGroup>

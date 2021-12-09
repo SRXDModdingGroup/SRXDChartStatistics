@@ -4,7 +4,7 @@ namespace AI.Processing {
     public class ArrayModel {
         public double[] Array { get; }
 
-        public ArrayModel(double[] array) => Array = array;
+        protected ArrayModel(double[] array) => Array = array;
 
         public static ArrayModel Deserialize(BinaryReader reader) {
             int size = reader.ReadInt32();
