@@ -31,6 +31,8 @@ namespace ChartMetrics {
                     
                 }
             }
+
+            return null;
         }
     }
 }

@@ -319,7 +319,7 @@ namespace ChartStatistics {
         private float ColumnToY(float column) => chartCenter + chartHeight * column / -8f;
 
         private static void RateAllCharts(Difficulty difficulty) {
-            var data = new List<KeyValuePair<string, int>>();
+            var data = new List<(string, int)>();
             var processor = new ChartProcessor();
             string[] allPaths = FileHelper.GetAllSrtbs().ToArray();
 
@@ -329,16 +329,27 @@ namespace ChartStatistics {
                 if (!TryLoadChart(path, difficulty, ref processor))
                     continue;
 
-                data.Add(new KeyValuePair<string, int>(processor.Title, processor.GetDifficultyRating()));
+                int diff = 0;
+
+                try {
+                    diff = processor.GetDifficultyRating();
+                }
+                catch (Exception e) {
+                    Console.WriteLine($"Error scanning chart {processor.Title}:");
+                    Console.WriteLine(e.Message);
+                }
+                
+                data.Add((processor.Title, diff));
                 Console.WriteLine($"Scanned chart {i} of {allPaths.Length}");
                 Console.SetCursorPosition(0, Console.CursorTop - 1);
             }
 
             Console.Write(new string(' ', Console.BufferWidth));
-            data.Sort((a, b) => a.Value.CompareTo(b.Value));
+            Console.SetCursorPosition(0, Console.CursorTop);
+            data.Sort((a, b) => a.Item2.CompareTo(b.Item2));
 
-            foreach (var pair in data)
-                Console.WriteLine($"{pair.Value} - {pair.Key}");
+            foreach ((string title, int diff) in data)
+                Console.WriteLine($"{diff} - {title}");
             
             Console.WriteLine();
         }
