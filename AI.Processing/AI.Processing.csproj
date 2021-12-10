@@ -41,7 +41,8 @@
         <Compile Include="ArrayModel.cs" />
         <Compile Include="IAlgorithm.cs" />
         <Compile Include="Compiler.cs" />
-        <Compile Include="NetworkModel.cs" />
+        <Compile Include="OneDimCNN.cs" />
+        <Compile Include="OneDimCNNModel.cs" />
         <Compile Include="Properties\AssemblyInfo.cs" />
     </ItemGroup>
     <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

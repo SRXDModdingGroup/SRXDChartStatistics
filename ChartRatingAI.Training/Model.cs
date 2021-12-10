@@ -29,19 +29,11 @@ namespace ChartRatingAI.Training {
             WeightCompilerModel.Zero();
         }
 
-        public void Normalize(double magnitude) {
-            ValueCompilerModel.Normalize(magnitude);
-            WeightCompilerModel.Normalize(magnitude);
-        }
-
-        public void Add(Model source) {
-            ValueCompilerModel.Add(source.ValueCompilerModel);
-            WeightCompilerModel.Add(source.WeightCompilerModel);
-        }
-
         public void AddWeighted(double weight, Model source) {
             ValueCompilerModel.AddWeighted(weight, source.ValueCompilerModel);
             WeightCompilerModel.AddWeighted(weight, source.WeightCompilerModel);
         }
+
+        public double Magnitude() => ValueCompilerModel.Magnitude() + WeightCompilerModel.Magnitude();
     }
 }

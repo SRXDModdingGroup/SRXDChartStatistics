@@ -43,10 +43,8 @@
                     for (int i = start; i < InputSize; i++)
                         Recurse(input[i] * product, i, depth + 1);
                 }
-                
-                if (product > 0d)
-                    vectorArray[counter] += outVector / product;
 
+                vectorArray[counter] += outVector * product;
                 counter++;
             }
         }

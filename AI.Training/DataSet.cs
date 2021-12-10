@@ -10,16 +10,16 @@ namespace AI.Training {
 
         public DataPair<TData, double>[] Data { get; }
 
-        protected int BatchSize { get; }
-        
-        protected double[] Results { get; }
+        private int batchSize { get; }
+
+        private double[] results { get; }
 
         protected DataSet(int size, int batchCount) {
             Size = size;
             BatchCount = batchCount;
             Data = new DataPair<TData, double>[size];
-            BatchSize = Size / BatchCount + 1;
-            Results = new double[size];
+            batchSize = Size / BatchCount + 1;
+            results = new double[size];
         }
 
         public void Shuffle(Random random) {
@@ -30,114 +30,59 @@ namespace AI.Training {
             }
         }
 
-        public void Backpropagate<TBackpropagator, TModel>(TBackpropagator[] instances, TModel model, TModel[] vectors,
-            double approachFactor, int batchIndex)
+        public double Backpropagate<TBackpropagator, TModel>(TBackpropagator algorithm, TModel model, TModel vector,
+            double approachFactor, double minVectorMagnitude, out double[] results)
             where TBackpropagator : IBackpropagator<TData, double, TModel>
             where TModel : class, IModel<TModel> {
-            int batchStart = BatchSize * batchIndex;
-            int batchEnd = Math.Min(batchStart + BatchSize, Size);
-            int groupSize = (batchEnd - batchStart) / instances.Length + 1;
-
-            for (int j = batchStart; j < batchEnd; j++) {
-                double error = Data[j].ExpectedResult - Results[j];
-
-                error = Math.Sign(error) * error * error;
-                Parallel.For(0, instances.Length, k => GetVectorForGroup(k, error));
-            }
-
-            var overallVector = vectors[0];
-
-            for (int i = 1; i < vectors.Length; i++)
-                overallVector.Add(vectors[i]);
-                
-            overallVector.Normalize(1d);
-            model.AddWeighted(approachFactor, overallVector);
-            model.Normalize(1d);
-
-            void GetVectorForGroup(int j, double outVector) {
-                var instance = instances[j];
-                var vector = vectors[j];
-                int groupStart = j * groupSize;
-                int groupEnd = Math.Min(groupStart + groupSize, Size);
-                    
-                vector.Zero();
-                    
-                for (int k = groupStart; k < groupEnd; k++)
-                    instance.BackpropagateFinal(outVector, Data[k].Data, model, vector);
-            }
-        }
-
-        public double GetFitnessAndResults<TAlgorithm, TModel>(TAlgorithm[] instances, TModel model,
-            out double scale, out double bias, out double[] results) where TAlgorithm : IAlgorithm<TData, double, TModel> {
-            int groupSize = Size / instances.Length + 1;
-
-            Parallel.For(0, instances.Length, GetResultsInGroup);
-            GetRegression(0, Size, out scale, out bias);
-
             double sumError = 0d;
 
+            results = this.results;
+            
+            for (int i = 0; i < BatchCount; i++) {
+                int batchStart = batchSize * i;
+                int batchEnd = Math.Min(batchStart + batchSize, Size);
+            
+                vector.Zero();
+
+                for (int j = batchStart; j < batchEnd; j++) {
+                    var pair = Data[j];
+                    var data = pair.Data;
+                    double result = algorithm.GetResult(data, model);
+                    double error = pair.ExpectedResult - result;
+
+                    results[j] = result;
+                    sumError += error * error;
+                    algorithm.BackpropagateFinal(error, data, model, vector);
+                }
+
+                double magnitude = vector.Magnitude();
+
+                if (magnitude < minVectorMagnitude)
+                    model.AddWeighted(approachFactor * minVectorMagnitude / magnitude, vector);
+                else
+                    model.AddWeighted(approachFactor, vector);
+            }
+
+            return 1d - Math.Sqrt(sumError / Size);
+        }
+        
+        public double GetResults<TAlgorithm, TModel>(TAlgorithm algorithm, TModel model, out double[] results)
+            where TAlgorithm : IAlgorithm<TData, double, TModel> {
+            double sumError = 0d;
+
+            results = this.results;
+            
             for (int i = 0; i < Size; i++) {
-                double result = scale * (Results[i] + bias);
-                double error = Data[i].ExpectedResult - result;
-                
-                Results[i] = result;
+                var pair = Data[i];
+                var data = pair.Data;
+                double result = algorithm.GetResult(data, model);
+                double error = pair.ExpectedResult - result;
+
+                results[i] = result;
                 sumError += error * error;
             }
 
-            results = Results;
-
             return 1d - Math.Sqrt(sumError / Size);
-
-            void GetResultsInGroup(int i) {
-                var instance = instances[i];
-                int groupStart = i * groupSize;
-                int groupEnd = Math.Min(groupStart + groupSize, Size);
-
-                for (int j = groupStart; j < groupEnd; j++)
-                    Results[j] = instance.GetResult(Data[j].Data, model);
-            }
-        }
-
-        public double[] GetResults<TModel>(IAlgorithm<TData, double, TModel>[] instances, TModel model, out double scale, out double bias) {
-            int groupSize = Size / instances.Length + 1;
-
-            Parallel.For(0, instances.Length, GetResultsInGroup);
-            GetRegression(0, Size, out scale, out bias);
-
-            for (int i = 0; i < Size; i++)
-                Results[i] = scale * (Results[i] + bias);
-
-            return Results;
-
-            void GetResultsInGroup(int i) {
-                var instance = instances[i];
-                int groupStart = i * groupSize;
-                int groupEnd = Math.Min(groupStart + groupSize, Size);
-
-                for (int j = groupStart; j < groupEnd; j++)
-                    Results[j] = instance.GetResult(Data[j].Data, model);
-            }
-        }
-
-        private void GetRegression(int start, int end, out double scale, out double bias) {
-            int count = end - start;
-            double sx = 0d;
-            double sy = 0d;
-            double sxx = 0d;
-            double sxy = 0d;
-
-            for (int i = start; i < end; i++) {
-                double expected = Data[i].ExpectedResult;
-                double returned = Results[i];
-
-                sx += expected;
-                sy += returned;
-                sxx += expected * expected;
-                sxy += expected * returned;
-            }
-
-            scale = (count * sxx - sx * sx) / (count * sxy - sx * sy);
-            bias = (sy * sxx - sxy * sx) / (sx * sx - count * sxx);
         }
     }
 }

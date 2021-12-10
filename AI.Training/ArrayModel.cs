@@ -28,26 +28,21 @@ namespace AI.Training {
                 Array[i] = 0d;
         }
 
-        public void Normalize(double magnitude) {
-            double sum = 0d;
-
-            for (int i = 0; i < Array.Length; i++)
-                sum += Math.Abs(Array[i]);
-            
-            double scale = magnitude / sum;
-
-            for (int i = 0; i < Array.Length; i++)
-                Array[i] *= scale;
-        }
-        
-        public void Add(ArrayModel source) {
-            for (int i = 0; i < Array.Length; i++)
-                Array[i] += source.Array[i];
-        }
-
         public void AddWeighted(double weight, ArrayModel source) {
             for (int i = 0; i < Array.Length; i++)
                 Array[i] += weight * source.Array[i];
+        }
+
+        public double Magnitude() {
+            double sum = 0d;
+
+            for (int i = 0; i < Array.Length; i++) {
+                double value = Array[i];
+                
+                sum += value * value;
+            }
+
+            return sum;
         }
     }
 }

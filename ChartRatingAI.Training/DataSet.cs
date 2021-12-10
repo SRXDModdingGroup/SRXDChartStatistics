@@ -43,13 +43,15 @@ namespace ChartRatingAI.Training {
             }
         }
 
-        public void Trim(double localLimit, double globalLimit) {
+        public void Trim(double localLimit, double globalLimit, out double[] limits) {
             int totalSize = 0;
 
             foreach (var pair in Data)
                 totalSize += pair.Data.Size;
 
             double[] values = new double[totalSize];
+
+            limits = new double[sampleSize];
 
             for (int i = 0; i < sampleSize; i++) {
                 int counter = 0;
@@ -65,17 +67,14 @@ namespace ChartRatingAI.Training {
 
                 double limit = values[(int) (globalLimit * (totalSize - 1))];
 
+                limits[i] = limit;
+
                 foreach (var pair in Data)
                     pair.Data.Clamp(i, Math.Min(pair.Data.GetQuantile(i, localLimit), limit));
             }
         }
 
-        public void Normalize(double[] scales, double[] powers) {
-            foreach (var pair in Data)
-                pair.Data.Normalize(scales, powers);
-        }
-
-        public void GetBaseParameters(out double[] scales, out double[] powers) {
+        public void Normalize(out double[] scales, out double[] powers) {
             scales = new double[sampleSize];
 
             for (int i = 0; i < sampleSize; i++) {
@@ -145,6 +144,9 @@ namespace ChartRatingAI.Training {
 
                 powers[i] = bestPow;
             }
+
+            foreach (var pair in Data)
+                pair.Data.Normalize(scales, powers);
         }
     }
 }

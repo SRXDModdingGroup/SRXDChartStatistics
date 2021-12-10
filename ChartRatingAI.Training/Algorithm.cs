@@ -1,4 +1,5 @@
-﻿using AI.Training;
+﻿using System.Threading.Tasks;
+using AI.Training;
 
 namespace ChartRatingAI.Training {
     public class Algorithm : Processing.Algorithm, IBackpropagator<Data, double, Model> {
@@ -13,22 +14,28 @@ namespace ChartRatingAI.Training {
         }
         
         public double GetResult(Data input, Model model) {
-            double sumValue = 0d;
-            double sumWeight = 0d;
             var samples = input.Samples;
             var valueCompilerModel = model.ValueCompilerModel;
             var weightCompilerModel = model.WeightCompilerModel;
-
-            for (int i = 0; i < input.Size; i++) {
+            
+            Parallel.For(0, input.Size, i => {
                 var sample = samples[i];
                 double[] values = sample.Values;
                 double value = valueCompiler.GetResult(values, weightCompilerModel);
                 double weight = sample.Weight * weightCompiler.GetResult(values, valueCompilerModel);
                 
-                sumValue += weight * valueCompiler.GetResult(values, weightCompilerModel);
-                sumWeight += weight;
                 input.CachedValues[i] = value;
                 input.CachedWeights[i] = weight;
+            });
+            
+            double sumValue = 0d;
+            double sumWeight = 0d;
+
+            for (int i = 0; i < input.Size; i++) {
+                double weight = input.CachedWeights[i];
+                
+                sumValue += weight * input.CachedValues[i];
+                sumWeight += weight;
             }
 
             input.CachedSumWeight = sumWeight;
@@ -48,14 +55,16 @@ namespace ChartRatingAI.Training {
             double[] cachedValues = input.CachedValues;
             double[] cachedWeights = input.CachedWeights;
 
-            outVector *= input.CachedSumWeight / input.Size;
+            outVector /= input.CachedSumWeight;
             
             for (int i = 0; i < input.Size; i++) {
                 var sample = samples[i];
                 double[] values = sample.Values;
-
-                valueCompiler.BackpropagateFinal(outVector / cachedWeights[i], values, valueCompilerModel, valueCompilerVector);
-                weightCompiler.BackpropagateFinal(outVector / (cachedValues[i] * sample.Weight), values, weightCompilerModel, weightCompilerVector);
+                int j = i;
+                
+                Parallel.Invoke(
+                    () => valueCompiler.BackpropagateFinal(outVector * cachedWeights[j], values, valueCompilerModel, valueCompilerVector),
+                    () => weightCompiler.BackpropagateFinal(outVector * cachedValues[j] * sample.Weight, values, weightCompilerModel, weightCompilerVector));
             }
         }
     }

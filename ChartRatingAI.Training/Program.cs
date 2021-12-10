@@ -19,77 +19,65 @@ namespace ChartRatingAI.Training {
     public static class Program {
         private static readonly string ASSEMBLY_DIRECTORY = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
         private static readonly int METRIC_COUNT = ChartProcessor.DifficultyMetrics.Count;
-        private static readonly int INSTANCE_COUNT = 8;
-        private static readonly int COMPILER_DIMENSIONS = 3;
-        private static readonly int BATCH_COUNT = 4;
-        private static readonly double INITIAL_APPROACH_FACTOR = 0.05d;
-        private static readonly double MIN_APPROACH_FACTOR = 0.005d;
-        private static readonly double MAX_APPROACH_FACTOR = 0.1d;
-        private static readonly double DAMPING = 0.5d;
-        private static readonly double GROWTH = 1.25d;
+        private static readonly int COMPILER_DIMENSIONS = 4;
+        private static readonly int BATCH_COUNT = 6;
+        private static readonly double INITIAL_APPROACH_FACTOR = 0.000005d;
+        private static readonly double MIN_APPROACH_FACTOR = 0.0000025d;
+        private static readonly double MAX_APPROACH_FACTOR = 0.000005d;
+        private static readonly double MIN_VECTOR_MAGNITUDE = 0d;
+        private static readonly double DAMPING = 0.9d;
+        private static readonly double GROWTH = 1.05d;
 
         public static void Main(string[] args) {
             var random = new Random();
             var dataSet = GetDataSet();
 
-            dataSet.Trim(0.95d, 0.975d);
-            dataSet.GetBaseParameters(out double[] scales, out double[] powers);
-            dataSet.Normalize(scales, powers);
+            dataSet.Trim(0.9d, 0.95d, out double[] limits);
+            dataSet.Normalize(out double[] scales, out double[] powers);
 
-            var instances = new Algorithm[INSTANCE_COUNT];
+            var algorithm = new Algorithm(METRIC_COUNT, COMPILER_DIMENSIONS);
             var model = GetModel(random);
+            var vector = new Model(
+                new ArrayModel(new double[model.ValueCompilerModel.Array.Length]),
+                new ArrayModel(new double[model.WeightCompilerModel.Array.Length]));
             var form = new Form1();
 
-            for (int i = 0; i < INSTANCE_COUNT; i++)
-                instances[i] = new Algorithm(METRIC_COUNT, COMPILER_DIMENSIONS);
-
             //MainThread(population, dataSet, form);
-            Parallel.Invoke(() => MainThread(instances, model, dataSet, form, random), () => FormThread(form));
+            Parallel.Invoke(() => MainThread(algorithm, model, vector, dataSet, form, random), () => FormThread(form));
 
-            double fitness = dataSet.GetFitnessAndResults(instances, model, out double scale, out double bias, out double[] results);
+            double fitness = dataSet.GetResults(algorithm, model, out double[] results);
             
             SaveModel(model);
             OutputDetailedInfo(fitness, model, dataSet, results);
-            SaveParameters(model, bias, scale, scales, powers);
+            SaveParameters(model, scales, powers, limits);
             Console.WriteLine("Press any key to exit");
             Console.ReadKey(true);
         }
 
-        private static void MainThread(Algorithm[] instances, Model model, DataSet dataSet, Form1 form, Random random) {
+        private static void MainThread(Algorithm algorithm, Model model, Model vector, DataSet dataSet, Form1 form, Random random) {
             int generation = 0;
             int lastCheckedGeneration = 0;
             double approachFactor = INITIAL_APPROACH_FACTOR;
-            double fitness = dataSet.GetFitnessAndResults(instances, model, out _, out _, out _);
-            double currentBest = fitness;
-            double lastCheckedBest = fitness;
-            var vectors = new Model[INSTANCE_COUNT];
             var drawExpectedReturned = new PointF[dataSet.Size];
             var lastCheckTime = DateTime.Now;
             var drawWatch = new Stopwatch();
             var checkWatch = new Stopwatch();
             var autoSaveWatch = new Stopwatch();
-
-            for (int i = 0; i < INSTANCE_COUNT; i++) {
-                vectors[i] = new Model(
-                    new ArrayModel(new double[model.ValueCompilerModel.Array.Length]),
-                    new ArrayModel(new double[model.WeightCompilerModel.Array.Length]));
-            }
             
-            Console.WriteLine($"Initial fitness: {fitness:0.00000000}");
-
             drawWatch.Start();
             checkWatch.Start();
             autoSaveWatch.Start();
+            
+            double fitness = dataSet.GetResults(algorithm, model, out _);
+            double currentBest = fitness;
+            double lastCheckedBest = fitness;
+            
+            Console.WriteLine($"Initial fitness: {fitness:0.00000000}");
 
             while (!Console.KeyAvailable || Console.ReadKey(true).Key != ConsoleKey.Enter) {
-                int batchIndex = generation % BATCH_COUNT;
-
-                if (batchIndex == 0)
-                    dataSet.Shuffle(random);
+                dataSet.Shuffle(random);
                 
-                dataSet.Backpropagate(instances, model, vectors, approachFactor, batchIndex);
-                
-                double newFitness = dataSet.GetFitnessAndResults(instances, model, out _, out _, out double[] results);
+                double newFitness = dataSet.Backpropagate(algorithm, model, vector, approachFactor, MIN_VECTOR_MAGNITUDE, out double[] results);
 
                 if (newFitness > fitness)
                     approachFactor = Math.Min(GROWTH * approachFactor, MAX_APPROACH_FACTOR);
@@ -147,17 +135,18 @@ namespace ChartRatingAI.Training {
             Console.WriteLine();
         }
 
-        private static void SaveParameters(Model model, double bias, double scale, double[] baseScales, double[] basePowers) {
+        private static void SaveParameters(Model model, double[] baseScales, double[] basePowers, double[] limits) {
             using (var writer = new BinaryWriter(File.OpenWrite(Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "parameters.dat")))) {
                 model.Serialize(writer);
-                writer.Write(bias);
-                writer.Write(scale);
 
                 foreach (double baseScale in baseScales)
                     writer.Write(baseScale);
                 
                 foreach (double basePower in basePowers)
                     writer.Write(basePower);
+                
+                foreach (double limit in limits)
+                    writer.Write(limit);
             }
             
             Console.WriteLine("Saved parameters successfully");

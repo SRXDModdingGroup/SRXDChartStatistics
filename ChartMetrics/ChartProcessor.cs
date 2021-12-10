@@ -12,7 +12,7 @@ namespace ChartMetrics {
     public class ChartProcessor {
         private static readonly string ASSEMBLY_DIRECTORY = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
         private static readonly float SIMPLIFY_RATIO = 1.05f;
-        private static readonly float MIN_PHRASE_LENGTH = 1f;
+        private static readonly float MIN_PHRASE_LENGTH = 5f;
         private static readonly Metric[] METRICS = {
             new OverallNoteDensity(),
             new TapBeatDensity(),
@@ -42,11 +42,9 @@ namespace ChartMetrics {
 
         private static Algorithm algorithm;
         private static Model model;
-        private static double bias;
-        private static double scale;
-        private static double[] globalLimits;
         private static double[] baseScales;
         private static double[] basePowers;
+        private static double[] globalLimits;
         private static bool parametersLoaded;
 
         static ChartProcessor() {
@@ -71,23 +69,21 @@ namespace ChartMetrics {
                 return;
 
             algorithm = new Algorithm(DIFFICULTY_METRICS.Length, 4);
-            globalLimits = new double[DIFFICULTY_METRICS.Length];
             baseScales = new double[DIFFICULTY_METRICS.Length];
             basePowers = new double[DIFFICULTY_METRICS.Length];
+            globalLimits = new double[DIFFICULTY_METRICS.Length];
 
             using (var reader = new BinaryReader(File.OpenRead(path))) {
                 model = Model.Deserialize(reader);
-                bias = reader.ReadDouble();
-                scale = reader.ReadDouble();
-                
-                for (int i = 0; i < DIFFICULTY_METRICS.Length; i++)
-                    globalLimits[i] = reader.ReadDouble();
 
                 for (int i = 0; i < DIFFICULTY_METRICS.Length; i++)
                     baseScales[i] = reader.ReadDouble();
                 
                 for (int i = 0; i < DIFFICULTY_METRICS.Length; i++)
                     basePowers[i] = reader.ReadDouble();
+                
+                for (int i = 0; i < DIFFICULTY_METRICS.Length; i++)
+                    globalLimits[i] = reader.ReadDouble();
             }
 
             parametersLoaded = true;
@@ -290,22 +286,28 @@ namespace ChartMetrics {
         }
 
         public int GetDifficultyRating() {
+            if (Notes.Count == 0)
+                return 0;
+            
             LoadParameters();
 
             var data = new Data(Title, DifficultyMetrics.Count, CreateRatingData());
+
+            if (data.Size == 0)
+                return 0;
             
             data.Trim(0.9d, globalLimits);
             data.Normalize(baseScales, basePowers);
 
             double value = algorithm.GetResult(data, model);
 
-            if (value < 0d)
+            if (value < 0d || double.IsNaN(value))
                 return 0;
 
             if (value > 1d)
                 return 100;
 
-            return (int) Math.Round(100d * scale * (value + bias));
+            return (int) Math.Round(100d * value);
         }
 
         public ReadOnlyCollection<ReadOnlyCollection<WheelPath.Point>> GetExactPaths() {
