@@ -1,4 +1,5 @@
-﻿using System.Threading.Tasks;
+﻿using System;
+using System.Threading.Tasks;
 using AI.Training;
 
 namespace ChartRatingAI.Training {
@@ -21,8 +22,8 @@ namespace ChartRatingAI.Training {
             Parallel.For(0, input.Size, i => {
                 var sample = samples[i];
                 double[] values = sample.Values;
-                double value = valueCompiler.GetResult(values, weightCompilerModel);
-                double weight = sample.Weight * weightCompiler.GetResult(values, valueCompilerModel);
+                double value = valueCompiler.GetResult(values, valueCompilerModel);
+                double weight = weightCompiler.GetResult(values, weightCompilerModel);
                 
                 input.CachedValues[i] = value;
                 input.CachedWeights[i] = weight;
@@ -32,39 +33,46 @@ namespace ChartRatingAI.Training {
             double sumWeight = 0d;
 
             for (int i = 0; i < input.Size; i++) {
-                double weight = input.CachedWeights[i];
+                double overallWeight = input.CachedWeights[i] * samples[i].Weight;
                 
-                sumValue += weight * input.CachedValues[i];
-                sumWeight += weight;
+                sumValue += overallWeight * input.CachedValues[i];
+                sumWeight += overallWeight;
             }
 
-            input.CachedSumWeight = sumWeight;
+            input.SumWeight = sumWeight;
+            
+            if (sumValue <= 0d || sumWeight <= 0d)
+                return 0d;
 
             return sumValue / sumWeight;
         }
 
-        public void Backpropagate(double outVector, Data input, Model model, Data inVector, Model modelVector) =>
-            throw new System.NotImplementedException();
+        public void Backpropagate(double output, double dF_dO, Data input, Data dIn, Model model, Model dModel) =>
+            throw new NotImplementedException();
 
-        public void BackpropagateFinal(double outVector, Data input, Model model, Model modelVector) {
+        public void BackpropagateFinal(double output, double dF_dO, Data input, Model model, Model dModel) {
+            if (output == 0d)
+                return;
+            
             var samples = input.Samples;
             var valueCompilerModel = model.ValueCompilerModel;
             var weightCompilerModel = model.WeightCompilerModel;
-            var valueCompilerVector = modelVector.ValueCompilerModel;
-            var weightCompilerVector = modelVector.WeightCompilerModel;
-            double[] cachedValues = input.CachedValues;
-            double[] cachedWeights = input.CachedWeights;
+            var dValueCompilerModel = dModel.ValueCompilerModel;
+            var dWeightCompilerModel = dModel.WeightCompilerModel;
+            double[] values = input.CachedValues;
+            double[] weights = input.CachedWeights;
 
-            outVector /= input.CachedSumWeight;
+            double factor = dF_dO / input.SumWeight;
             
             for (int i = 0; i < input.Size; i++) {
                 var sample = samples[i];
-                double[] values = sample.Values;
-                int j = i;
-                
-                Parallel.Invoke(
-                    () => valueCompiler.BackpropagateFinal(outVector * cachedWeights[j], values, valueCompilerModel, valueCompilerVector),
-                    () => weightCompiler.BackpropagateFinal(outVector * cachedValues[j] * sample.Weight, values, weightCompilerModel, weightCompilerVector));
+                double[] sampleValues = sample.Values;
+                double factor2 = factor * sample.Weight;
+
+                valueCompiler.BackpropagateFinal(values[i], factor2 * weights[i],
+                    sampleValues, valueCompilerModel, dValueCompilerModel);
+                weightCompiler.BackpropagateFinal(weights[i], factor2 * (values[i] - output),
+                    sampleValues, weightCompilerModel, dWeightCompilerModel);
             }
         }
     }

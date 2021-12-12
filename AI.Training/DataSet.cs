@@ -52,15 +52,10 @@ namespace AI.Training {
 
                     results[j] = result;
                     sumError += error * error;
-                    algorithm.BackpropagateFinal(error, data, model, vector);
+                    algorithm.BackpropagateFinal(result, error, data, model, vector);
                 }
 
-                double magnitude = vector.Magnitude();
-
-                if (magnitude < minVectorMagnitude)
-                    model.AddWeighted(approachFactor * minVectorMagnitude / magnitude, vector);
-                else
-                    model.AddWeighted(approachFactor, vector);
+                model.AddWeighted(approachFactor / vector.Magnitude(), vector);
             }
 
             return 1d - Math.Sqrt(sumError / Size);

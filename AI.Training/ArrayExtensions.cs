@@ -5,7 +5,7 @@ using System.Text;
 
 namespace AI.Training {
     public static class ArrayExtensions {
-        public static double[] Random(int size, Random random) {
+        public static double[] Random(int size, double weight, Random random) {
             double[] array = new double[size];
 
             for (int i = 0; i < size; i++)
@@ -16,7 +16,7 @@ namespace AI.Training {
             for (int i = 0; i < array.Length; i++)
                 sum += Math.Abs(array[i]);
             
-            double scale = 1d / sum;
+            double scale = weight / sum;
 
             for (int i = 0; i < array.Length; i++)
                 array[i] *= scale;

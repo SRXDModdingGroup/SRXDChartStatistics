@@ -1,4 +1,5 @@
-﻿using AI.Processing;
+﻿using System;
+using AI.Processing;
 
 namespace ChartRatingAI.Processing {
     public class Algorithm : IAlgorithm<Data, double, Model> {
@@ -22,13 +23,16 @@ namespace ChartRatingAI.Processing {
             for (int i = 0; i < samples.Length; i++) {
                 var sample = samples[i];
                 double[] values = sample.Values;
-                double weight = sample.Weight * WeightCompiler.GetResult(values, valueCompilerModel);
+                double weight = sample.Weight * WeightCompiler.GetResult(values, weightCompilerModel);
 
-                sumValue += weight * ValueCompiler.GetResult(values, weightCompilerModel);
+                sumValue += weight * ValueCompiler.GetResult(values, valueCompilerModel);
                 sumWeight += weight;
             }
+            
+            if (sumWeight == 0d)
+                return 0d;
 
-            return sumValue / sumWeight;
+            return Math.Max(0d, sumValue / sumWeight);
         }
     }
 }

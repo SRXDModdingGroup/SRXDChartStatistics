@@ -5,8 +5,8 @@ namespace ChartRatingAI.Training {
     public class Data : Processing.Data {
         public double[] CachedValues { get; }
         public double[] CachedWeights { get; }
-        
-        public double CachedSumWeight { get; set; }
+
+        public double SumWeight { get; set; }
 
         public Data(string name, int sampleSize, DataSample[] samples) : base(name, sampleSize, samples) {
             CachedValues = new double[Size];
