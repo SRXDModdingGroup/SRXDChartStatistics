@@ -21,12 +21,8 @@ namespace ChartRatingAI.Training {
         private static readonly int METRIC_COUNT = ChartProcessor.DifficultyMetrics.Count;
         private static readonly int COMPILER_DIMENSIONS = 4;
         private static readonly int BATCH_COUNT = 2;
-        private static readonly double INITIAL_APPROACH_FACTOR = 0.025d;
-        private static readonly double MIN_APPROACH_FACTOR = 0.00005d;
-        private static readonly double MAX_APPROACH_FACTOR = 0.05d;
-        private static readonly double MIN_VECTOR_MAGNITUDE = 0d;
-        private static readonly double DAMPING = 0.95d;
-        private static readonly double GROWTH = 1.05d;
+        private static readonly double LEARNING_RATE = 0.00001d;
+        private static readonly double MOMENTUM = 0.9d;
 
         public static void Main(string[] args) {
             var random = new Random();
@@ -36,25 +32,22 @@ namespace ChartRatingAI.Training {
             dataSet.Normalize(out double[] scales, out double[] powers);
 
             var algorithm = new Algorithm(METRIC_COUNT, COMPILER_DIMENSIONS);
-            var model = GetModel(random, out double approachFactor);
-            var vector = new Model(
-                new ArrayModel(new double[model.ValueCompilerModel.Array.Length]),
-                new ArrayModel(new double[model.WeightCompilerModel.Array.Length]));
+            var model = GetModel(random);
             var form = new Form1();
 
             //MainThread(population, dataSet, form);
-            Parallel.Invoke(() => MainThread(algorithm, model, vector, dataSet, form, random, ref approachFactor), () => FormThread(form));
+            Parallel.Invoke(() => MainThread(algorithm, model, dataSet, form, random), () => FormThread(form));
 
             double fitness = dataSet.GetResults(algorithm, model, out double[] results);
             
-            SaveModel(model, approachFactor);
+            SaveModel(model);
             OutputDetailedInfo(fitness, model, dataSet, results);
             SaveParameters(model, scales, powers, limits);
             Console.WriteLine("Press any key to exit");
             Console.ReadKey(true);
         }
 
-        private static void MainThread(Algorithm algorithm, Model model, Model vector, DataSet dataSet, Form1 form, Random random, ref double approachFactor) {
+        private static void MainThread(Algorithm algorithm, Model model, DataSet dataSet, Form1 form, Random random) {
             int generation = 0;
             int lastCheckedGeneration = 0;
             var drawExpectedReturned = new PointF[dataSet.Size];
@@ -62,6 +55,9 @@ namespace ChartRatingAI.Training {
             var drawWatch = new Stopwatch();
             var checkWatch = new Stopwatch();
             var autoSaveWatch = new Stopwatch();
+            var vector = new Model(
+                new ArrayModel(new double[model.ValueCompilerModel.Array.Length]),
+                new ArrayModel(new double[model.WeightCompilerModel.Array.Length]));
             
             drawWatch.Start();
             checkWatch.Start();
@@ -75,15 +71,7 @@ namespace ChartRatingAI.Training {
 
             while (!Console.KeyAvailable || Console.ReadKey(true).Key != ConsoleKey.Enter) {
                 dataSet.Shuffle(random);
-                
-                double newFitness = dataSet.Backpropagate(algorithm, model, vector, approachFactor, MIN_VECTOR_MAGNITUDE, out double[] results);
-
-                if (newFitness > fitness)
-                    approachFactor = Math.Min(GROWTH * approachFactor, MAX_APPROACH_FACTOR);
-                else
-                    approachFactor = Math.Max(MIN_APPROACH_FACTOR, DAMPING * approachFactor);
-                
-                fitness = newFitness;
+                fitness = dataSet.Backpropagate(algorithm, model, vector, LEARNING_RATE, MOMENTUM, out double[] results);
                 
                 if (fitness > currentBest)
                     currentBest = fitness;
@@ -100,17 +88,18 @@ namespace ChartRatingAI.Training {
                 }
 
                 if (currentBest > lastCheckedBest) {
-                    Console.WriteLine($"{DateTime.Now:hh\\:mm\\:ss} Generation {generation} ({(generation - lastCheckedGeneration) / (DateTime.Now - lastCheckTime).TotalSeconds:0.00} / s): {currentBest:0.00000000} (+{(currentBest - lastCheckedBest) / (DateTime.Now - lastCheckTime).TotalMinutes:0.00000000} / m)");
+                    Console.WriteLine($"{DateTime.Now:hh\\:mm\\:ss} Generation {generation} ({(generation - lastCheckedGeneration) / (DateTime.Now - lastCheckTime).TotalSeconds:0.00} / s):" +
+                                      $"{currentBest:0.00000000} (+{(currentBest - lastCheckedBest) / (DateTime.Now - lastCheckTime).TotalMinutes:0.00000000} / m)");
                     lastCheckedGeneration = generation;
                     lastCheckedBest = currentBest;
                     lastCheckTime = DateTime.Now;
                     checkWatch.Restart();
                 }
 
-                if (autoSaveWatch.ElapsedMilliseconds > 300000) {
-                    SaveModel(model, approachFactor);
-                    autoSaveWatch.Restart();
-                }
+                // if (autoSaveWatch.ElapsedMilliseconds > 300000) {
+                //     SaveModel(model, learningRate);
+                //     autoSaveWatch.Restart();
+                // }
 
                 generation++;
             }
@@ -125,11 +114,9 @@ namespace ChartRatingAI.Training {
             Application.Run(form);
         }
 
-        private static void SaveModel(Model model, double approachFactor) {
-            using (var writer = new BinaryWriter(File.OpenWrite(Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "Results.dat")))) {
+        private static void SaveModel(Model model) {
+            using (var writer = new BinaryWriter(File.OpenWrite(Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "Results.dat"))))
                 model.Serialize(writer);
-                writer.Write(approachFactor);
-            }
 
             Console.WriteLine();
             Console.WriteLine("Saved file successfully");
@@ -280,20 +267,13 @@ namespace ChartRatingAI.Training {
             return dataSet;
         }
 
-        private static Model GetModel(Random random, out double approachFactor) {
+        private static Model GetModel(Random random) {
             string path = Path.Combine(ASSEMBLY_DIRECTORY, "Results.dat");
 
             if (File.Exists(path)) {
-                using (var reader = new BinaryReader(File.OpenRead(path))) {
-                    var model = Model.Deserialize(reader);
-
-                    approachFactor = reader.ReadDouble();
-                    
-                    return model;
-                }
+                using (var reader = new BinaryReader(File.OpenRead(path)))
+                    return Model.Deserialize(reader);
             }
-
-            approachFactor = INITIAL_APPROACH_FACTOR;
 
             int num = 1;
 

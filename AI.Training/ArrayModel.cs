@@ -28,6 +28,16 @@ namespace AI.Training {
                 Array[i] = 0d;
         }
 
+        public void Multiply(double factor) {
+            for (int i = 0; i < Array.Length; i++)
+                Array[i] *= factor;
+        }
+
+        public void Add(ArrayModel source) {
+            for (int i = 0; i < Array.Length; i++)
+                Array[i] += source.Array[i];
+        }
+
         public void AddWeighted(double weight, ArrayModel source) {
             for (int i = 0; i < Array.Length; i++)
                 Array[i] += weight * source.Array[i];

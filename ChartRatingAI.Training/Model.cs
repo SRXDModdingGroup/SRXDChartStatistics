@@ -29,6 +29,16 @@ namespace ChartRatingAI.Training {
             WeightCompilerModel.Zero();
         }
 
+        public void Multiply(double factor) {
+            ValueCompilerModel.Multiply(factor);
+            WeightCompilerModel.Multiply(factor);
+        }
+
+        public void Add(Model source) {
+            ValueCompilerModel.Add(source.ValueCompilerModel);
+            WeightCompilerModel.Add(source.WeightCompilerModel);
+        }
+
         public void AddWeighted(double weight, Model source) {
             ValueCompilerModel.AddWeighted(weight, source.ValueCompilerModel);
             WeightCompilerModel.AddWeighted(weight, source.WeightCompilerModel);
