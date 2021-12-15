@@ -99,8 +99,7 @@ namespace ChartHelper.Types {
             }
         }
 
-        public static void ApplyDetailedData(IList<Note> notes) {
-            int index = 0;
+        public static void ApplyDetailedData(List<Note> notes) {
             int sustainedNoteStartIndex = -1;
             int lastHoldPointIndex = -1;
             int lastBeatIndex = -1;
@@ -109,7 +108,8 @@ namespace ChartHelper.Types {
             bool beatHolding = false;
             bool readyToSnap = false;
 
-            foreach (var note in notes) {
+            for (int i = 0; i < notes.Count; i++) {
+                var note = notes[i];
                 bool skip = false;
 
                 switch (note.TypeRaw) {
@@ -117,26 +117,26 @@ namespace ChartHelper.Types {
                     case NoteTypeRaw.SpinLeft:
                     case NoteTypeRaw.Scratch:
                         EndHold();
-                        EndSpin(index, note);
-                        sustainedNoteStartIndex = index;
+                        EndSpin(i, note);
+                        sustainedNoteStartIndex = i;
                         spinning = true;
                         readyToSnap = true;
 
                         break;
                     case NoteTypeRaw.Beat:
-                        lastBeatIndex = index;
+                        lastBeatIndex = i;
                         beatHolding = true;
 
                         break;
                     case NoteTypeRaw.Tap:
                     case NoteTypeRaw.Match:
-                        EndSpin(index, note);
-                        
+                        EndSpin(i, note);
+
                         if (readyToSnap) {
                             note.IsAutoSnap = true;
                             readyToSnap = false;
                         }
-                        
+
                         break;
                     case NoteTypeRaw.BeatRelease:
                         if (!beatHolding) {
@@ -144,25 +144,25 @@ namespace ChartHelper.Types {
 
                             break;
                         }
-                        
+
                         beatHolding = false;
                         note.StartIndex = lastBeatIndex;
 
                         if (lastBeatIndex >= 0)
-                            notes[lastBeatIndex].EndIndex = index;
-                        
+                            notes[lastBeatIndex].EndIndex = i;
+
                         break;
                     case NoteTypeRaw.Hold:
                         EndHold();
-                        EndSpin(index, note);
-                        
+                        EndSpin(i, note);
+
                         if (readyToSnap) {
                             note.IsAutoSnap = true;
                             readyToSnap = false;
                         }
-                        
+
                         holding = true;
-                        sustainedNoteStartIndex = index;
+                        sustainedNoteStartIndex = i;
                         lastHoldPointIndex = -1;
 
                         break;
@@ -172,31 +172,32 @@ namespace ChartHelper.Types {
                             note.Type = NoteType.SpinEnd;
                         }
                         else if (holding) {
-                            lastHoldPointIndex = index;
+                            lastHoldPointIndex = i;
                             note.Color = notes[sustainedNoteStartIndex].Color;
                         }
                         else {
                             skip = true;
-                            
+
                             break;
                         }
 
                         note.StartIndex = sustainedNoteStartIndex;
-                        
+
                         if (sustainedNoteStartIndex > -1)
-                            notes[sustainedNoteStartIndex].EndIndex = index;
-                        
-                        sustainedNoteStartIndex = index;
+                            notes[sustainedNoteStartIndex].EndIndex = i;
+
+                        sustainedNoteStartIndex = i;
 
                         break;
                 }
-                
-                if (skip)
+
+                if (!skip)
                     continue;
                 
-                index++;
+                notes.RemoveAt(i);
+                i--;
             }
-            
+
             EndHold();
             
             void EndHold() {

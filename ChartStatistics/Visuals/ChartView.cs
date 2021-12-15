@@ -50,7 +50,7 @@ namespace ChartStatistics {
                     RateAllCharts(diff);
             });
             Command.SetPossibleValues("show", 0, ChartProcessor.Metrics.Select(metric => $"{metric.Name.ToLower()}: {metric.Description}").ToArray());
-            // LoadChart("spinshare_60c529dc9664f");
+            // LoadChart("spinshare_61b9f36788196");
             // DisplayMetric("sequencecomplexity");
             // DisplayPath("Simplified", -1);
         }
@@ -296,8 +296,11 @@ namespace ChartStatistics {
                     case NoteType.HoldPoint:
                     case NoteType.HoldEnd:
                     case NoteType.Liftoff:
+                        if (note.StartIndex < 0)
+                            break;
+                        
                         var startNote = notes[note.StartIndex];
-
+                        
                         graphicsPanel.AddDrawable(new HoldSegment(startNote.Time, note.Time, ColumnToY(startNote.Column), ColumnToY(note.Column), startNote.Color == NoteColor.Red, startNote.CurveType));
 
                         break;
