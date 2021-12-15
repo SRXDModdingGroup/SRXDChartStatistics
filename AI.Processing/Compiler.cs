@@ -1,11 +1,5 @@
-﻿using System;
-using System.Diagnostics;
-
-namespace AI.Processing {
+﻿namespace AI.Processing {
     public class Compiler : IAlgorithm<double[], double, ArrayModel> {
-        protected static readonly double SHARPNESS = 8d;
-        protected static readonly double INV_SHARPNESS = 1d / SHARPNESS;
-        
         protected int InputSize { get; }
 
         protected int Dimensions { get; }
@@ -25,7 +19,7 @@ namespace AI.Processing {
 
             sum += array[counter];
 
-            return INV_SHARPNESS * Math.Log(1d + Math.Exp(SHARPNESS * sum));
+            return sum;
 
             void Recurse(double product, int start, int depth) {
                 if (depth < Dimensions) {

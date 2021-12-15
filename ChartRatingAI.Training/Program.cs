@@ -20,9 +20,13 @@ namespace ChartRatingAI.Training {
         private static readonly string ASSEMBLY_DIRECTORY = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
         private static readonly int METRIC_COUNT = ChartProcessor.DifficultyMetrics.Count;
         private static readonly int COMPILER_DIMENSIONS = 4;
-        private static readonly int BATCH_COUNT = 2;
-        private static readonly double LEARNING_RATE = 0.00001d;
-        private static readonly double MOMENTUM = 0.9d;
+        private static readonly int BATCH_COUNT = 6;
+        private static readonly double INITIAL_APPROACH_FACTOR = 0.000005d;
+        private static readonly double MIN_APPROACH_FACTOR = 0.0000025d;
+        private static readonly double MAX_APPROACH_FACTOR = 0.000005d;
+        private static readonly double MIN_VECTOR_MAGNITUDE = 0d;
+        private static readonly double DAMPING = 0.9d;
+        private static readonly double GROWTH = 1.05d;
 
         public static void Main(string[] args) {
             var random = new Random();
@@ -33,10 +37,13 @@ namespace ChartRatingAI.Training {
 
             var algorithm = new Algorithm(METRIC_COUNT, COMPILER_DIMENSIONS);
             var model = GetModel(random);
+            var vector = new Model(
+                new ArrayModel(new double[model.ValueCompilerModel.Array.Length]),
+                new ArrayModel(new double[model.WeightCompilerModel.Array.Length]));
             var form = new Form1();
 
             //MainThread(population, dataSet, form);
-            Parallel.Invoke(() => MainThread(algorithm, model, dataSet, form, random), () => FormThread(form));
+            Parallel.Invoke(() => MainThread(algorithm, model, vector, dataSet, form, random), () => FormThread(form));
 
             double fitness = dataSet.GetResults(algorithm, model, out double[] results);
             
@@ -47,17 +54,15 @@ namespace ChartRatingAI.Training {
             Console.ReadKey(true);
         }
 
-        private static void MainThread(Algorithm algorithm, Model model, DataSet dataSet, Form1 form, Random random) {
+        private static void MainThread(Algorithm algorithm, Model model, Model vector, DataSet dataSet, Form1 form, Random random) {
             int generation = 0;
             int lastCheckedGeneration = 0;
+            double approachFactor = INITIAL_APPROACH_FACTOR;
             var drawExpectedReturned = new PointF[dataSet.Size];
             var lastCheckTime = DateTime.Now;
             var drawWatch = new Stopwatch();
             var checkWatch = new Stopwatch();
             var autoSaveWatch = new Stopwatch();
-            var vector = new Model(
-                new ArrayModel(new double[model.ValueCompilerModel.Array.Length]),
-                new ArrayModel(new double[model.WeightCompilerModel.Array.Length]));
             
             drawWatch.Start();
             checkWatch.Start();
@@ -71,7 +76,15 @@ namespace ChartRatingAI.Training {
 
             while (!Console.KeyAvailable || Console.ReadKey(true).Key != ConsoleKey.Enter) {
                 dataSet.Shuffle(random);
-                fitness = dataSet.Backpropagate(algorithm, model, vector, LEARNING_RATE, MOMENTUM, out double[] results);
+                
+                double newFitness = dataSet.Backpropagate(algorithm, model, vector, approachFactor, MIN_VECTOR_MAGNITUDE, out double[] results);
+
+                if (newFitness > fitness)
+                    approachFactor = Math.Min(GROWTH * approachFactor, MAX_APPROACH_FACTOR);
+                else
+                    approachFactor = Math.Max(MIN_APPROACH_FACTOR, DAMPING * approachFactor);
+                
+                fitness = newFitness;
                 
                 if (fitness > currentBest)
                     currentBest = fitness;
@@ -87,19 +100,18 @@ namespace ChartRatingAI.Training {
                     drawWatch.Restart();
                 }
 
-                if (currentBest > lastCheckedBest) {
-                    Console.WriteLine($"{DateTime.Now:hh\\:mm\\:ss} Generation {generation} ({(generation - lastCheckedGeneration) / (DateTime.Now - lastCheckTime).TotalSeconds:0.00} / s):" +
-                                      $"{currentBest:0.00000000} (+{(currentBest - lastCheckedBest) / (DateTime.Now - lastCheckTime).TotalMinutes:0.00000000} / m)");
+                if (checkWatch.ElapsedMilliseconds > 10000 && currentBest > lastCheckedBest) {
+                    Console.WriteLine($"{DateTime.Now:hh\\:mm\\:ss} Generation {generation} ({(generation - lastCheckedGeneration) / (DateTime.Now - lastCheckTime).TotalSeconds:0.00} / s): {currentBest:0.00000000} (+{(currentBest - lastCheckedBest) / (DateTime.Now - lastCheckTime).TotalMinutes:0.00000000} / m)");
                     lastCheckedGeneration = generation;
                     lastCheckedBest = currentBest;
                     lastCheckTime = DateTime.Now;
                     checkWatch.Restart();
                 }
 
-                // if (autoSaveWatch.ElapsedMilliseconds > 300000) {
-                //     SaveModel(model, learningRate);
-                //     autoSaveWatch.Restart();
-                // }
+                if (autoSaveWatch.ElapsedMilliseconds > 300000) {
+                    SaveModel(model);
+                    autoSaveWatch.Restart();
+                }
 
                 generation++;
             }
@@ -286,8 +298,8 @@ namespace ChartRatingAI.Training {
                 den *= i;
             
             int size = num / den;
-
-            return new Model(new ArrayModel(ArrayExtensions.Random(size, 1d, random)), new ArrayModel(ArrayExtensions.Random(size, 1d, random)));
+                
+            return new Model(new ArrayModel(ArrayExtensions.Random(size, random)), new ArrayModel(ArrayExtensions.Random(size, random)));
         }
     }
 }

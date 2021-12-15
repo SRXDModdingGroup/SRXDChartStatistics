@@ -3,7 +3,7 @@
 // using AI.Processing;
 //
 // namespace AI.Training {
-//     public class OneDimCnnModel : OneDimCNNModel, IModel<OneDimCnnModel> {
+//     public class OneDimCnnModel : Processing.OneDimCNNModel, IModel<OneDimCnnModel> {
 //         public OneDimCnnModel(double[][][,] layers) : base(layers) { }
 //
 //         public new static OneDimCNNModel Deserialize(BinaryReader reader) {

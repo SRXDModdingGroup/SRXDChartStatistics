@@ -31,7 +31,7 @@ namespace AI.Training {
         }
 
         public double Backpropagate<TBackpropagator, TModel>(TBackpropagator algorithm, TModel model, TModel vector,
-            double learningRate, double momentum, out double[] results)
+            double approachFactor, double minVectorMagnitude, out double[] results)
             where TBackpropagator : IBackpropagator<TData, double, TModel>
             where TModel : class, IModel<TModel> {
             double sumError = 0d;
@@ -42,7 +42,7 @@ namespace AI.Training {
                 int batchStart = batchSize * i;
                 int batchEnd = Math.Min(batchStart + batchSize, Size);
             
-                vector.Multiply(momentum);
+                vector.Zero();
 
                 for (int j = batchStart; j < batchEnd; j++) {
                     var pair = Data[j];
@@ -52,10 +52,15 @@ namespace AI.Training {
 
                     results[j] = result;
                     sumError += error * error;
-                    algorithm.BackpropagateFinal(result, learningRate * error, data, model, vector);
+                    algorithm.BackpropagateFinal(error, data, model, vector);
                 }
 
-                model.Add(vector);
+                double magnitude = vector.Magnitude();
+
+                if (magnitude < minVectorMagnitude)
+                    model.AddWeighted(approachFactor * minVectorMagnitude / magnitude, vector);
+                else
+                    model.AddWeighted(approachFactor, vector);
             }
 
             return 1d - Math.Sqrt(sumError / Size);
