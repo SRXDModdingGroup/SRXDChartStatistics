@@ -192,6 +192,42 @@ namespace ChartData {
             public float EndTime { get; set; }
         }
 
+        public class TimeSignatureMarker {
+            [JsonProperty("startingBeat")]
+            public int StartingBeat { get; set; }
+            
+            [JsonProperty("ticksPerBar")]
+            public int TicksPerBar { get; set; }
+            
+            [JsonProperty("tickDivisor")]
+            public int TickDivisor { get; set; }
+            
+            [JsonProperty("beatLengthType")]
+            public int BeatLengthType { get; set; }
+            
+            [JsonProperty("beatLengthDotted")]
+            public int BeatLengthDotted { get; set; }
+        }
+
+        public class BPMMarker {
+            [JsonProperty("beatLength")]
+            public float BeatLength { get; set; }
+            
+            [JsonProperty("clipTime")]
+            public float ClipTime { get; set; }
+            
+            [JsonProperty("type")]
+            public int Type { get; set; }
+        }
+
+        public class CuePoint {
+            [JsonProperty("name")]
+            public string Name { get; set; }
+            
+            [JsonProperty("time")]
+            public float Time { get; set; }
+        }
+
         public class Color {
             [JsonProperty("r")]
             public float R { get; set; }
@@ -342,6 +378,20 @@ namespace ChartData {
             
             [JsonProperty("lastEditedOnDate")]
             public string LastEditedOnDate { get; set; }
+        }
+
+        public class ClipInfo {
+            [JsonProperty("timeSignatureMarkers")]
+            public TimeSignatureMarker[] TimeSignatureMarkers { get; set; }
+
+            [JsonProperty("bpmMarkers")]
+            public BPMMarker[] BpmMarkers { get; set; }
+
+            [JsonProperty("cuePoints")]
+            public CuePoint[] CuePoints { get; set; }
+
+            [JsonProperty("clipAssetReference")]
+            public AssetReference ClipAssetReference { get; set; }
         }
 
         [JsonProperty("unityObjectValuesContainer")]
