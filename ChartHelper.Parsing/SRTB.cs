@@ -1,6 +1,10 @@
-﻿using Newtonsoft.Json;
+﻿using ChartHelper.Types;
+using Newtonsoft.Json;
 
 namespace ChartData {
+    /// <summary>
+    /// Class containing all JSON-serialized data used by the .srtb format
+    /// </summary>
     public class SRTB {
         public class UnityObjectValue {
             [JsonProperty("key")]
@@ -76,7 +80,7 @@ namespace ChartData {
             [JsonProperty("backgroundId")]
             public string BackgroundId { get; set; }
         }
-
+        
         public class TutorialObject {
             [JsonProperty("startBeat")]
             public int StartBeat { get; set; }
@@ -310,6 +314,8 @@ namespace ChartData {
             
             [JsonProperty("allowCustomLeaderboardCreation")]
             public bool AllowCustomLeaderboardCreation { get; set; }
+
+            public bool HasDifficulty(Difficulty difficulty) => Difficulties[(int) difficulty].Active;
         }
 
         public class TrackData {
@@ -402,5 +408,45 @@ namespace ChartData {
         
         [JsonProperty("clipInfoCount")]
         public int ClipInfoCount { get; set; }
+        
+        public void SetTrackInfo(TrackInfo trackInfo) => SetLargeStringValue("SO_TrackInfo_TrackInfo", trackInfo);
+
+        public void SetTrackData(int index, TrackData trackData) => SetLargeStringValue($"SO_TrackData_TrackData_{index}", trackData);
+        public void SetTrackData(Difficulty difficultyType, TrackData trackData) => SetTrackData((int) difficultyType, trackData);
+
+        public void SetClipInfo(int index, ClipInfo clipInfo) => SetLargeStringValue($"SO_ClipInfo_ClipInfo_{index}", clipInfo);
+
+        public string Serialize() => JsonConvert.SerializeObject(this);
+
+        public TrackInfo GetTrackInfo() => GetLargeStringValue<TrackInfo>("SO_TrackInfo_TrackInfo");
+        
+        public TrackData GetTrackData(int index) => GetLargeStringValue<TrackData>($"SO_TrackData_TrackData_{index}");
+        public TrackData GetTrackData(Difficulty difficultyType) => GetTrackData((int) difficultyType);
+        
+        public ClipInfo GetClipInfo(int index) => GetLargeStringValue<ClipInfo>($"SO_ClipInfo_ClipInfo_{index}");
+
+        public static SRTB Deserialize(string text) => JsonConvert.DeserializeObject<SRTB>(text);
+
+        private void SetLargeStringValue(string key, object value) {
+            foreach (var pair in LargeStringValuesContainer.Values) {
+                if (pair.Key != key)
+                    continue;
+
+                pair.Val = JsonConvert.SerializeObject(value);
+
+                return;
+            }
+        }
+
+        private T GetLargeStringValue<T>(string key) where T : class {
+            foreach (var pair in LargeStringValuesContainer.Values) {
+                if (pair.Key != key)
+                    continue;
+
+                return JsonConvert.DeserializeObject<T>(pair.Val);
+            }
+
+            return null;
+        }
     }
 }

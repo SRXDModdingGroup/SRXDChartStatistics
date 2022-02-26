@@ -9,8 +9,8 @@ namespace ChartHelper {
     /// A helper class for finding and interacting with .srtb files
     /// </summary>
     public static class FileHelper {
-        private static readonly Regex MATCH_SETTINGS = new Regex(@"(.+?) *= *(.+)");
-        private static readonly Regex MATCH_SRTB = new Regex(@"\w+\.srtb");
+        private static readonly Regex MATCH_SETTINGS = new(@"(.+?) *= *(.+)");
+        private static readonly Regex MATCH_SRTB = new(@"\w+\.srtb");
         
         private static string customPath;
         /// <summary>
