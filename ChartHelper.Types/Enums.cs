@@ -3,16 +3,16 @@
     /// The type of a note, as specified by the srtb
     /// </summary>
     public enum NoteTypeRaw {
-        Match,
-        Beat,
-        SpinRight,
-        SpinLeft,
-        Hold,
-        HoldPoint,
-        Tap,
-        BeatRelease,
-        Scratch,
-        Experimental
+        Match = 0,
+        Beat = 1,
+        SpinRight = 2,
+        SpinLeft = 3,
+        Hold = 4,
+        HoldPoint = 5,
+        Tap = 8,
+        Experimental = 10,
+        BeatRelease = 11,
+        Scratch = 12,
     }
 
     /// <summary>

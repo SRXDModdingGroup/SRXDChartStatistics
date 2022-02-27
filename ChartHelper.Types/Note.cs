@@ -99,7 +99,11 @@ namespace ChartHelper.Types {
             }
         }
 
-        public static void ApplyDetailedData(List<Note> notes) {
+        /// <summary>
+        /// Adds detailed information to a set of notes
+        /// </summary>
+        /// <param name="notes">The notes to apply</param>
+        public static void ApplyDetailedData(IList<Note> notes) {
             int sustainedNoteStartIndex = -1;
             int lastHoldPointIndex = -1;
             int lastBeatIndex = -1;
