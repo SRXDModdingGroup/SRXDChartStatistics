@@ -12,7 +12,7 @@
         Tap = 8,
         Experimental = 10,
         BeatRelease = 11,
-        Scratch = 12,
+        Scratch = 12
     }
 
     /// <summary>
@@ -32,7 +32,7 @@
         BeatReleaseSoft,
         BeatReleaseHard,
         Scratch,
-        Experimental,
+        Experimental
     }
 
     /// <summary>

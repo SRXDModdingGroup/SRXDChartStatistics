@@ -8,8 +8,6 @@ namespace ChartHelper.Parsing;
 /// Class containing all JSON-serialized data used by the .srtb format
 /// </summary>
 public class SRTB {
-    private static readonly JsonSerializer SERIALIZER = JsonSerializer.CreateDefault();
-    
     public class UnityObjectValue {
         [JsonProperty("key")]
         public string Key { get; set; }
@@ -413,37 +411,93 @@ public class SRTB {
     [JsonProperty("clipInfoCount")]
     public int ClipInfoCount { get; set; }
         
+    /// <summary>
+    /// Sets an srtb's track info
+    /// </summary>
+    /// <param name="trackInfo">The new track info</param>
     public void SetTrackInfo(TrackInfo trackInfo) => SetLargeStringValue("SO_TrackInfo_TrackInfo", trackInfo);
 
+    /// <summary>
+    /// Sets an srtb's track data with a given index
+    /// </summary>
+    /// <param name="index">The index of the track data to set</param>
+    /// <param name="trackData">The new track data</param>
     public void SetTrackData(int index, TrackData trackData) => SetLargeStringValue($"SO_TrackData_TrackData_{index}", trackData);
+    /// <summary>
+    /// Sets an srtb's track data with a given difficulty
+    /// </summary>
+    /// <param name="difficultyType">The difficulty type of the track data to set</param>
+    /// <param name="trackData">The new track data</param>
     public void SetTrackData(Difficulty difficultyType, TrackData trackData) => SetTrackData((int) difficultyType, trackData);
 
+    /// <summary>
+    /// Sets an srtb's clip info with a given index
+    /// </summary>
+    /// <param name="index">The index of the clip info to set</param>
+    /// <param name="clipInfo">The new clip info</param>
     public void SetClipInfo(int index, ClipInfo clipInfo) => SetLargeStringValue($"SO_ClipInfo_ClipInfo_{index}", clipInfo);
 
+    /// <summary>
+    /// Serializes the srtb to a file at a given path
+    /// </summary>
+    /// <param name="path">The path to serialize to</param>
     public void SerializeToFile(string path) {
         using var writer = new StreamWriter(path);
         
-        SERIALIZER.Serialize(writer, this);
+        JsonSerializer.Create().Serialize(writer, this);
     }
 
+    /// <summary>
+    /// Serializes the srtb to a string
+    /// </summary>
+    /// <returns>The serialized string</returns>
     public string Serialize() => JsonConvert.SerializeObject(this);
 
+    /// <summary>
+    /// Gets an srtb's track info
+    /// </summary>
+    /// <returns>The track info</returns>
     public TrackInfo GetTrackInfo() => GetLargeStringValue<TrackInfo>("SO_TrackInfo_TrackInfo");
         
+    /// <summary>
+    /// Gets an srtb's track data with a given index
+    /// </summary>
+    /// <param name="index">The index of the track data to get</param>
+    /// <returns>The track data</returns>
     public TrackData GetTrackData(int index) => GetLargeStringValue<TrackData>($"SO_TrackData_TrackData_{index}");
+    /// <summary>
+    /// Gets an srtb's track data with a given difficulty
+    /// </summary>
+    /// <param name="difficultyType">The difficulty type of the track data to get</param>
+    /// <returns>The track data</returns>
     public TrackData GetTrackData(Difficulty difficultyType) => GetTrackData((int) difficultyType);
         
+    /// <summary>
+    /// Gets an srtb's clip info with a given index
+    /// </summary>
+    /// <param name="index">The index of the clip info to get</param>
+    /// <returns>The clip info</returns>
     public ClipInfo GetClipInfo(int index) => GetLargeStringValue<ClipInfo>($"SO_ClipInfo_ClipInfo_{index}");
 
+    /// <summary>
+    /// Deserializes an srtb from a file at a given path
+    /// </summary>
+    /// <param name="path">The path to deserialize from</param>
+    /// <returns>The deserialized srtb</returns>
     public static SRTB DeserializeFromFile(string path) {
         if (!File.Exists(path))
             return null;
         
         using var reader = new StreamReader(path);
 
-        return (SRTB) SERIALIZER.Deserialize(reader, typeof(SRTB));
+        return (SRTB) JsonSerializer.Create().Deserialize(reader, typeof(SRTB));
     }
     
+    /// <summary>
+    /// Deserializes an srtb from a string
+    /// </summary>
+    /// <param name="text">The string to deserialize</param>
+    /// <returns>The deserialized srtb</returns>
     public static SRTB Deserialize(string text) => JsonConvert.DeserializeObject<SRTB>(text);
 
     private void SetLargeStringValue(string key, object value) {

@@ -4,7 +4,15 @@ using ChartHelper.Types;
 
 namespace ChartHelper.Parsing;
 
+/// <summary>
+/// Utility class for converting between the srtb note type and the ChartHelper note type
+/// </summary>
 public static class NoteConversion {
+    /// <summary>
+    /// Converts a set of srtb notes to an array of ChartHelper notes
+    /// </summary>
+    /// <param name="notes">The set of srtb notes</param>
+    /// <returns>An array of ChartHelper notes</returns>
     public static Note[] ToCustomNotesArray(IList<SRTB.Note> notes) {
         var newNotes = new Note[notes.Count];
 
@@ -19,6 +27,11 @@ public static class NoteConversion {
         return newNotes;
     }
     
+    /// <summary>
+    /// Converts a set of srtb notes to a list of ChartHelper notes
+    /// </summary>
+    /// <param name="notes">The set of srtb notes</param>
+    /// <returns>A list of ChartHelper notes</returns>
     public static List<Note> ToCustomNotesList(IList<SRTB.Note> notes) {
         var newNotes = new List<Note>();
 
@@ -30,6 +43,11 @@ public static class NoteConversion {
         return newNotes;
     }
 
+    /// <summary>
+    /// Converts a set of ChartHelper notes to an array of srtb notes
+    /// </summary>
+    /// <param name="notes">The set of ChartHelper notes</param>
+    /// <returns>An array of srtb notes</returns>
     public static SRTB.Note[] ToBaseNotesArray(IList<Note> notes) {
         var newNotes = new SRTB.Note[notes.Count];
 
@@ -42,6 +60,11 @@ public static class NoteConversion {
         return newNotes;
     }
     
+    /// <summary>
+    /// Converts a set of ChartHelper notes to a list of srtb notes
+    /// </summary>
+    /// <param name="notes">The set of ChartHelper notes</param>
+    /// <returns>A list of srtb notes</returns>
     public static List<SRTB.Note> ToBaseNotesList(IList<Note> notes) {
         var newNotes = new List<SRTB.Note>();
 
