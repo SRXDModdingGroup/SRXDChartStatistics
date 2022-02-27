@@ -67,10 +67,10 @@ public class SRTB {
 
     public class ObjectReference {
         [JsonProperty("m_FileID")]
-        public string FileId { get; set; }
+        public int FileId { get; set; }
 
         [JsonProperty("m_PathID")]
-        public string PathId { get; set; }
+        public int PathId { get; set; }
     }
 
     public class TranslationReference {
@@ -334,7 +334,7 @@ public class SRTB {
         public IntRange PreviewLoopBars { get; set; }
             
         [JsonProperty("goBeatOffsetFromFirstNote")]
-        public int GoBeatOffsetFromFirstNote { get; set; }
+        public float GoBeatOffsetFromFirstNote { get; set; }
             
         [JsonProperty("difficultyType")]
         public int DifficultyType { get; set; }
