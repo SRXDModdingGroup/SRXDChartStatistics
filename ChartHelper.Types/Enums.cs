@@ -59,15 +59,4 @@
         Blue,
         Red
     }
-    
-    /// <summary>
-    /// The difficulty type of a track
-    /// </summary>
-    public enum Difficulty {
-        Easy,
-        Normal,
-        Hard,
-        Expert,
-        XD
-    }
 }

@@ -8,6 +8,83 @@ namespace ChartHelper.Parsing;
 /// Class containing all JSON-serialized data used by the .srtb format
 /// </summary>
 public class SRTB {
+    public enum NoteType
+    {
+        None = 0,
+        Match = 1,
+        DrumStart = 2,
+        SpinRightStart = 4,
+        SpinLeftStart = 8,
+        HoldStart = 16,
+        SectionContinuationOrEnd = 32,
+        FlickDown = 64,
+        FlickUp = 128,
+        Tap = 256,
+        Checkpoint = 512,
+        TutorialStart = 1024,
+        DrumEnd = 2048,
+        ScratchStart = 4096
+    }
+    
+    public enum NoteColorType {
+        Default,
+        NoteA,
+        NoteB,
+        Beat,
+        SpinLeft,
+        SpinRight,
+        Scratch
+    }
+    
+    public enum ClipTransition {
+        None,
+        FadeOutsideBorder,
+        FadeInsideBorder
+    }
+    
+    public enum BeatLengthType {
+        Crotchet,
+        Quaver,
+        Minim
+    }
+
+    public enum BeatLengthDotted {
+        NoDot,
+        Dotted
+    }
+    
+    public enum BPMMarkerType {
+        Fixed,
+        Interpolated
+    }
+    
+    public enum TrackPlatformFilter {
+        None = 0,
+        Standalone = 1,
+        iOS = 2,
+        Android = 4,
+        Switch = 8
+    }
+    
+    public enum TrackType {
+        None = 0,
+        Song = 1,
+        Calibration = 2,
+        Tutorial = 4,
+        Editor = 8,
+        Random = 16,
+        CreateCustom = 32,
+        EditorFunction = 64
+    }
+    
+    public enum DifficultyType {
+        Easy,
+        Normal,
+        Hard,
+        Expert,
+        XD
+    }
+    
     public class UnityObjectValue {
         [JsonProperty("key")]
         public string Key { get; set; }
@@ -109,7 +186,7 @@ public class SRTB {
         public int EndBar { get; set; }
 
         [JsonProperty("noteRequirementType")]
-        public int NoteRequirementType { get; set; }
+        public NoteType NoteRequirementType { get; set; }
             
         [JsonProperty("noteRequirementCount")]
         public int NoteRequirementCount { get; set; }
@@ -135,7 +212,7 @@ public class SRTB {
         public TranslationReference Translation { get; set; }
             
         [JsonProperty("noteColorType")]
-        public int NoteColorType { get; set; }
+        public NoteColorType NoteColorType { get; set; }
 
         [JsonProperty("colorTypeString")]
         public string ColorTypeString { get; set; }
@@ -146,31 +223,31 @@ public class SRTB {
 
     public class ClipData {
         [JsonProperty("clipIndex")]
-        public int ClipIndex { get; private set; }
+        public int ClipIndex { get; set; }
             
         [JsonProperty("startBar")]
-        public int StartBar { get; private set; }
+        public int StartBar { get; set; }
             
         [JsonProperty("endBar")]
-        public int EndBar { get; private set; }
+        public int EndBar { get; set; }
             
         [JsonProperty("transitionIn")]
-        public int TransitionIn { get; private set; }
+        public ClipTransition TransitionIn { get; set; }
             
         [JsonProperty("transitionInValue")]
-        public float TransitionInValue { get; private set; }
+        public float TransitionInValue { get; set; }
             
         [JsonProperty("transitionInOffset")]
-        public float TransitionInOffset { get; private set; }
+        public float TransitionInOffset { get; set; }
             
         [JsonProperty("transitionOut")]
-        public int TransitionOut { get; private set; }
+        public ClipTransition TransitionOut { get; set; }
             
         [JsonProperty("transitionOutValue")]
-        public float TransitionOutValue { get; private set; }
+        public float TransitionOutValue { get; set; }
             
         [JsonProperty("transitionOutOffset")]
-        public float TransitionOutOffset { get; private set; }
+        public float TransitionOutOffset { get; set; }
     }
 
     public class Note {
@@ -209,10 +286,10 @@ public class SRTB {
         public int TickDivisor { get; set; }
             
         [JsonProperty("beatLengthType")]
-        public int BeatLengthType { get; set; }
+        public BeatLengthType BeatLengthType { get; set; }
             
         [JsonProperty("beatLengthDotted")]
-        public int BeatLengthDotted { get; set; }
+        public BeatLengthDotted BeatLengthDotted { get; set; }
     }
 
     public class BPMMarker {
@@ -223,7 +300,7 @@ public class SRTB {
         public float ClipTime { get; set; }
             
         [JsonProperty("type")]
-        public int Type { get; set; }
+        public BPMMarkerType Type { get; set; }
     }
 
     public class CuePoint {
@@ -306,10 +383,10 @@ public class SRTB {
         public DifficultyAssetReference[] Difficulties { get; set; }
         
         [JsonProperty("platformFilter")]
-        public int PlatformFiler { get; set; }
+        public TrackPlatformFilter PlatformFilter { get; set; }
         
         [JsonProperty("trackType")]
-        public int TrackType { get; set; }
+        public TrackType TrackType { get; set; }
         
         [JsonProperty("editorFunction")]
         public string EditorFunction { get; set; }
@@ -317,7 +394,7 @@ public class SRTB {
         [JsonProperty("allowCustomLeaderboardCreation")]
         public bool AllowCustomLeaderboardCreation { get; set; }
 
-        public bool HasDifficulty(Difficulty difficulty) => Difficulties[(int) difficulty].Active;
+        public bool HasDifficulty(DifficultyType difficulty) => Difficulties[(int) difficulty].Active;
     }
 
     public class TrackData {
@@ -337,7 +414,7 @@ public class SRTB {
         public float GoBeatOffsetFromFirstNote { get; set; }
             
         [JsonProperty("difficultyType")]
-        public int DifficultyType { get; set; }
+        public DifficultyType DifficultyType { get; set; }
             
         [JsonProperty("isTutorial")]
         public bool IsTutorial { get; set; }
@@ -428,7 +505,7 @@ public class SRTB {
     /// </summary>
     /// <param name="difficultyType">The difficulty type of the track data to set</param>
     /// <param name="trackData">The new track data</param>
-    public void SetTrackData(Difficulty difficultyType, TrackData trackData) => SetTrackData((int) difficultyType, trackData);
+    public void SetTrackData(DifficultyType difficultyType, TrackData trackData) => SetTrackData((int) difficultyType, trackData);
 
     /// <summary>
     /// Sets an srtb's clip info with a given index
@@ -470,7 +547,7 @@ public class SRTB {
     /// </summary>
     /// <param name="difficultyType">The difficulty type of the track data to get</param>
     /// <returns>The track data</returns>
-    public TrackData GetTrackData(Difficulty difficultyType) => GetTrackData((int) difficultyType);
+    public TrackData GetTrackData(DifficultyType difficultyType) => GetTrackData((int) difficultyType);
         
     /// <summary>
     /// Gets an srtb's clip info with a given index
