@@ -8,8 +8,7 @@ namespace ChartHelper.Parsing;
 /// Class containing all JSON-serialized data used by the .srtb format
 /// </summary>
 public class SRTB {
-    public enum NoteType
-    {
+    public enum NoteType {
         None = 0,
         Match = 1,
         DrumStart = 2,
@@ -78,7 +77,7 @@ public class SRTB {
     }
     
     public enum DifficultyType {
-        Easy,
+        Easy = 2,
         Normal,
         Hard,
         Expert,
@@ -394,7 +393,7 @@ public class SRTB {
         [JsonProperty("allowCustomLeaderboardCreation")]
         public bool AllowCustomLeaderboardCreation { get; set; }
 
-        public bool HasDifficulty(DifficultyType difficulty) => Difficulties[(int) difficulty].Active;
+        public bool HasDifficulty(DifficultyType difficulty) => Difficulties[(int) difficulty - 2].Active;
     }
 
     public class TrackData {
@@ -505,7 +504,7 @@ public class SRTB {
     /// </summary>
     /// <param name="difficultyType">The difficulty type of the track data to set</param>
     /// <param name="trackData">The new track data</param>
-    public void SetTrackData(DifficultyType difficultyType, TrackData trackData) => SetTrackData((int) difficultyType, trackData);
+    public void SetTrackData(DifficultyType difficultyType, TrackData trackData) => SetTrackData((int) difficultyType - 2, trackData);
 
     /// <summary>
     /// Sets an srtb's clip info with a given index
@@ -547,7 +546,7 @@ public class SRTB {
     /// </summary>
     /// <param name="difficultyType">The difficulty type of the track data to get</param>
     /// <returns>The track data</returns>
-    public TrackData GetTrackData(DifficultyType difficultyType) => GetTrackData((int) difficultyType);
+    public TrackData GetTrackData(DifficultyType difficultyType) => GetTrackData((int) difficultyType - 2);
         
     /// <summary>
     /// Gets an srtb's clip info with a given index
