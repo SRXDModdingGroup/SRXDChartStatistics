@@ -1,4 +1,6 @@
-﻿using System.IO;
+﻿using System;
+using System.Collections.Generic;
+using System.IO;
 using ChartHelper.Types;
 using Newtonsoft.Json;
 
@@ -8,6 +10,7 @@ namespace ChartHelper.Parsing;
 /// Class containing all JSON-serialized data used by the .srtb format
 /// </summary>
 public class SRTB {
+    [Flags]
     public enum NoteType {
         None = 0,
         Match = 1,
@@ -16,8 +19,6 @@ public class SRTB {
         SpinLeftStart = 8,
         HoldStart = 16,
         SectionContinuationOrEnd = 32,
-        FlickDown = 64,
-        FlickUp = 128,
         Tap = 256,
         Checkpoint = 512,
         TutorialStart = 1024,
@@ -32,7 +33,8 @@ public class SRTB {
         Beat,
         SpinLeft,
         SpinRight,
-        Scratch
+        Scratch,
+        Ancillary
     }
     
     public enum ClipTransition {
@@ -57,18 +59,19 @@ public class SRTB {
         Interpolated
     }
     
+    [Flags]
     public enum TrackPlatformFilter {
         None = 0,
         Standalone = 1,
         iOS = 2,
         Android = 4,
-        Switch = 8
+        Switch = 8,
+        All = -1
     }
     
     public enum TrackType {
         None = 0,
         Song = 1,
-        Calibration = 2,
         Tutorial = 4,
         Editor = 8,
         Random = 16,
@@ -77,11 +80,21 @@ public class SRTB {
     }
     
     public enum DifficultyType {
-        Easy = 2,
+        Calibrate,
+        Tutorial,
+        Easy,
         Normal,
         Hard,
         Expert,
-        XD
+        XD,
+        Custom,
+        Unknown = 255
+    }
+
+    public enum NoteSerializationFormat {
+        Original,
+        BrotliCompressed,
+        BinaryNotes
     }
     
     public class UnityObjectValue {
@@ -108,12 +121,12 @@ public class SRTB {
 
     public class UnityObjectValues {
         [JsonProperty("values")]
-        public UnityObjectValue[] Values { get; set; }
+        public List<UnityObjectValue> Values { get; set; }
     }
 
     public class LargeStringValues {
         [JsonProperty("values")]
-        public LargeStringValue[] Values { get; set; }
+        public List<LargeStringValue> Values { get; set; }
     }
 
     public class AssetReference {
@@ -127,7 +140,7 @@ public class SRTB {
         public string Guid { get; set; }
     }
 
-    public class DifficultyAssetReference {
+    public class TrackDataAssetReference {
         [JsonProperty("bundle")]
         public string Bundle { get; set; }
             
@@ -157,6 +170,14 @@ public class SRTB {
     public class BackgroundIdReference {
         [JsonProperty("backgroundId")]
         public string BackgroundId { get; set; }
+    }
+
+    public class FacetedGroundSettingsIdReference {
+        [JsonProperty("m_guid")]
+        public string Id_old { set => Id = value; }
+        
+        [JsonProperty("id")]
+        public string Id { get; set; }
     }
         
     public class TutorialObject {
@@ -266,13 +287,24 @@ public class SRTB {
         public int Size { get; set; }
     }
 
-    public class RewindSection {
-        [JsonProperty("startTime")]
-        public float StartTime { get; set; }
-            
-        [JsonProperty("endTime")]
-        public float EndTime { get; set; }
+    public class NoteBinary {
+        [JsonProperty("tk")]
+        public int Tk { get; set; }
+        
+        [JsonProperty("tp")]
+        public int Tp { get; set; }
+        
+        [JsonProperty("c")]
+        public int C { get; set; }
+        
+        [JsonProperty("p")]
+        public int P { get; set; }
+        
+        [JsonProperty("s")]
+        public int S { get; set; }
     }
+
+    public class RewindSection { }
 
     public class TimeSignatureMarker {
         [JsonProperty("startingBeat")]
@@ -342,6 +374,12 @@ public class SRTB {
         [JsonProperty("albumArtReference")]
         public AssetReference AlbumArtReference { get; set; }
         
+        [JsonProperty("backgroundId")]
+        public BackgroundIdReference BackgroundId { get; set; }
+        
+        [JsonProperty("backgroundColoring")]
+        public FacetedGroundSettingsIdReference BackgroundColoring { get; set; }
+        
         [JsonProperty("artistName")]
         public string ArtistName { get; set; }
         
@@ -379,7 +417,7 @@ public class SRTB {
         public string AppleMusicLink { get; set; }
         
         [JsonProperty("difficulties")]
-        public DifficultyAssetReference[] Difficulties { get; set; }
+        public List<TrackDataAssetReference> Difficulties { get; set; }
         
         [JsonProperty("platformFilter")]
         public TrackPlatformFilter PlatformFilter { get; set; }
@@ -393,7 +431,7 @@ public class SRTB {
         [JsonProperty("allowCustomLeaderboardCreation")]
         public bool AllowCustomLeaderboardCreation { get; set; }
 
-        public bool HasDifficulty(DifficultyType difficulty) => Difficulties[(int) difficulty - 2].Active;
+        public bool HasDifficulty(DifficultyType difficulty) => Difficulties[difficulty - DifficultyType.Easy].Active;
     }
 
     public class TrackData {
@@ -402,6 +440,9 @@ public class SRTB {
             
         [JsonProperty("compatibilityVersion")]
         public int CompatabilityVersion { get; set; }
+        
+        [JsonProperty("noteSerializationFormat")]
+        public NoteSerializationFormat NoteSerializationFormat { get; set; }
             
         [JsonProperty("difficultyRating")]
         public int DifficultyRating { get; set; }
@@ -418,14 +459,11 @@ public class SRTB {
         [JsonProperty("isTutorial")]
         public bool IsTutorial { get; set; }
             
-        [JsonProperty("isCalibration")]
-        public bool IsCalibration { get; set; }
-            
         [JsonProperty("tutorialTitleTranslation")]
         public TranslationReference TutorialTitleTranslation { get; set; }
 
         [JsonProperty("clipInfoAssetReferences")]
-        public AssetReference[] ClipInfoAssetReferences { get; set; }
+        public List<AssetReference> ClipInfoAssetReferences { get; set; }
 
         [JsonProperty("backgroundId")]
         public BackgroundIdReference BackgroundId { get; set; }
@@ -446,19 +484,19 @@ public class SRTB {
         public ObjectReference FeverTime { get; set; }
             
         [JsonProperty("tutorialObjects")]
-        public TutorialObject[] TutorialObjects { get; set; }
-
-        [JsonProperty("tutorialTexts")]
-        public TutorialText[] TutorialTexts { get; set; }
+        public List<TutorialObject> TutorialObjects { get; set; }
 
         [JsonProperty("clipData")]
-        public ClipData[] ClipData { get; set; }
+        public List<ClipData> ClipData { get; set; }
             
         [JsonProperty("notes")]
-        public Note[] Notes { get; set; }
-            
+        public List<Note> Notes { get; set; }
+        
+        [JsonProperty("binaryNotes")]
+        public NoteBinary BinaryNotes { get; set; }
+        
         [JsonProperty("rewindSections")]
-        public RewindSection[] RewindSections { get; set; }
+        public List<RewindSection> RewindSections { get; set; }
             
         [JsonProperty("lastEditedOnDate")]
         public string LastEditedOnDate { get; set; }
@@ -466,13 +504,13 @@ public class SRTB {
 
     public class ClipInfo {
         [JsonProperty("timeSignatureMarkers")]
-        public TimeSignatureMarker[] TimeSignatureMarkers { get; set; }
+        public List<TimeSignatureMarker> TimeSignatureMarkers { get; set; }
 
         [JsonProperty("bpmMarkers")]
-        public BPMMarker[] BpmMarkers { get; set; }
+        public List<BPMMarker> BpmMarkers { get; set; }
 
         [JsonProperty("cuePoints")]
-        public CuePoint[] CuePoints { get; set; }
+        public List<CuePoint> CuePoints { get; set; }
 
         [JsonProperty("clipAssetReference")]
         public AssetReference ClipAssetReference { get; set; }
