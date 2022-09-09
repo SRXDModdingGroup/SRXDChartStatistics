@@ -542,7 +542,7 @@ public class SRTB {
     /// </summary>
     /// <param name="difficultyType">The difficulty type of the track data to set</param>
     /// <param name="trackData">The new track data</param>
-    public void SetTrackData(DifficultyType difficultyType, TrackData trackData) => SetTrackData((int) difficultyType - 2, trackData);
+    public void SetTrackData(DifficultyType difficultyType, TrackData trackData) => SetTrackData(difficultyType - DifficultyType.Easy, trackData);
 
     /// <summary>
     /// Sets an srtb's clip info with a given index
@@ -584,7 +584,7 @@ public class SRTB {
     /// </summary>
     /// <param name="difficultyType">The difficulty type of the track data to get</param>
     /// <returns>The track data</returns>
-    public TrackData GetTrackData(DifficultyType difficultyType) => GetTrackData((int) difficultyType - 2);
+    public TrackData GetTrackData(DifficultyType difficultyType) => GetTrackData(difficultyType - DifficultyType.Easy);
         
     /// <summary>
     /// Gets an srtb's clip info with a given index
