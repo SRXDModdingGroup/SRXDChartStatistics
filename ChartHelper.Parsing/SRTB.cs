@@ -493,7 +493,7 @@ public class SRTB {
         public List<Note> Notes { get; set; }
         
         [JsonProperty("binaryNotes")]
-        public NoteBinary BinaryNotes { get; set; }
+        public List<NoteBinary> BinaryNotes { get; set; }
         
         [JsonProperty("rewindSections")]
         public List<RewindSection> RewindSections { get; set; }

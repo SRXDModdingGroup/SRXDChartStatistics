@@ -4,19 +4,11 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ChartStatistics", "ChartSta
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ChartMetrics", "ChartMetrics\ChartMetrics.csproj", "{C08A389F-34E7-45ED-B770-1F171679636A}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ChartRatingAI.Training", "ChartRatingAI.Training\ChartRatingAI.Training.csproj", "{16859F1C-59BF-41FA-BA46-7FB227AF5D3F}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AI.Processing", "AI.Processing\AI.Processing.csproj", "{A826CE3B-8722-418F-BEC2-CE1A4D5EBAE6}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Util", "Util\Util.csproj", "{5F1DE6D7-64AF-47FA-B183-84D451F7F90F}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ChartHelper.Parsing", "ChartHelper.Parsing\ChartHelper.Parsing.csproj", "{21B9540E-E021-4C9F-87B8-8CF511E6E8E7}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ChartHelper.Types", "ChartHelper.Types\ChartHelper.Types.csproj", "{EB2BBCF3-FD29-4762-BA8D-25667463111C}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AI.Training", "AI.Training\AI.Training.csproj", "{01A2B1C8-5824-4EBB-9A2C-FC302EA059A3}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ChartRatingAI.Processing", "ChartRatingAI.Processing\ChartRatingAI.Processing.csproj", "{1BCF324A-7E3A-4218-A7C8-4C5BB2508E0D}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -32,14 +24,6 @@ Global
 		{632C972A-5004-41F8-974D-B1D6FC0AC028}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{632C972A-5004-41F8-974D-B1D6FC0AC028}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{632C972A-5004-41F8-974D-B1D6FC0AC028}.Release|Any CPU.Build.0 = Release|Any CPU
-		{16859F1C-59BF-41FA-BA46-7FB227AF5D3F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{16859F1C-59BF-41FA-BA46-7FB227AF5D3F}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{16859F1C-59BF-41FA-BA46-7FB227AF5D3F}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{16859F1C-59BF-41FA-BA46-7FB227AF5D3F}.Release|Any CPU.Build.0 = Release|Any CPU
-		{A826CE3B-8722-418F-BEC2-CE1A4D5EBAE6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{A826CE3B-8722-418F-BEC2-CE1A4D5EBAE6}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{A826CE3B-8722-418F-BEC2-CE1A4D5EBAE6}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{A826CE3B-8722-418F-BEC2-CE1A4D5EBAE6}.Release|Any CPU.Build.0 = Release|Any CPU
 		{5F1DE6D7-64AF-47FA-B183-84D451F7F90F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{5F1DE6D7-64AF-47FA-B183-84D451F7F90F}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{5F1DE6D7-64AF-47FA-B183-84D451F7F90F}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -52,13 +36,5 @@ Global
 		{EB2BBCF3-FD29-4762-BA8D-25667463111C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{EB2BBCF3-FD29-4762-BA8D-25667463111C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{EB2BBCF3-FD29-4762-BA8D-25667463111C}.Release|Any CPU.Build.0 = Release|Any CPU
-		{01A2B1C8-5824-4EBB-9A2C-FC302EA059A3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{01A2B1C8-5824-4EBB-9A2C-FC302EA059A3}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{01A2B1C8-5824-4EBB-9A2C-FC302EA059A3}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{01A2B1C8-5824-4EBB-9A2C-FC302EA059A3}.Release|Any CPU.Build.0 = Release|Any CPU
-		{1BCF324A-7E3A-4218-A7C8-4C5BB2508E0D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{1BCF324A-7E3A-4218-A7C8-4C5BB2508E0D}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{1BCF324A-7E3A-4218-A7C8-4C5BB2508E0D}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{1BCF324A-7E3A-4218-A7C8-4C5BB2508E0D}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

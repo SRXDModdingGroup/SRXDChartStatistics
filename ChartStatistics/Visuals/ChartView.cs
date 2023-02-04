@@ -50,12 +50,12 @@ namespace ChartStatistics {
                     RateAllCharts(diff);
             });
             Command.SetPossibleValues("show", 0, ChartProcessor.Metrics.Select(metric => $"{metric.Name.ToLower()}: {metric.Description}").ToArray());
-            // LoadChart("spinshare_61b9f36788196");
+            LoadChart("spinshare_61b9f36788196");
             // DisplayMetric("sequencecomplexity");
             // DisplayPath("Simplified", -1);
         }
 
-        private void LoadChart(string path, Difficulty difficulty = Difficulty.XD) {
+        private void LoadChart(string path, SRTB.DifficultyType difficulty = SRTB.DifficultyType.XD) {
             if (!TryLoadChart(path, difficulty, ref chartProcessor)) {
                 Console.WriteLine("Could not find this file");
                 
@@ -242,7 +242,7 @@ namespace ChartStatistics {
             graphicsPanel.Redraw();
         }
 
-        private void RateChart(string path, bool rateThis, Difficulty difficulty) {
+        private void RateChart(string path, bool rateThis, SRTB.DifficultyType difficulty) {
             ChartProcessor processor = null;
 
             if (rateThis) {
@@ -260,7 +260,7 @@ namespace ChartStatistics {
                 return;
             }
 
-            Console.WriteLine($"Difficulty: {processor.GetDifficultyRating()}");
+            Console.WriteLine($"Difficulty: {0}");
         }
 
         private void DrawChart() {
@@ -321,7 +321,7 @@ namespace ChartStatistics {
 
         private float ColumnToY(float column) => chartCenter + chartHeight * column / -8f;
 
-        private static void RateAllCharts(Difficulty difficulty) {
+        private static void RateAllCharts(SRTB.DifficultyType difficulty) {
             var data = new List<(string, int)>();
             var processor = new ChartProcessor();
             string[] allPaths = FileHelper.GetAllSrtbs().ToArray();
@@ -335,7 +335,7 @@ namespace ChartStatistics {
                 int diff = 0;
 
                 try {
-                    diff = processor.GetDifficultyRating();
+                    diff = 0;
                 }
                 catch (Exception e) {
                     Console.WriteLine($"Error scanning chart {processor.Title}:");
@@ -357,22 +357,27 @@ namespace ChartStatistics {
             Console.WriteLine();
         }
         
-        private static bool TryLoadChart(string path, Difficulty difficulty, ref ChartProcessor processor) {
-            if (!ChartData.TryCreateFromFile(path, out var chartData, difficulty))
+        private static bool TryLoadChart(string path, SRTB.DifficultyType difficulty, ref ChartProcessor processor) {
+            var srtb = SRTB.DeserializeFromFile(path);
+            
+            if (srtb == null)
                 return false;
 
-            var trackData = chartData.TrackData[difficulty];
+            var trackData = srtb.GetTrackData(difficulty);
+
+            if (trackData == null)
+                return false;
 
             if (processor == null)
                 processor = new ChartProcessor();
             
-            processor.SetData(chartData.Title, trackData.Notes);
+            processor.SetData(srtb.GetTrackInfo().Title, NoteConversion.ToCustomNotesList(trackData.Notes));
 
             return true;
         }
         
-        private static bool TryParseDifficulty(string arg, out Difficulty difficulty) {
-            difficulty = Difficulty.XD;
+        private static bool TryParseDifficulty(string arg, out SRTB.DifficultyType difficulty) {
+            difficulty = SRTB.DifficultyType.XD;
 
             if (string.IsNullOrWhiteSpace(arg) || Enum.TryParse(arg, true, out difficulty))
                 return true;
