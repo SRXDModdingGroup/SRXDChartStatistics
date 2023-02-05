@@ -41,6 +41,7 @@
     <ItemGroup>
         <Compile Include="ChartProcessor.cs" />
         <Compile Include="Metric.cs" />
+        <Compile Include="MetricPoint.cs" />
         <Compile Include="Metrics\Abstract\ComplexityMetric.cs" />
         <Compile Include="Metrics\Abstract\DensityMetric.cs" />
         <Compile Include="Metrics\Abstract\PathMetric.cs" />
@@ -54,7 +55,6 @@
         <Compile Include="Metrics\TapBeatComplexity.cs" />
         <Compile Include="Metrics\TapBeatDensity.cs" />
         <Compile Include="Metrics\MovementNoteDensity.cs" />
-        <Compile Include="Metrics\TemporalComplexity.cs" />
         <Compile Include="Properties\AssemblyInfo.cs" />
         <Compile Include="WheelPath.cs" />
         <Compile Include="WheelPathPoint.cs" />

@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Drawing;
+using Util;
 
 namespace ChartStatistics {
     public class LineGraph : Drawable {
@@ -7,9 +8,9 @@ namespace ChartStatistics {
         
         private float bottom;
         private float top;
-        private IList<PointF> data;
+        private IList<PointD> data;
 
-        public LineGraph(float start, float end, float bottom, float top, IList<PointF> data) : base(start, end, DrawLayer.LineGraph) {
+        public LineGraph(double start, double end, float bottom, float top, IList<PointD> data) : base(start, end, DrawLayer.LineGraph) {
             this.bottom = bottom;
             this.top = top;
             this.data = data;
@@ -36,13 +37,13 @@ namespace ChartStatistics {
             for (int i = first, j = 0; i <= last; i++, j++) {
                 var point = data[i];
 
-                points[j] = new PointF(panel.TimeToX(point.X), panel.ValueToY(bottom + (top - bottom) * point.Y));
+                points[j] = new PointF(panel.TimeToX(point.X), panel.ValueToY(bottom + (top - bottom) * (float) point.Y));
             }
             
             if (points.Length > 1)
                 graphics.DrawLines(PEN, points);
         }
 
-        public void SetData(IList<PointF> data) => this.data = data;
+        public void SetData(IList<PointD> data) => this.data = data;
     }
 }

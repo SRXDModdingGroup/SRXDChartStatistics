@@ -8,7 +8,7 @@ namespace ChartStatistics {
         private Brush brush;
         private float y;
         
-        public MatchNote(float start, float y, bool isRed) : base(start, start, DrawLayer.Match) {
+        public MatchNote(double x, float y, bool isRed) : base(x, x, DrawLayer.Match) {
             if (isRed)
                 brush = BRUSH_RED;
             else

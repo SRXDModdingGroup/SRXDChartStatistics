@@ -5,7 +5,7 @@ namespace ChartMetrics {
     internal class Drift : PathMetric {
         public override string Description => "The distance that a pattern strays from a centered position";
 
-        protected override float ValueForPath(IList<WheelPath.Point> exact, IList<WheelPath.Point> simplified) {
+        protected override float ValueForPath(IList<WheelPathPoint> exact, IList<WheelPathPoint> simplified) {
             if (simplified.Count < 2)
                 return 0f;
                 

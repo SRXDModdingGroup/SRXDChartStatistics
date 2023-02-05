@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using ChartHelper.Types;
 using Util;
 
@@ -10,7 +9,9 @@ public class WheelPath {
     private const int HOLD_RESOLUTION = 30;
     private const int SIMPLIFY_ITERATIONS = 16;
     private const float SIMPLIFY_APPROACH_RATE = 0.5f;
-    private const float PREFERRED_STOP_BEFORE_TAP_TIME = 0.1f;
+    private const double PREFERRED_STOP_BEFORE_TAP_TIME = 0.1d;
+
+    public IReadOnlyList<WheelPathPoint> Points => points;
 
     private List<WheelPathPoint> points;
 
@@ -24,7 +25,7 @@ public class WheelPath {
         bool holding = false;
         bool newPath = true;
         var targetType = TargetType.None;
-        float stackTime = notes[0].Time;
+        double stackTime = notes[0].Time;
         float lanePosition = notes[0].Column;
         float netPosition = 0f;
         float targetLanePosition = 0f;
@@ -149,14 +150,14 @@ public class WheelPath {
             if (!holding || previousHoldNote == null)
                 return;
             
-            float startTime = previousHoldNote.Time;
+            double startTime = previousHoldNote.Time;
             float startPosition = previousHoldNote.Column;
-            float timeDifference = stackTime - startTime;
+            double timeDifference = stackTime - startTime;
             int pointCount = (int) (HOLD_RESOLUTION * timeDifference);
-            float pointInterval = timeDifference / pointCount;
+            double pointInterval = timeDifference / pointCount;
 
             for (int j = 1; j < pointCount; j++) {
-                float pointTime = startTime + j * pointInterval;
+                double pointTime = startTime + j * pointInterval;
                 float pointPosition = InterpolateHold(startTime, stackTime, startPosition, targetLanePosition, previousHoldNote.CurveType, pointTime);
 
                 points.Add(new WheelPathPoint(pointTime, pointPosition, netPosition + pointPosition - startPosition, currentColor, false));
@@ -189,7 +190,7 @@ public class WheelPath {
                 netPosition += laneDifference + 4f;
 
             if ((targetType == TargetType.Hold || targetType == TargetType.Tap) && !newPath && points.Count > 0) {
-                float time = Math.Max(stackTime - PREFERRED_STOP_BEFORE_TAP_TIME, 0.5f * (points[points.Count - 1].Time + stackTime));
+                double time = Math.Max(stackTime - PREFERRED_STOP_BEFORE_TAP_TIME, 0.5f * (points[points.Count - 1].Time + stackTime));
 
                 if (targetColor == currentColor)
                     points.Add(new WheelPathPoint(time, targetLanePosition, netPosition, currentColor, false));
@@ -238,8 +239,8 @@ public class WheelPath {
                 if (point.FirstInPath || next.FirstInPath || point.CurrentColor != previous.CurrentColor || point.CurrentColor != next.CurrentColor)
                     continue;
                 
-                float maxDeviation = 1f / (10f * Math.Abs(previous.Time - next.Time) + 1f);
-                float targetPosition = MathU.Lerp(newPositions[j], MathU.Remap(point.Time, previous.Time, next.Time, newPositions[j - 1], newPositions[j + 1]), SIMPLIFY_APPROACH_RATE * maxDeviation);
+                float maxDeviation = 1f / (10f * Math.Abs((float) (previous.Time - next.Time)) + 1f);
+                float targetPosition = MathU.Lerp(newPositions[j], (float) MathU.Remap(point.Time, previous.Time, next.Time, newPositions[j - 1], newPositions[j + 1]), SIMPLIFY_APPROACH_RATE * maxDeviation);
                 
                 newPositions[j] = MathU.Clamp(targetPosition, point.NetPosition - maxDeviation, point.NetPosition + maxDeviation);
             }
@@ -257,20 +258,20 @@ public class WheelPath {
         return new WheelPath(newPoints);
     }
 
-    private static float InterpolateHold(float startTime, float endTime, float startPosition, float endPosition, CurveType curveType, float pointTime) {
+    private static float InterpolateHold(double startTime, double endTime, float startPosition, float endPosition, CurveType curveType, double pointTime) {
         float interpValue;
 
         if (curveType == CurveType.Angular) {
-            if (startTime < endTime - 0.1f)
-                startTime = endTime - 0.1f;
+            if (startTime < endTime - 0.1d)
+                startTime = endTime - 0.1d;
             
             if (pointTime <= startTime)
                 return startPosition;
             
-            interpValue = (pointTime - startTime) / (endTime - startTime);
+            interpValue = (float) (pointTime - startTime) / (float) (endTime - startTime);
         }
         else {
-            float interpTime = (pointTime - startTime) / (endTime - startTime);
+            float interpTime = (float) (pointTime - startTime) / (float) (endTime - startTime);
             
             interpValue = curveType switch {
                 CurveType.Cosine => 0.5f * (1f - (float) Math.Cos(Math.PI * interpTime)),

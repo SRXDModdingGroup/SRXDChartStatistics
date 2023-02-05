@@ -10,7 +10,7 @@ namespace ChartStatistics {
         private float horizontalBars;
         private int ticksPerMajorTick;
         
-        public Grid(float bottom, float top, float horizontalBars, int ticksPerMajorTick) : base(0f, float.PositiveInfinity, 0) {
+        public Grid(float bottom, float top, float horizontalBars, int ticksPerMajorTick) : base(0d, double.PositiveInfinity, 0) {
             this.top = top;
             this.bottom = bottom;
             this.horizontalBars = horizontalBars;

@@ -7,7 +7,7 @@ namespace ChartStatistics {
         private float bottom;
         private float top;
         
-        public Beat(float x, float bottom, float top) : base(x, x, DrawLayer.Beat) {
+        public Beat(double x, float bottom, float top) : base(x, x, DrawLayer.Beat) {
             this.bottom = bottom;
             this.top = top;
         }

@@ -11,7 +11,7 @@ namespace ChartStatistics {
         private int index;
         private float value;
 
-        public PhraseMarker(float x, float y, int index, float value) : base(x, x, DrawLayer.Label) {
+        public PhraseMarker(double x, float y, int index, float value) : base(x, x, DrawLayer.Label) {
             this.y = y;
             this.index = index;
             this.value = value;

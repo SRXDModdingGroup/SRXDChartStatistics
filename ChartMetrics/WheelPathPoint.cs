@@ -3,7 +3,7 @@
 namespace ChartMetrics;
 
 public class WheelPathPoint {
-    public float Time { get; }
+    public double Time { get; }
             
     public float LanePosition { get; }
             
@@ -13,7 +13,7 @@ public class WheelPathPoint {
     
     public bool FirstInPath { get; }
 
-    public WheelPathPoint(float time, float lanePosition, float netPosition, NoteColor currentColor, bool firstInPath) {
+    public WheelPathPoint(double time, float lanePosition, float netPosition, NoteColor currentColor, bool firstInPath) {
         Time = time;
         LanePosition = lanePosition;
         NetPosition = netPosition;

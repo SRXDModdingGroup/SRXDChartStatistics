@@ -16,15 +16,15 @@ namespace ChartStatistics {
         
         private static int instanceCounter;
         
-        public float Start { get; }
+        public double Start { get; }
         
-        public float End { get; }
+        public double End { get; }
         
         public DrawLayer Layer { get; }
 
         private readonly int id;
 
-        protected Drawable(float start, float end, DrawLayer layer) {
+        protected Drawable(double start, double end, DrawLayer layer) {
             Start = start;
             End = end;
             Layer = layer;

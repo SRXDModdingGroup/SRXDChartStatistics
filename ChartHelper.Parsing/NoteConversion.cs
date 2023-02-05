@@ -82,7 +82,7 @@ public static class NoteConversion {
         note.Size == 0 ? CurveType.Cosine : (CurveType) note.Size);
 
     private static SRTB.Note CreateBaseNote(Note note) => new() {
-        Time = note.Time,
+        Time = (float) note.Time,
         Type = (int) note.TypeRaw,
         ColorIndex = (int) note.Color,
         Column = note.Column,

@@ -6,7 +6,7 @@ namespace ChartMetrics {
     internal class RequiredMovement : PathMetric {
         public override string Description => "The minimum amount of movement required to hit every positional note in a pattern";
 
-        protected override float ValueForPath(IList<WheelPath.Point> exact, IList<WheelPath.Point> simplified) {
+        protected override float ValueForPath(IList<WheelPathPoint> exact, IList<WheelPathPoint> simplified) {
             if (simplified.Count < 2)
                 return 0f;
                 

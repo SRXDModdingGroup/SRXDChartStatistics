@@ -195,23 +195,25 @@ namespace ChartMetrics {
         public string Title { get; private set; }
 
         public ReadOnlyCollection<Note> Notes { get; private set; }
-        
+
+        public WheelPath ExactPath => exactPath ??= WheelPath.GenerateFromNotes(Notes);
+
+        public WheelPath SimplifiedPath => simplifiedPath ??= WheelPath.Simplify(ExactPath);
+
         private Dictionary<string, Result> results;
-        private List<ReadOnlyCollection<WheelPath.Point>> exactPaths;
-        private List<ReadOnlyCollection<WheelPath.Point>> simplifiedPaths;
+        private WheelPath exactPath;
+        private WheelPath simplifiedPath;
 
         public ChartProcessor() {
             results = new Dictionary<string, Result>();
-            exactPaths = new List<ReadOnlyCollection<WheelPath.Point>>();
-            simplifiedPaths = new List<ReadOnlyCollection<WheelPath.Point>>();
         }
 
         public void SetData(string title, IList<Note> notes) {
             Title = title;
             Notes = new ReadOnlyCollection<Note>(notes);
             results.Clear();
-            exactPaths.Clear();
-            simplifiedPaths.Clear();
+            exactPath = null;
+            simplifiedPath = null;
         }
 
         public bool TryGetMetric(string name, out Result result) {
@@ -232,42 +234,8 @@ namespace ChartMetrics {
             return true;
         }
 
-        public ReadOnlyCollection<ReadOnlyCollection<WheelPath.Point>> GetExactPaths() {
-            if (exactPaths.Count > 0)
-                return new ReadOnlyCollection<ReadOnlyCollection<WheelPath.Point>>(exactPaths);
-
-            int startIndex = -1;
-
-            for (int i = 0; i < Notes.Count; i++) {
-                var note = Notes[i];
-                var type = note.Type;
-                
-                if (startIndex >= 0 && (type == NoteType.SpinLeft || type == NoteType.SpinRight || type == NoteType.Scratch || i == Notes.Count  || i == Notes.Count - 1)) {
-                    foreach (var path in WheelPath.GeneratePaths(Notes, startIndex, i))
-                        exactPaths.Add(new ReadOnlyCollection<WheelPath.Point>(path));
-
-                    startIndex = -1;
-                }
-                else if (note.IsAutoSnap || exactPaths.Count == 0 && startIndex < 0
-                    && (type == NoteType.Tap || type == NoteType.Hold || type == NoteType.Match))
-                    startIndex = i;
-            }
-
-            return new ReadOnlyCollection<ReadOnlyCollection<WheelPath.Point>>(exactPaths);
-        }
-
-        public ReadOnlyCollection<ReadOnlyCollection<WheelPath.Point>> GetSimplifiedPaths(int iterations = -1) {
-            if (iterations < 0 && simplifiedPaths.Count > 0)
-                return new ReadOnlyCollection<ReadOnlyCollection<WheelPath.Point>>(simplifiedPaths);
-            
-            foreach (var path in GetExactPaths())
-                simplifiedPaths.Add(new ReadOnlyCollection<WheelPath.Point>(WheelPath.Simplify(path, iterations)));
-            
-            return new ReadOnlyCollection<ReadOnlyCollection<WheelPath.Point>>(simplifiedPaths);
-        }
-
         private Result CalculateMetric(Metric metric) {
-            IList<Metric.Point> candidates;
+            IList<MetricPoint> candidates;
 
             candidates = metric.Calculate(this);
             

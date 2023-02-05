@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
+using Util;
 
 namespace ChartStatistics {
     public class BarGraph : Drawable {
@@ -9,9 +10,9 @@ namespace ChartStatistics {
         
         private float bottom;
         private float top;
-        private IList<PointF> data;
+        private IList<PointD> data;
 
-        public BarGraph(float start, float end, float bottom, float top, IList<PointF> data) : base(start, end, DrawLayer.LineGraph) {
+        public BarGraph(double start, double end, float bottom, float top, IList<PointD> data) : base(start, end, DrawLayer.LineGraph) {
             this.bottom = bottom;
             this.top = top;
             this.data = data;
@@ -47,7 +48,7 @@ namespace ChartStatistics {
                     endX = panel.TimeToX(data[i + 1].X);
 
                 float bottomY = panel.ValueToY(bottom);
-                float topY = panel.ValueToY(bottom + (top - bottom) * point.Y);
+                float topY = panel.ValueToY(bottom + (top - bottom) * (float) point.Y);
 
                 rects[j] = new RectangleF(startX, topY, Math.Max(1f, endX - startX - GAP), bottomY - topY);
             }
@@ -55,6 +56,6 @@ namespace ChartStatistics {
             graphics.FillRectangles(BRUSH, rects);
         }
 
-        public void SetData(IList<PointF> data) => this.data = data;
+        public void SetData(IList<PointD> data) => this.data = data;
     }
 }

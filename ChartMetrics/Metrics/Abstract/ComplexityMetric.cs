@@ -8,7 +8,7 @@ namespace ChartMetrics {
         
         protected abstract byte Selector(NoteType type);
         
-        internal override IList<Point> Calculate(ChartProcessor processor) {
+        internal override IList<MetricPoint> Calculate(ChartProcessor processor) {
             var notes = processor.Notes;
             float lastTime = -1f;
             byte currentStack = 0;
@@ -33,9 +33,9 @@ namespace ChartMetrics {
             }
             
             if (sequence.Count == 0) {
-                return new List<Point> {
-                    new Point(notes[0].Time, 0f),
-                    new Point(notes[notes.Count - 1].Time, 0f)
+                return new List<MetricPoint> {
+                    new MetricPoint(notes[0].Time, 0f),
+                    new MetricPoint(notes[notes.Count - 1].Time, 0f)
                 };
             }
             
@@ -50,7 +50,7 @@ namespace ChartMetrics {
             for (int i = 0; i < sequence.Count; i++)
                 complexities[i] = float.PositiveInfinity;
 
-            var points = new List<Point>();
+            var points = new List<MetricPoint>();
 
             for (int i = 0; i < sequence.Count - SEQUENCE_LENGTH + 1; i++) {
                 string current = string.Empty;
@@ -83,10 +83,10 @@ namespace ChartMetrics {
             }
 
             for (int i = 0; i < complexities.Length - 2; i++)
-                points.Add(new Point(stackTimes[i], complexities[i]));
+                points.Add(new MetricPoint(stackTimes[i], complexities[i]));
             
-            points.Add(new Point(stackTimes[complexities.Length - 2], complexities[complexities.Length - 2] + complexities[complexities.Length - 1]));
-            points.Add(new Point(stackTimes[stackTimes.Count - 1], 0f));
+            points.Add(new MetricPoint(stackTimes[complexities.Length - 2], complexities[complexities.Length - 2] + complexities[complexities.Length - 1]));
+            points.Add(new MetricPoint(stackTimes[stackTimes.Count - 1], 0f));
 
             return points;
         }

@@ -3,34 +3,34 @@ using ChartHelper.Types;
 
 namespace ChartMetrics {
     public abstract class PathMetric : Metric {
-        protected abstract float ValueForPath(IList<WheelPath.Point> exact, IList<WheelPath.Point> simplified);
+        protected abstract float ValueForPath(IList<WheelPathPoint> exact, IList<WheelPathPoint> simplified);
 
         protected abstract float ValueForSpin(Note note);
         
-        internal override IList<Point> Calculate(ChartProcessor processor) {
+        internal override IList<MetricPoint> Calculate(ChartProcessor processor) {
             var notes = processor.Notes;
-            var exactPaths = processor.GetExactPaths();
-            var simplifiedPaths = processor.GetSimplifiedPaths();
-            var points = new List<Point>();
+            var exactPath = processor.ExactPath.Points;
+            var simplifiedPath = processor.SimplifiedPath.Points;
+            var points = new List<MetricPoint>();
 
             float lastPathEnd = 0f;
 
-            for (int i = 0; i < simplifiedPaths.Count; i++) {
-                var exact = exactPaths[i];
+            for (int i = 0; i < simplifiedPath.Count; i++) {
+                var exact = exactPath[i];
                 
                 if (exact.Count < 2)
                     continue;
 
-                var simplified = simplifiedPaths[i];
+                var simplified = simplifiedPath[i];
 
-                points.Add(new Point(exact[0].Time, ValueForPath(exact, simplified)));
+                points.Add(new MetricPoint(exact[0].Time, ValueForPath(exact, simplified)));
                 lastPathEnd = exact[exact.Count - 1].Time;
             }
 
             if (points.Count == 0) {
-                return new List<Point> {
-                    new Point(notes[0].Time, 0f),
-                    new Point(notes[notes.Count - 1].Time, 0f)
+                return new List<MetricPoint> {
+                    new MetricPoint(notes[0].Time, 0f),
+                    new MetricPoint(notes[notes.Count - 1].Time, 0f)
                 };
             }
 
@@ -51,18 +51,18 @@ namespace ChartMetrics {
                 if (index != 0 && points[index - 1].Value == 0f)
                     continue;
                 
-                points.Insert(index, new Point(time, ValueForSpin(note)));
+                points.Insert(index, new MetricPoint(time, ValueForSpin(note)));
                 lastSpinTime = time;
             }
 
             if (lastPathEnd > lastSpinTime)
-                points.Add(new Point(lastPathEnd, 0f));
+                points.Add(new MetricPoint(lastPathEnd, 0f));
             else {
                 var lastPoint = points[points.Count - 1];
                 var secondToLastPoint = points[points.Count - 2];
 
-                points[points.Count - 2] = new Point(secondToLastPoint.Time, secondToLastPoint.Value + lastPoint.Value);
-                points[points.Count - 1] = new Point(lastPoint.Time, 0f);
+                points[points.Count - 2] = new MetricPoint(secondToLastPoint.Time, secondToLastPoint.Value + lastPoint.Value);
+                points[points.Count - 1] = new MetricPoint(lastPoint.Time, 0f);
             }
 
             return points;

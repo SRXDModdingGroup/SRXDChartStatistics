@@ -9,8 +9,8 @@ namespace ChartStatistics {
         private static readonly float ZOOM_SENSITIVITY = 0.125f;
         private static readonly int MAX_ZOOM = 6;
 
-        private float scroll;
-        public float Scroll {
+        private double scroll;
+        public double Scroll {
             get => scroll;
             set {
                 scroll = value;
@@ -31,7 +31,7 @@ namespace ChartStatistics {
             }
         }
         
-        public float RightBound { get; private set; }
+        public double RightBound { get; private set; }
 
         public int Width => panel.Width;
 
@@ -82,9 +82,9 @@ namespace ChartStatistics {
 
         public void Redraw() => panel.Invalidate();
 
-        public float TimeToX(float time) => horizontalScaleFactor * (time - scroll);
+        public float TimeToX(double time) => horizontalScaleFactor * (float) (time - scroll);
 
-        public float XToTime(float x) => x / horizontalScaleFactor + scroll;
+        public double XToTime(float x) => x / horizontalScaleFactor + scroll;
 
         public float ValueToY(float value) => panel.Height * value;
 

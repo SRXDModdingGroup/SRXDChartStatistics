@@ -8,7 +8,7 @@ namespace ChartStatistics {
         private Brush brush;
         private float y;
         
-        public Tap(float start, float y, bool isRed) : base(start, start, DrawLayer.Tap) {
+        public Tap(double x, float y, bool isRed) : base(x, x, DrawLayer.Tap) {
             if (isRed)
                 brush = BRUSH_RED;
             else

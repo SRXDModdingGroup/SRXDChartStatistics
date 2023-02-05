@@ -6,7 +6,7 @@ namespace ChartMetrics {
     internal class Acceleration : PathMetric {
         public override string Description => "The total change in speed / direction over the course of a pattern";
 
-        protected override float ValueForPath(IList<WheelPath.Point> exact, IList<WheelPath.Point> simplified) {
+        protected override float ValueForPath(IList<WheelPathPoint> exact, IList<WheelPathPoint> simplified) {
             if (simplified.Count < 2)
                 return 0f;
 

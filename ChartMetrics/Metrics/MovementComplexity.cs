@@ -5,7 +5,7 @@ namespace ChartMetrics {
     public class MovementComplexity : PathMetric {
         public override string Description => "The deviation between the exact and simplified movement path";
 
-        protected override float ValueForPath(IList<WheelPath.Point> exact, IList<WheelPath.Point> simplified) {
+        protected override float ValueForPath(IList<WheelPathPoint> exact, IList<WheelPathPoint> simplified) {
             if (exact.Count < 3)
                 return 0f;
 

@@ -106,12 +106,12 @@ namespace ChartStatistics {
                     max = sample.Value;
             }
 
-            var normalized = new PointF[samples.Count];
+            var normalized = new PointD[samples.Count];
 
             for (int i = 0; i < samples.Count; i++) {
                 var sample = samples[i];
 
-                normalized[i] = new PointF(sample.Time, sample.Value / max);
+                normalized[i] = new PointD(sample.Time, sample.Value / max);
             }
 
             var metricGraph = new BarGraph(samples[0].Time, samples[samples.Count - 1].Time + samples[samples.Count - 1].Length, graphBottom, graphTop, normalized);
@@ -151,21 +151,21 @@ namespace ChartStatistics {
                 return;
             }
             
-            ReadOnlyCollection<ReadOnlyCollection<WheelPath.Point>> paths;
+            IReadOnlyList<WheelPathPoint> pathPoints;
 
             name = name.ToLowerInvariant();
 
             switch (name) {
                 case "exact":
-                    paths = chartProcessor.GetExactPaths();
+                    pathPoints = chartProcessor.ExactPath.Points;
 
                     break;
                 case "simplified":
-                    paths = chartProcessor.GetSimplifiedPaths(iterations);
+                    pathPoints = chartProcessor.SimplifiedPath.Points;
 
                     break;
                 case "none":
-                    paths = null;
+                    pathPoints = null;
 
                     break;
                 default:
@@ -181,62 +181,60 @@ namespace ChartStatistics {
             
             pathDrawables.Clear();
             
-            if (paths == null)
+            if (pathPoints == null)
                 return;
 
-            foreach (var path in paths) {
-                var sameColorRun = new List<PointF>();
-                var currentColor = path[0].CurrentColor;
+            var sameColorRun = new List<PointD>();
+            var currentColor = pathPoints[0].CurrentColor;
 
-                for (int j = 0; j < path.Count; j++) {
-                    var point = path[j];
-                    float time = point.Time;
-                    float position = point.LanePosition;
+            for (int j = 0; j < pathPoints.Count; j++) {
+                var point = pathPoints[j];
+                double time = point.Time;
+                float position = point.LanePosition;
 
-                    if (point.CurrentColor != currentColor) {
-                        var previous = path[j - 1];
-                        float positionDifference = point.NetPosition - previous.NetPosition;
-                        float endTime = time;
-                        float endPosition = previous.LanePosition + positionDifference;
+                if (point.CurrentColor != currentColor) {
+                    var previous = pathPoints[j - 1];
+                    float positionDifference = point.NetPosition - previous.NetPosition;
+                    double endTime = time;
+                    float endPosition = previous.LanePosition + positionDifference;
+                    
+                    TruncateLine(previous.Time, previous.LanePosition, ref endTime, ref endPosition);
+                    sameColorRun.Add(new PointD(endTime, (endPosition + 4f) / 8f));
+
+                    if (sameColorRun.Count > 1) {
+                        var graph = new LineGraph(sameColorRun[0].X, sameColorRun[sameColorRun.Count - 1].X, chartBottom, chartTop, sameColorRun);
                         
-                        TruncateLine(previous.Time, previous.LanePosition, ref endTime, ref endPosition);
-                        sameColorRun.Add(new PointF(endTime, (endPosition + 4f) / 8f));
-
-                        if (sameColorRun.Count > 1) {
-                            var graph = new LineGraph(sameColorRun[0].X, sameColorRun[sameColorRun.Count - 1].X, chartBottom, chartTop, sameColorRun);
-                            
-                            graphicsPanel.AddDrawable(graph);
-                            pathDrawables.Add(graph);
-                        }
-
-                        currentColor = point.CurrentColor;
-                        sameColorRun = new List<PointF>();
-                        endTime = previous.Time;
-                        endPosition = point.LanePosition - positionDifference;
-                        TruncateLine(time, position, ref endTime, ref endPosition);
-                        sameColorRun.Add(new PointF(endTime, (endPosition + 4f) / 8f));
-
-                        void TruncateLine(float startX, float startY, ref float endX, ref float endY) {
-                            if (endY > 4f) {
-                                endX = MathU.Remap(4f, startY, endY, startX, endX);
-                                endY = 4f;
-                            }
-                            else if (endY < -4f) {
-                                endX = MathU.Remap(-4f, startY, endY, startX, endX);
-                                endY = -4f;
-                            }
-                        }
+                        graphicsPanel.AddDrawable(graph);
+                        pathDrawables.Add(graph);
                     }
 
-                    sameColorRun.Add(new PointF(time, (position + 4f) / 8f));
+                    currentColor = point.CurrentColor;
+                    sameColorRun = new List<PointD>();
+                    endTime = previous.Time;
+                    endPosition = point.LanePosition - positionDifference;
+                    TruncateLine(time, position, ref endTime, ref endPosition);
+                    sameColorRun.Add(new PointD(endTime, (endPosition + 4f) / 8f));
+
+                    void TruncateLine(double startX, float startY, ref double endX, ref float endY) {
+                        if (endY > 4f) {
+                            endX = MathU.Remap(4d, startY, endY, startX, endX);
+                            endY = 4f;
+                        }
+                        else if (endY < -4f) {
+                            endX = MathU.Remap(-4d, startY, endY, startX, endX);
+                            endY = -4f;
+                        }
+                    }
                 }
 
-                if (sameColorRun.Count > 1) {
-                    var graph = new LineGraph(sameColorRun[0].X, sameColorRun[sameColorRun.Count - 1].X, chartBottom, chartTop, sameColorRun);
-                    
-                    graphicsPanel.AddDrawable(graph);
-                    pathDrawables.Add(graph);
-                }
+                sameColorRun.Add(new PointD(time, (position + 4f) / 8f));
+            }
+
+            if (sameColorRun.Count > 1) {
+                var graph = new LineGraph(sameColorRun[0].X, sameColorRun[sameColorRun.Count - 1].X, chartBottom, chartTop, sameColorRun);
+                
+                graphicsPanel.AddDrawable(graph);
+                pathDrawables.Add(graph);
             }
             
             graphicsPanel.Redraw();

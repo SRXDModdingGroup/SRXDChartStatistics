@@ -8,7 +8,7 @@ namespace ChartHelper.Types {
         /// <summary>
         /// The time of the note
         /// </summary>
-        public float Time { get; }
+        public double Time { get; }
         /// <summary>
         /// The type of the note, as specified by the srtb
         /// </summary>
@@ -54,7 +54,7 @@ namespace ChartHelper.Types {
         /// <param name="color">The color of the note</param>
         /// <param name="column">The lane of the note. Value increases to the left</param>
         /// <param name="curveType">The curve type of the note. Also may specify if the note is a liftoff or hard beat release</param>
-        public Note(float time, NoteTypeRaw typeRaw, NoteColor color = NoteColor.Blue, int column = 0, CurveType curveType = CurveType.Cosine) {
+        public Note(double time, NoteTypeRaw typeRaw, NoteColor color = NoteColor.Blue, int column = 0, CurveType curveType = CurveType.Cosine) {
             Time = time;
             TypeRaw = typeRaw;
             CurveType = curveType;

@@ -10,7 +10,7 @@ namespace ChartStatistics {
         private bool isRed;
         private CurveType type;
         
-        public HoldSegment(float start, float end, float startY, float endY, bool isRed, CurveType type) : base(start, end, DrawLayer.Hold) {
+        public HoldSegment(double start, double end, float startY, float endY, bool isRed, CurveType type) : base(start, end, DrawLayer.Hold) {
             this.startY = startY;
             this.endY = endY;
             this.isRed = isRed;

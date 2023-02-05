@@ -19,7 +19,7 @@ namespace ChartStatistics {
         private float bottom;
         private float top;
         
-        public Zone(float start, float end, DrawLayer layer, ZoneType type, float bottom, float top) : base(start, end, layer) {
+        public Zone(double start, double end, DrawLayer layer, ZoneType type, float bottom, float top) : base(start, end, layer) {
             this.bottom = bottom;
             this.top = top;
 
@@ -46,7 +46,6 @@ namespace ChartStatistics {
         public override void Draw(GraphicsPanel panel, Graphics graphics) {
             float startX = panel.TimeToX(Start);
             float width = panel.TimeToX(End) - startX;
-            
             float startY = panel.ValueToY(bottom);
             
             graphics.FillRectangle(brush, startX, startY, width, panel.ValueToY(top) - startY);

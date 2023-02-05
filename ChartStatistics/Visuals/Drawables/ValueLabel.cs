@@ -9,7 +9,7 @@ namespace ChartStatistics {
         private float y;
         private string label;
         
-        public ValueLabel(float y, string label) : base(0f, float.PositiveInfinity, DrawLayer.Label) {
+        public ValueLabel(float y, string label) : base(0d, double.PositiveInfinity, DrawLayer.Label) {
             this.y = y;
             this.label = label;
         }

@@ -3,13 +3,13 @@
 namespace ChartStatistics {
     public class Label : Drawable {
         private static readonly Brush BRUSH = new SolidBrush(Color.Cyan);
-        private static readonly Font FONT = new Font("Consolas", 10);
+        private static readonly Font FONT = new("Consolas", 10);
 
         private float x;
         private float y;
         private string label;
 
-        public Label(float x, float y, string label) : base(0f, float.PositiveInfinity, DrawLayer.Label) {
+        public Label(float x, float y, string label) : base(0d, double.PositiveInfinity, DrawLayer.Label) {
             this.x = x;
             this.y = y;
             this.label = label;
