@@ -11,6 +11,7 @@
         <AssemblyName>ChartMetrics</AssemblyName>
         <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
         <FileAlignment>512</FileAlignment>
+        <LangVersion>latest</LangVersion>
     </PropertyGroup>
     <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
         <PlatformTarget>AnyCPU</PlatformTarget>
@@ -56,6 +57,7 @@
         <Compile Include="Metrics\TemporalComplexity.cs" />
         <Compile Include="Properties\AssemblyInfo.cs" />
         <Compile Include="WheelPath.cs" />
+        <Compile Include="WheelPathPoint.cs" />
     </ItemGroup>
     <ItemGroup>
       <ProjectReference Include="..\ChartHelper.Types\ChartHelper.Types.csproj">
