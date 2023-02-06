@@ -19,19 +19,22 @@ namespace ChartStatistics {
         private float graphBottom;
         private string lastShownMetric;
         private string lastShownPath;
-        private ChartProcessor chartProcessor;
+        private ChartData chartData;
         private GraphicsPanel graphicsPanel;
         private List<Drawable> metricDrawables;
         private List<Drawable> pathDrawables;
 
         public ChartView(float chartTop, float chartBottom, float graphTop, float graphBottom, GraphicsPanel graphicsPanel) {
-            this.graphicsPanel = graphicsPanel;
-            this.graphTop = graphTop;
-            this.graphBottom = graphBottom;
             this.chartTop = chartTop;
             this.chartBottom = chartBottom;
             chartCenter = 0.5f * (chartBottom + chartTop);
             chartHeight = chartBottom - chartTop;
+            this.graphicsPanel = graphicsPanel;
+            this.graphTop = graphTop;
+            this.graphBottom = graphBottom;
+            lastShownMetric = string.Empty;
+            lastShownPath = string.Empty;
+            chartData = ChartData.Empty;
             graphicsPanel.AddDrawable(new Grid(chartTop, chartBottom, 7, 5));
             metricDrawables = new List<Drawable>();
             pathDrawables = new List<Drawable>();
@@ -40,7 +43,7 @@ namespace ChartStatistics {
                     LoadChart(args[0], diff);
             });
             Command.AddListener("show", args => DisplayMetric(args[0]));
-            Command.AddListener("path", args => DisplayPath(args[0], int.TryParse(args[1], out int val) ? val : -1));
+            Command.AddListener("path", args => DisplayPath(args[0]));
             Command.AddListener("rate", args => {
                 if (TryParseDifficulty(args[1], out var diff))
                     RateChart(args[0], string.IsNullOrWhiteSpace(args[0]), diff);
@@ -49,19 +52,26 @@ namespace ChartStatistics {
                 if (TryParseDifficulty(args[0], out var diff))
                     RateAllCharts(diff);
             });
-            Command.SetPossibleValues("show", 0, ChartProcessor.Metrics.Select(metric => $"{metric.Name.ToLower()}: {metric.Description}").ToArray());
+            Command.SetPossibleValues("show", 0, Metric.GetAllMetrics().Select(metric => $"{metric.Name.ToLower()}: {metric.Description}").ToArray());
             LoadChart("spinshare_61b9f36788196");
             // DisplayMetric("sequencecomplexity");
             // DisplayPath("Simplified", -1);
         }
 
         private void LoadChart(string path, SRTB.DifficultyType difficulty = SRTB.DifficultyType.XD) {
-            if (!TryLoadChart(path, difficulty, ref chartProcessor)) {
+            if (!TryLoadSrtb(path, out var srtb)) {
                 Console.WriteLine("Could not find this file");
                 
                 return;
             }
+
+            if (!TryGetTrackData(srtb, difficulty, out var trackData)) {
+                Console.WriteLine("Could not get difficulty");
+                
+                return;
+            }
             
+            chartData = ChartData.CreateFromNotes(NoteConversion.ToCustomNotesList(trackData.Notes));
             DrawChart();
             Console.WriteLine("Loaded chart successfully");
             
@@ -69,103 +79,47 @@ namespace ChartStatistics {
                 DisplayMetric(lastShownMetric);
 
             if (!string.IsNullOrWhiteSpace(lastShownPath))
-                DisplayPath(lastShownPath, -1);
+                DisplayPath(lastShownPath);
         }
 
         private void DisplayMetric(string name) {
-            if (chartProcessor == null) {
-                Console.WriteLine("A chart has not been loaded");
-                
-                return;
-            }
-            
-            if (!chartProcessor.TryGetMetric(name, out var result)) {
+            if (!Metric.TryGetMetric(name, out var metric)) {
                 Console.WriteLine("This metric does not exist");
                 
                 return;
             }
 
-            lastShownMetric = result.MetricName;
+            lastShownMetric = metric.Name;
 
             foreach (var drawable in metricDrawables)
                 graphicsPanel.RemoveDrawable(drawable);
             
             metricDrawables.Clear();
 
-            var samples = result.Samples;
-            float max = 0f;
-
-            for (int i = 0; i < samples.Count; i++) {
-                var sample = samples[i];
-                var marker = new PhraseMarker(sample.Time, chartBottom, i, sample.Value);
-                
-                graphicsPanel.AddDrawable(marker);
-                metricDrawables.Add(marker);
-
-                if (sample.Value > max)
-                    max = sample.Value;
-            }
-
-            var normalized = new PointD[samples.Count];
-
-            for (int i = 0; i < samples.Count; i++) {
-                var sample = samples[i];
-
-                normalized[i] = new PointD(sample.Time, sample.Value / max);
-            }
-
-            var metricGraph = new BarGraph(samples[0].Time, samples[samples.Count - 1].Time + samples[samples.Count - 1].Length, graphBottom, graphTop, normalized);
-            
-            graphicsPanel.AddDrawable(metricGraph);
-            metricDrawables.Add(metricGraph);
-
-            float lowerQuantile = result.GetQuantile(ChartProcessor.LOWER_QUANTILE);
-            var valueLabel = new ValueLabel(MathU.Lerp(graphBottom, graphTop, lowerQuantile / max), $"Low ({lowerQuantile:0.00})");
-            
-            graphicsPanel.AddDrawable(valueLabel);
-            metricDrawables.Add(valueLabel);
-            
-            float upperQuantile = result.GetQuantile(ChartProcessor.UPPER_QUANTILE);
-            
-            valueLabel = new ValueLabel(MathU.Lerp(graphBottom, graphTop, upperQuantile / max), $"High ({upperQuantile:0.00})");
-            graphicsPanel.AddDrawable(valueLabel);
-            metricDrawables.Add(valueLabel);
-            
-            float mean = result.GetClippedMean(lowerQuantile, upperQuantile);
-            
-            valueLabel = new ValueLabel(MathU.Lerp(graphBottom, graphTop, mean / max), $"Mean ({mean:0.00})");
-            graphicsPanel.AddDrawable(valueLabel);
-            metricDrawables.Add(valueLabel);
-
-            var metricLabel = new Label(0f, graphTop, result.MetricName);
+            var result = metric.Calculate(chartData);
+            var metricLabel = new Label(0f, graphTop, metric.Name);
             
             graphicsPanel.AddDrawable(metricLabel);
             metricDrawables.Add(metricLabel);
             graphicsPanel.Redraw();
         }
 
-        private void DisplayPath(string name, int iterations) {
-            if (chartProcessor == null) {
-                Console.WriteLine("A chart has not been loaded");
-                
-                return;
-            }
-            
-            IReadOnlyList<WheelPathPoint> pathPoints;
+        private void DisplayPath(string name) {
+            WheelPath path;
 
             name = name.ToLowerInvariant();
 
             switch (name) {
                 case "exact":
-                    pathPoints = chartProcessor.ExactPath.Points;
+                    path = chartData.ExactPath;
 
                     break;
                 case "simplified":
-                    pathPoints = chartProcessor.SimplifiedPath.Points;
+                    path = chartData.SimplifiedPath;
 
                     break;
                 case "none":
-                    pathPoints = null;
+                    path = WheelPath.Empty;
 
                     break;
                 default:
@@ -173,6 +127,8 @@ namespace ChartStatistics {
                     
                     return;
             }
+            
+            var pathPoints = path.Points;
 
             lastShownPath = name;
             
@@ -241,22 +197,22 @@ namespace ChartStatistics {
         }
 
         private void RateChart(string path, bool rateThis, SRTB.DifficultyType difficulty) {
-            ChartProcessor processor = null;
-
-            if (rateThis) {
-                if (chartProcessor == null) {
-                    Console.WriteLine("A chart has not been loaded");
-                    
-                    return;
-                }
+            ChartData chartDataToRate;
+            
+            if (rateThis)
+                chartDataToRate = chartData;
+            else if (!TryLoadSrtb(path, out var srtb)) {
+                Console.WriteLine("Could not find this file");
                 
-                processor = chartProcessor;
+                return;
             }
-            else if (!TryLoadChart(path, difficulty, ref processor)) {
-                Console.WriteLine("Could not load this file");
+            else if (!TryGetTrackData(srtb, difficulty, out var trackData)) {
+                Console.WriteLine("Could not get difficulty");
 
                 return;
             }
+            else
+                chartDataToRate = ChartData.CreateFromNotes(NoteConversion.ToCustomNotesList(trackData.Notes));
 
             Console.WriteLine($"Difficulty: {0}");
         }
@@ -268,7 +224,7 @@ namespace ChartStatistics {
             metricDrawables.Clear();
             pathDrawables.Clear();
             
-            var notes = chartProcessor.Notes;
+            var notes = chartData.Notes;
             
             foreach (var note in notes) {
                 switch (note.Type) {
@@ -321,26 +277,27 @@ namespace ChartStatistics {
 
         private static void RateAllCharts(SRTB.DifficultyType difficulty) {
             var data = new List<(string, int)>();
-            var processor = new ChartProcessor();
             string[] allPaths = FileHelper.GetAllSrtbs().ToArray();
 
             for (int i = 0; i < allPaths.Length; i++) {
                 string path = allPaths[i];
                 
-                if (!TryLoadChart(path, difficulty, ref processor))
+                if (!TryLoadSrtb(path, out var srtb) || !TryGetTrackData(srtb, difficulty, out var trackData))
                     continue;
 
                 int diff = 0;
+                string title = srtb.GetTrackInfo().Title;
 
                 try {
+                    // TODO
                     diff = 0;
                 }
                 catch (Exception e) {
-                    Console.WriteLine($"Error scanning chart {processor.Title}:");
+                    Console.WriteLine($"Error scanning chart {title}:");
                     Console.WriteLine(e.Message);
                 }
                 
-                data.Add((processor.Title, diff));
+                data.Add((title, diff));
                 Console.WriteLine($"Scanned chart {i} of {allPaths.Length}");
                 Console.SetCursorPosition(0, Console.CursorTop - 1);
             }
@@ -355,23 +312,16 @@ namespace ChartStatistics {
             Console.WriteLine();
         }
         
-        private static bool TryLoadChart(string path, SRTB.DifficultyType difficulty, ref ChartProcessor processor) {
-            var srtb = SRTB.DeserializeFromFile(path);
-            
-            if (srtb == null)
-                return false;
+        private static bool TryLoadSrtb(string path, out SRTB srtb) {
+            srtb = SRTB.DeserializeFromFile(path);
 
-            var trackData = srtb.GetTrackData(difficulty);
+            return srtb != null;
+        }
 
-            if (trackData == null)
-                return false;
+        private static bool TryGetTrackData(SRTB srtb, SRTB.DifficultyType difficulty, out SRTB.TrackData trackData) {
+            trackData = srtb.GetTrackData(difficulty);
 
-            if (processor == null)
-                processor = new ChartProcessor();
-            
-            processor.SetData(srtb.GetTrackInfo().Title, NoteConversion.ToCustomNotesList(trackData.Notes));
-
-            return true;
+            return trackData != null;
         }
         
         private static bool TryParseDifficulty(string arg, out SRTB.DifficultyType difficulty) {
