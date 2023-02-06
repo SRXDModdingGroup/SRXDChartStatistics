@@ -6,31 +6,23 @@ namespace ChartMetrics {
     internal class Acceleration : PathMetric {
         public override string Description => "The total change in speed / direction over the course of a pattern";
 
-        protected override float ValueForPath(IList<WheelPathPoint> exact, IList<WheelPathPoint> simplified) {
-            if (simplified.Count < 2)
-                return 0f;
-
-            var first = simplified[0];
-            var second = simplified[1];
+        protected override void AddPointsForPath(List<MetricPoint> points, ref double sum, IReadOnlyList<WheelPathPoint> path, int start, int end) {
+            double speedBefore = 0d;
             
-            float sum = Math.Abs((second.NetPosition - first.NetPosition) / (second.Time - first.Time));
+            for (int i = start; i < end; i++) {
+                var current = path[i];
+                var next = path[i + 1];
+                double speedAfter = (next.NetPosition - current.NetPosition) / (next.Time - current.Time);
 
-            for (int i = 0; i < simplified.Count - 2; i++) {
-                var start = simplified[i];
-                var mid = simplified[i + 1];
-                var end = simplified[i + 2];
-                    
-                sum += Math.Abs((end.NetPosition - mid.NetPosition) / (end.Time - mid.Time) - (mid.NetPosition - start.NetPosition) / (mid.Time - start.Time));
+                sum += Math.Abs(speedAfter - speedBefore);
+                points.Add(new MetricPoint(current.Time, sum));
+                speedBefore = speedAfter;
             }
 
-            var last = simplified[simplified.Count - 1];
-            var secondToLast = simplified[simplified.Count - 2];
-            
-            sum += Math.Abs((last.NetPosition - secondToLast.NetPosition) / (last.Time - secondToLast.Time));
-
-            return sum;
+            sum += Math.Abs(speedBefore);
+            points.Add(new MetricPoint(path[end].Time, sum));
         }
 
-        protected override float ValueForSpin(Note note) => 160f;
+        protected override double GetValueForSpin(Note note) => 160d;
     }
 }

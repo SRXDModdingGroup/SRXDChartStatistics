@@ -6,6 +6,8 @@ using Util;
 namespace ChartMetrics; 
 
 public class WheelPath {
+    public static WheelPath Empty { get; } = new(new List<WheelPathPoint>());
+    
     private const int HOLD_RESOLUTION = 30;
     private const int SIMPLIFY_ITERATIONS = 16;
     private const float SIMPLIFY_APPROACH_RATE = 0.5f;
@@ -19,7 +21,7 @@ public class WheelPath {
 
     private WheelPath(List<WheelPathPoint> points) => this.points = points;
 
-    public static WheelPath GenerateFromNotes(IList<Note> notes) {
+    public static WheelPath GenerateFromNotes(IReadOnlyList<Note> notes) {
         var path = new WheelPath();
         var points = path.points;
         bool holding = false;

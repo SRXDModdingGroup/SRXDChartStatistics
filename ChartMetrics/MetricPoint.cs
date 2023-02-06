@@ -1,11 +1,11 @@
 ﻿namespace ChartMetrics;
 
-public readonly struct MetricPoint {
-    public float Time { get; }
+public class MetricPoint {
+    public double Time { get; }
     
-    public float Value { get; }
+    public double Value { get; }
 
-    public MetricPoint(float time, float value) {
+    public MetricPoint(double time, double value) {
         Time = time;
         Value = value;
     }

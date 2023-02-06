@@ -6,18 +6,18 @@ namespace ChartMetrics {
     internal class RequiredMovement : PathMetric {
         public override string Description => "The minimum amount of movement required to hit every positional note in a pattern";
 
-        protected override float ValueForPath(IList<WheelPathPoint> exact, IList<WheelPathPoint> simplified) {
-            if (simplified.Count < 2)
-                return 0f;
-                
-            float sum = 0f;
+        protected override void AddPointsForPath(List<MetricPoint> points, ref double sum, IReadOnlyList<WheelPathPoint> path, int start, int end) {
+            points.Add(new MetricPoint(path[start].Time, sum));
+            
+            for (int i = start + 1; i <= end; i++) {
+                var previous = path[i - 1];
+                var current = path[i];
 
-            for (int i = 0; i < simplified.Count - 1; i++)
-                sum += Math.Abs(simplified[i + 1].NetPosition - simplified[i].NetPosition);
-
-            return sum;
+                sum += Math.Abs(current.NetPosition - previous.NetPosition);
+                points.Add(new MetricPoint(current.Time, sum));
+            }
         }
 
-        protected override float ValueForSpin(Note note) => 16f;
+        protected override double GetValueForSpin(Note note) => 16f;
     }
 }
