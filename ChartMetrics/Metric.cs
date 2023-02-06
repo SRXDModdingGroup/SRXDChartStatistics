@@ -7,6 +7,7 @@ namespace ChartMetrics {
             new Drift(),
             new MovementNoteDensity(),
             new OverallNoteDensity(),
+            new PointValue(),
             new RequiredMovement(),
             new TapBeatDensity(),
             new SpinDensity()

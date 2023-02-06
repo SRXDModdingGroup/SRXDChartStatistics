@@ -48,6 +48,7 @@
         <Compile Include="Metrics\Acceleration.cs" />
         <Compile Include="Metrics\Drift.cs" />
         <Compile Include="Metrics\OverallNoteDensity.cs" />
+        <Compile Include="Metrics\PointValue.cs" />
         <Compile Include="Metrics\RequiredMovement.cs" />
         <Compile Include="Metrics\SpinDensity.cs" />
         <Compile Include="Metrics\TapBeatDensity.cs" />

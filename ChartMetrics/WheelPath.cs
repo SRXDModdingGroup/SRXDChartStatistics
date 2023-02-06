@@ -63,7 +63,9 @@ public class WheelPath {
 
             switch (targetType) {
                 case TargetType.Hold:
-                    holding = true;
+                    if (note.EndIndex >= 0)
+                        holding = true;
+                    
                     break;
                 case TargetType.Spin:
                 case TargetType.HoldEnd:

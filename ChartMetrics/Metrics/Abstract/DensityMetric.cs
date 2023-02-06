@@ -8,6 +8,10 @@ namespace ChartMetrics {
         
         public override MetricResult Calculate(ChartData chartData) {
             var notes = chartData.Notes;
+
+            if (notes.Count == 0)
+                return MetricResult.Empty;
+            
             var points = new List<MetricPoint>();
             int count = 0;
             double stackTime = notes[0].Time;

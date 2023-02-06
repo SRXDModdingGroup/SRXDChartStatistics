@@ -11,6 +11,10 @@ namespace ChartMetrics {
             var notes = chartData.Notes;
             var path = chartData.SimplifiedPath.Points;
             var points = new List<MetricPoint>();
+            
+            if (notes.Count == 0 || path.Count == 0)
+                return MetricResult.Empty;
+            
             int pathStartIndex = 0;
             int nextSpinIndex = 0;
             double sum = 0d;
