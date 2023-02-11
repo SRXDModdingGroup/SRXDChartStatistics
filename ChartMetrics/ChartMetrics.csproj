@@ -40,20 +40,23 @@
     </ItemGroup>
     <ItemGroup>
         <Compile Include="ChartData.cs" />
+        <Compile Include="ChartRatingData.cs" />
+        <Compile Include="ChartRatingModel.cs" />
         <Compile Include="Metric.cs" />
+        <Compile Include="MetricPlot.cs" />
         <Compile Include="MetricPoint.cs" />
         <Compile Include="MetricResult.cs" />
         <Compile Include="MetricSegment.cs" />
         <Compile Include="Metrics\Abstract\DensityMetric.cs" />
         <Compile Include="Metrics\Abstract\PathMetric.cs" />
         <Compile Include="Metrics\Acceleration.cs" />
-        <Compile Include="Metrics\MetricValue.cs" />
         <Compile Include="Metrics\OverallNoteDensity.cs" />
         <Compile Include="Metrics\PointValue.cs" />
         <Compile Include="Metrics\RequiredMovement.cs" />
         <Compile Include="Metrics\SpinDensity.cs" />
         <Compile Include="Metrics\TapBeatDensity.cs" />
         <Compile Include="Metrics\MovementNoteDensity.cs" />
+        <Compile Include="MetricPlotPoint.cs" />
         <Compile Include="Properties\AssemblyInfo.cs" />
         <Compile Include="WheelPath.cs" />
         <Compile Include="WheelPathPoint.cs" />

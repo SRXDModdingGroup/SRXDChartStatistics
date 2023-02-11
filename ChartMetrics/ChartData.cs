@@ -18,9 +18,9 @@ public class ChartData {
         SimplifiedPath = simplifiedPath;
     }
 
-    public static ChartData CreateFromNotes(IReadOnlyList<Note> notes) {
-        var exactPath = WheelPath.GenerateFromNotes(notes);
-        var simplifiedPath = WheelPath.Simplify(exactPath);
+    public static ChartData Create(IReadOnlyList<Note> notes) {
+        var exactPath = WheelPath.Create(notes);
+        var simplifiedPath = exactPath.Simplify();
         
         return new ChartData(new List<Note>(notes), exactPath, simplifiedPath);
     }

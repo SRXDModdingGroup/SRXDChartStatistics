@@ -17,13 +17,51 @@ public class WheelPath {
 
     private List<WheelPathPoint> points;
 
-    private WheelPath() => points = new List<WheelPathPoint>();
-
     private WheelPath(List<WheelPathPoint> points) => this.points = points;
 
-    public static WheelPath GenerateFromNotes(IReadOnlyList<Note> notes) {
-        var path = new WheelPath();
-        var points = path.points;
+    public WheelPath Simplify(int iterations = 0) {
+        if (iterations < 1)
+            iterations = SIMPLIFY_ITERATIONS;
+
+        var newPositions = new List<float>(points.Count);
+
+        foreach (var point in points)
+            newPositions.Add(point.NetPosition);
+
+        for (int i = 0; i < iterations; i++) {
+            for (int j = 1; j < points.Count - 1; j++) {
+                var point = points[j];
+                var previous = points[j - 1];
+                var next = points[j + 1];
+                
+                if (point.FirstInPath || next.FirstInPath || point.CurrentColor != previous.CurrentColor || point.CurrentColor != next.CurrentColor)
+                    continue;
+                
+                float maxDeviation = 1f / (10f * Math.Abs((float) (previous.Time - next.Time)) + 1f);
+                float targetPosition = MathU.Lerp(newPositions[j], (float) MathU.Remap(point.Time, previous.Time, next.Time, newPositions[j - 1], newPositions[j + 1]), SIMPLIFY_APPROACH_RATE * maxDeviation);
+                
+                newPositions[j] = MathU.Clamp(targetPosition, point.NetPosition - maxDeviation, point.NetPosition + maxDeviation);
+            }
+        }
+
+        var newPoints = new List<WheelPathPoint>(newPositions.Count);
+
+        for (int i = 0; i < points.Count; i++) {
+            var point = points[i];
+            float netPosition = newPositions[i];
+            
+            newPoints.Add(new WheelPathPoint(point.Time, point.LanePosition + netPosition - point.NetPosition, netPosition, point.CurrentColor, point.FirstInPath));
+        }
+
+        return new WheelPath(newPoints);
+    }
+
+    public static WheelPath Create(IReadOnlyList<Note> notes) {
+        var points = new List<WheelPathPoint>();
+
+        if (notes.Count == 0)
+            return new WheelPath(points);
+        
         bool holding = false;
         bool newPath = true;
         var targetType = TargetType.None;
@@ -91,7 +129,7 @@ public class WheelPath {
             holdNote = null;
         }
 
-        return path;
+        return new WheelPath(points);
 
         void UpdateTarget(Note note) {
             var type = note.Type;
@@ -228,44 +266,6 @@ public class WheelPath {
             points.Add(new WheelPathPoint(stackTime, lanePosition, netPosition, targetColor, newPath));
             newPath = false;
         }
-    }
-
-    public static WheelPath Simplify(WheelPath path, int iterations = 0) {
-        if (iterations < 1)
-            iterations = SIMPLIFY_ITERATIONS;
-
-        var points = path.points;
-        var newPositions = new List<float>(points.Count);
-
-        foreach (var point in points)
-            newPositions.Add(point.NetPosition);
-
-        for (int i = 0; i < iterations; i++) {
-            for (int j = 1; j < points.Count - 1; j++) {
-                var point = points[j];
-                var previous = points[j - 1];
-                var next = points[j + 1];
-                
-                if (point.FirstInPath || next.FirstInPath || point.CurrentColor != previous.CurrentColor || point.CurrentColor != next.CurrentColor)
-                    continue;
-                
-                float maxDeviation = 1f / (10f * Math.Abs((float) (previous.Time - next.Time)) + 1f);
-                float targetPosition = MathU.Lerp(newPositions[j], (float) MathU.Remap(point.Time, previous.Time, next.Time, newPositions[j - 1], newPositions[j + 1]), SIMPLIFY_APPROACH_RATE * maxDeviation);
-                
-                newPositions[j] = MathU.Clamp(targetPosition, point.NetPosition - maxDeviation, point.NetPosition + maxDeviation);
-            }
-        }
-
-        var newPoints = new List<WheelPathPoint>(newPositions.Count);
-
-        for (int i = 0; i < points.Count; i++) {
-            var point = points[i];
-            float netPosition = newPositions[i];
-            
-            newPoints.Add(new WheelPathPoint(point.Time, point.LanePosition + netPosition - point.NetPosition, netPosition, point.CurrentColor, point.FirstInPath));
-        }
-
-        return new WheelPath(newPoints);
     }
 
     private static float InterpolateHold(double startTime, double endTime, float startPosition, float endPosition, CurveType curveType, double pointTime) {

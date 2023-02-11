@@ -50,8 +50,8 @@ namespace ChartStatistics {
                     RateAllCharts(diff);
             });
             Command.SetPossibleValues("show", 0, Metric.GetAllMetrics().Select(metric => $"{metric.Name.ToLower()}: {metric.Description}").ToArray());
-            LoadChart("spinshare_6369b07b81969");
-            DisplayMetric("pointvalue");
+            LoadChart("Fantaisie Impromptu");
+            DisplayMetric("requiredmovement");
             DisplayPath("simplified");
         }
 
@@ -68,7 +68,7 @@ namespace ChartStatistics {
                 return;
             }
             
-            chartData = ChartData.CreateFromNotes(NoteConversion.ToCustomNotesList(trackData.Notes));
+            chartData = ChartData.Create(NoteConversion.ToCustomNotesList(trackData.Notes));
             DrawChart();
             Console.WriteLine("Loaded chart successfully");
             
@@ -95,23 +95,23 @@ namespace ChartStatistics {
 
             var result = metric.Calculate(chartData);
             var notes = chartData.Notes;
-            var values = MetricResult.SmoothValues(result.GetValues(notes[0].Time, notes[notes.Count - 1].Time, 100d), 100);
+            var points = result.GetPlot(notes[0].Time, notes[notes.Count - 1].Time, 100d).Smooth(0).Points;
             double max = 0d;
 
-            foreach (var value in values) {
+            foreach (var value in points) {
                 if (value.Value > max)
                     max = value.Value;
             }
             
-            var normalized = new PointD[values.Count];
+            var normalized = new PointD[points.Count];
 
-            for (int i = 0; i < values.Count; i++) {
-                var value = values[i];
+            for (int i = 0; i < points.Count; i++) {
+                var value = points[i];
 
                 normalized[i] = new PointD(value.Time, value.Value / max);
             }
 
-            var metricGraph = new BarGraph(values[0].Time, values[values.Count - 1].Time, graphBottom, graphTop, normalized);
+            var metricGraph = new BarGraph(points[0].Time, points[points.Count - 1].Time, graphBottom, graphTop, normalized);
             
             graphicsPanel.AddDrawable(metricGraph);
             metricDrawables.Add(metricGraph);
@@ -226,9 +226,19 @@ namespace ChartStatistics {
                 return;
             }
             else
-                chartDataToRate = ChartData.CreateFromNotes(NoteConversion.ToCustomNotesList(trackData.Notes));
+                chartDataToRate = ChartData.Create(NoteConversion.ToCustomNotesList(trackData.Notes));
 
-            Console.WriteLine($"Difficulty: {0}");
+            var ratingData = ChartRatingData.Create(chartDataToRate);
+
+            foreach (var metric in Metric.GetAllMetrics()) {
+                if (metric is PointValue)
+                    continue;
+                
+                Console.WriteLine($"{metric.Name}: {ratingData.Values[metric.Name]:F}");
+            }
+
+            Console.WriteLine();
+            Console.WriteLine($"Difficulty: {ratingData.Rate():F}");
         }
 
         private void DrawChart() {
@@ -290,7 +300,7 @@ namespace ChartStatistics {
         private float ColumnToY(float column) => chartCenter + chartHeight * column / -8f;
 
         private static void RateAllCharts(SRTB.DifficultyType difficulty) {
-            var data = new List<(string, int)>();
+            var data = new List<(string, double)>();
             string[] allPaths = FileHelper.GetAllSrtbs().ToArray();
 
             for (int i = 0; i < allPaths.Length; i++) {
@@ -299,12 +309,14 @@ namespace ChartStatistics {
                 if (!TryLoadSrtb(path, out var srtb) || !TryGetTrackData(srtb, difficulty, out var trackData))
                     continue;
 
-                int diff = 0;
+                double diff = 0;
                 string title = srtb.GetTrackInfo().Title;
 
                 try {
-                    // TODO
-                    diff = 0;
+                    var chartData = ChartData.Create(NoteConversion.ToCustomNotesList(trackData.Notes));
+                    var ratingData = ChartRatingData.Create(chartData);
+                    
+                    diff = ratingData.Rate();
                 }
                 catch (Exception e) {
                     Console.WriteLine($"Error scanning chart {title}:");
@@ -320,8 +332,8 @@ namespace ChartStatistics {
             Console.SetCursorPosition(0, Console.CursorTop);
             data.Sort((a, b) => a.Item2.CompareTo(b.Item2));
 
-            foreach ((string title, int diff) in data)
-                Console.WriteLine($"{diff} - {title}");
+            foreach ((string title, double diff) in data)
+                Console.WriteLine($"{diff:F} - {title}");
             
             Console.WriteLine();
         }
@@ -353,7 +365,6 @@ namespace ChartStatistics {
             Console.WriteLine("Invalid difficulty string");
 
             return false;
-
         }
     }
 }

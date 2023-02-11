@@ -2,7 +2,7 @@
 
 namespace ChartMetrics {
     public class MovementNoteDensity : DensityMetric {
-        public override string Description => string.Empty;
+        public override string Description => "The density of movement-based notes across the chart";
         
         protected override bool CountFilter(Note note) => note.Type == NoteType.Tap
                                                           || note.Type == NoteType.Hold

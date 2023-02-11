@@ -1,11 +1,11 @@
 ﻿namespace ChartMetrics; 
 
-public class MetricValue {
+public class MetricPlotPoint {
     public double Time { get; }
     
     public double Value { get; }
 
-    public MetricValue(double time, double value) {
+    public MetricPlotPoint(double time, double value) {
         Time = time;
         Value = value;
     }

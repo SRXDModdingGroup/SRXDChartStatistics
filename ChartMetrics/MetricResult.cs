@@ -17,20 +17,24 @@ public class MetricResult {
 
     public double SampleRange(double startTime, double endTime) => GetValue(endTime) - GetValue(startTime);
 
-    public List<MetricValue> GetValues(double startTime, double endTime, double resolution) {
+    public MetricPlot GetPlot(double startTime, double endTime, double resolution) {
         int timeIndex = 0;
         int pointIndex = 1;
+        var plotPoints = new List<MetricPlotPoint>();
+
+        if (points.Count == 0)
+            return new MetricPlot(plotPoints);
+        
         double previousValue = points[0].Value;
-        var values = new List<MetricValue>();
 
         while (true) {
             double time = startTime + timeIndex / resolution;
             double value = GetValueLinear(time, ref pointIndex);
 
-            values.Add(new MetricValue(time, value - previousValue));
+            plotPoints.Add(new MetricPlotPoint(time, value - previousValue));
 
             if (time > endTime)
-                return values;
+                return new MetricPlot(plotPoints);
 
             previousValue = value;
             timeIndex++;
@@ -159,35 +163,5 @@ public class MetricResult {
             return MathU.Remap(time, first.Time, second.Time, first.Value, second.Value);
 
         return first.Value;
-    }
-
-    public static List<MetricValue> SmoothValues(IList<MetricValue> values, int width) {
-        double kernelSum = 0d;
-
-        for (int i = -width; i <= width; i++)
-            kernelSum += Kernel((double) i / (width + 1));
-
-        var newValues = new List<MetricValue>(values.Count);
-
-        for (int i = 0; i < values.Count; i++) {
-            double sum = 0d;
-
-            for (int j = -width; j <= width; j++) {
-                int index = i + j;
-
-                if (index >= 0 && index < values.Count)
-                    sum += Kernel((double) j / (width + 1)) * values[index].Value;
-            }
-            
-            newValues.Add(new MetricValue(values[i].Time, sum / kernelSum));
-        }
-
-        return newValues;
-
-        double Kernel(double val) {
-            val = 1d - Math.Abs(val);
-
-            return val * val * (3d - 2d * val);
-        }
     }
 }

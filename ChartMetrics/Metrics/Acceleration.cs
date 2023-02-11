@@ -15,12 +15,12 @@ namespace ChartMetrics {
                 double speedAfter = (next.NetPosition - current.NetPosition) / (next.Time - current.Time);
 
                 sum += Math.Abs(speedAfter - speedBefore);
-                points.Add(new MetricPoint(current.Time, sum, i > start));
+                points.Add(new MetricPoint(current.Time, sum, false));
                 speedBefore = speedAfter;
             }
 
             sum += Math.Abs(speedBefore);
-            points.Add(new MetricPoint(path[end].Time, sum, true));
+            points.Add(new MetricPoint(path[end].Time, sum, false));
         }
 
         protected override double GetValueForSpin(Note note) => 80d;

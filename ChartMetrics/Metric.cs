@@ -8,8 +8,8 @@ namespace ChartMetrics {
             new OverallNoteDensity(),
             new PointValue(),
             new RequiredMovement(),
-            new TapBeatDensity(),
-            new SpinDensity()
+            new SpinDensity(),
+            new TapBeatDensity()
         };
         
         public string Name => GetType().Name;
