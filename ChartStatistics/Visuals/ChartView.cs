@@ -238,7 +238,7 @@ namespace ChartStatistics {
             }
 
             Console.WriteLine();
-            Console.WriteLine($"Difficulty: {ratingData.Rate():F}");
+            Console.WriteLine($"Difficulty: {ratingData.Rate(ChartRatingModel.Empty):F}");
         }
 
         private void DrawChart() {
@@ -316,7 +316,7 @@ namespace ChartStatistics {
                     var chartData = ChartData.Create(NoteConversion.ToCustomNotesList(trackData.Notes));
                     var ratingData = ChartRatingData.Create(chartData);
                     
-                    diff = ratingData.Rate();
+                    diff = ratingData.Rate(ChartRatingModel.Empty);
                 }
                 catch (Exception e) {
                     Console.WriteLine($"Error scanning chart {title}:");

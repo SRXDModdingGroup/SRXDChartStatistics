@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 
 namespace ChartMetrics; 
 
@@ -9,8 +10,20 @@ public class ChartRatingData {
 
     public ChartRatingData(SortedDictionary<string, double> values) => this.values = values;
 
-    public double Rate() {
-        return 0d;
+    public double Rate(ChartRatingModel model) {
+        double sum = 0d;
+        var parametersPerMetric = model.ParametersPerMetric;
+
+        foreach (var metric in Metric.GetAllMetrics()) {
+            if (metric is PointValue)
+                continue;
+
+            var parameters = parametersPerMetric[metric.Name];
+
+            sum += Math.Pow(parameters.Coefficient * values[metric.Name], parameters.Power);
+        }
+        
+        return sum;
     }
 
     public static ChartRatingData Create(ChartData chartData) {

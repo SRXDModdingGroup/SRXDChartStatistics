@@ -42,6 +42,7 @@
         <Compile Include="ChartData.cs" />
         <Compile Include="ChartRatingData.cs" />
         <Compile Include="ChartRatingModel.cs" />
+        <Compile Include="ChartRatingModelParameters.cs" />
         <Compile Include="Metric.cs" />
         <Compile Include="MetricPlot.cs" />
         <Compile Include="MetricPoint.cs" />
