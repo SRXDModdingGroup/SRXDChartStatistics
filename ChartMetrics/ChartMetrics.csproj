@@ -43,10 +43,11 @@
         <Compile Include="Metric.cs" />
         <Compile Include="MetricPoint.cs" />
         <Compile Include="MetricResult.cs" />
+        <Compile Include="MetricSegment.cs" />
         <Compile Include="Metrics\Abstract\DensityMetric.cs" />
         <Compile Include="Metrics\Abstract\PathMetric.cs" />
         <Compile Include="Metrics\Acceleration.cs" />
-        <Compile Include="Metrics\Drift.cs" />
+        <Compile Include="Metrics\MetricValue.cs" />
         <Compile Include="Metrics\OverallNoteDensity.cs" />
         <Compile Include="Metrics\PointValue.cs" />
         <Compile Include="Metrics\RequiredMovement.cs" />
@@ -61,10 +62,6 @@
       <ProjectReference Include="..\ChartHelper.Types\ChartHelper.Types.csproj">
         <Project>{eb2bbcf3-fd29-4762-ba8d-25667463111c}</Project>
         <Name>ChartHelper.Types</Name>
-      </ProjectReference>
-      <ProjectReference Include="..\ChartRatingAI.Processing\ChartRatingAI.Processing.csproj">
-        <Project>{1bcf324a-7e3a-4218-a7c8-4c5bb2508e0d}</Project>
-        <Name>ChartRatingAI.Processing</Name>
       </ProjectReference>
       <ProjectReference Include="..\Util\Util.csproj">
         <Project>{5f1de6d7-64af-47fa-b183-84d451f7f90f}</Project>

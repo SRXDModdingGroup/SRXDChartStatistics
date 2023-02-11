@@ -52,14 +52,23 @@ public class WheelPath {
                 case TargetType.Spin:
                     newPath = true;
                     break;
+                case TargetType.Hold:
+                    GeneratePoint();
+                    previousHoldNote = holdNote;
+                    break;
                 case TargetType.HoldPoint:
                 case TargetType.HoldEnd:
                     GenerateHoldPoints();
+                    GeneratePoint();
                     break;
-                default:
+                case TargetType.Tap:
+                case TargetType.Match:
                     GeneratePoint();
                     break;
             }
+
+            if (i == notes.Count - 1)
+                break;
 
             switch (targetType) {
                 case TargetType.Hold:
@@ -73,8 +82,11 @@ public class WheelPath {
                     break;
             }
 
+            if (holdNote != null)
+                previousHoldNote = holdNote;
+
             targetType = TargetType.None;
-            stackTime = note.Time;
+            stackTime = notes[i + 1].Time;
             matchesInStack.Clear();
             holdNote = null;
         }
@@ -105,7 +117,7 @@ public class WheelPath {
                 else if (type == NoteType.HoldPoint) {
                     targetLanePosition = note.Column;
                     targetColor = currentColor;
-                    targetType = TargetType.HoldEnd;
+                    targetType = TargetType.HoldPoint;
                     holdNote = note;
                 }
             }
@@ -166,12 +178,6 @@ public class WheelPath {
 
                 points.Add(new WheelPathPoint(pointTime, pointPosition, netPosition + pointPosition - startPosition, currentColor, false));
             }
-
-            netPosition += targetLanePosition - lanePosition;
-            lanePosition = targetLanePosition;
-            previousHoldNote = holdNote;
-            points.Add(new WheelPathPoint(stackTime, lanePosition, netPosition, currentColor, false));
-            newPath = false;
         }
 
         void GeneratePoint() {
@@ -281,8 +287,7 @@ public class WheelPath {
                 CurveType.Cosine => 0.5f * (1f - (float) Math.Cos(Math.PI * interpTime)),
                 CurveType.CurveOut => interpTime * interpTime,
                 CurveType.CurveIn => 1f - (1f - interpTime) * (1f - interpTime),
-                CurveType.Linear => interpTime,
-                _ => throw new ArgumentOutOfRangeException()
+                CurveType.Linear or _ => interpTime
             };
         }
 

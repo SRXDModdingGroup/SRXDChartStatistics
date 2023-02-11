@@ -25,7 +25,7 @@ namespace ChartMetrics {
                 
                 AdvanceSpins(path[pathStartIndex].Time);
                 AddPointsForPath(points, ref sum, path, pathStartIndex, i);
-                pathStartIndex = i;
+                pathStartIndex = i + 1;
             }
             
             AdvanceSpins(double.MaxValue);
@@ -44,7 +44,7 @@ namespace ChartMetrics {
 
                     if (noteTime <= time) {
                         sum += GetValueForSpin(note);
-                        points.Add(new MetricPoint(noteTime, sum));
+                        points.Add(new MetricPoint(noteTime, sum, false));
                     }
                     else
                         break;

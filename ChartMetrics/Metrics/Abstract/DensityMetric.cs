@@ -29,7 +29,7 @@ namespace ChartMetrics {
                     continue;
                 
                 if (stackIsCandidate)
-                    points.Add(new MetricPoint(stackTime, count));
+                    points.Add(new MetricPoint(stackTime, count, false));
 
                 if (i < notes.Count - 1)
                     stackTime = notes[i + 1].Time;

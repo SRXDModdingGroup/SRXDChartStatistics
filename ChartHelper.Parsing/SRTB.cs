@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using ChartHelper.Types;
 using Newtonsoft.Json;
 
 namespace ChartHelper.Parsing;

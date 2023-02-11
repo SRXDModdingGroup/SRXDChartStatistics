@@ -4,7 +4,6 @@ namespace ChartMetrics {
     public abstract class Metric {
         private static readonly Metric[] METRICS = {
             new Acceleration(),
-            new Drift(),
             new MovementNoteDensity(),
             new OverallNoteDensity(),
             new PointValue(),
@@ -20,10 +19,12 @@ namespace ChartMetrics {
         public abstract MetricResult Calculate(ChartData chartData);
 
         public static bool TryGetMetric(string name, out Metric metric) {
+            name = name.ToLowerInvariant();
+            
             for (int i = 0; i < METRICS.Length; i++) {
                 metric = METRICS[i];
 
-                if (metric.Name == name)
+                if (metric.Name.ToLowerInvariant() == name)
                     return true;
             }
 

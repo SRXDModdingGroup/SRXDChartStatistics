@@ -1,9 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.Drawing;
 using System.Linq;
-using ChartHelper;
 using ChartHelper.Parsing;
 using ChartHelper.Types;
 using ChartMetrics;
@@ -53,9 +50,9 @@ namespace ChartStatistics {
                     RateAllCharts(diff);
             });
             Command.SetPossibleValues("show", 0, Metric.GetAllMetrics().Select(metric => $"{metric.Name.ToLower()}: {metric.Description}").ToArray());
-            LoadChart("spinshare_61b9f36788196");
-            // DisplayMetric("sequencecomplexity");
-            // DisplayPath("Simplified", -1);
+            LoadChart("spinshare_6369b07b81969");
+            DisplayMetric("pointvalue");
+            DisplayPath("simplified");
         }
 
         private void LoadChart(string path, SRTB.DifficultyType difficulty = SRTB.DifficultyType.XD) {
@@ -97,6 +94,28 @@ namespace ChartStatistics {
             metricDrawables.Clear();
 
             var result = metric.Calculate(chartData);
+            var notes = chartData.Notes;
+            var values = MetricResult.SmoothValues(result.GetValues(notes[0].Time, notes[notes.Count - 1].Time, 100d), 100);
+            double max = 0d;
+
+            foreach (var value in values) {
+                if (value.Value > max)
+                    max = value.Value;
+            }
+            
+            var normalized = new PointD[values.Count];
+
+            for (int i = 0; i < values.Count; i++) {
+                var value = values[i];
+
+                normalized[i] = new PointD(value.Time, value.Value / max);
+            }
+
+            var metricGraph = new BarGraph(values[0].Time, values[values.Count - 1].Time, graphBottom, graphTop, normalized);
+            
+            graphicsPanel.AddDrawable(metricGraph);
+            metricDrawables.Add(metricGraph);
+            
             var metricLabel = new Label(0f, graphTop, metric.Name);
             
             graphicsPanel.AddDrawable(metricLabel);
@@ -128,7 +147,7 @@ namespace ChartStatistics {
                     return;
             }
             
-            var pathPoints = path.Points;
+            var points = path.Points;
 
             lastShownPath = name;
             
@@ -137,63 +156,58 @@ namespace ChartStatistics {
             
             pathDrawables.Clear();
             
-            if (pathPoints == null)
+            if (points == null)
                 return;
 
-            var sameColorRun = new List<PointD>();
-            var currentColor = pathPoints[0].CurrentColor;
+            var currentPath = new List<PointD>();
 
-            for (int j = 0; j < pathPoints.Count; j++) {
-                var point = pathPoints[j];
+            for (int i = 0; i < points.Count; i++) {
+                var point = points[i];
                 double time = point.Time;
                 float position = point.LanePosition;
-
-                if (point.CurrentColor != currentColor) {
-                    var previous = pathPoints[j - 1];
-                    float positionDifference = point.NetPosition - previous.NetPosition;
-                    double endTime = time;
-                    float endPosition = previous.LanePosition + positionDifference;
-                    
-                    TruncateLine(previous.Time, previous.LanePosition, ref endTime, ref endPosition);
-                    sameColorRun.Add(new PointD(endTime, (endPosition + 4f) / 8f));
-
-                    if (sameColorRun.Count > 1) {
-                        var graph = new LineGraph(sameColorRun[0].X, sameColorRun[sameColorRun.Count - 1].X, chartBottom, chartTop, sameColorRun);
-                        
-                        graphicsPanel.AddDrawable(graph);
-                        pathDrawables.Add(graph);
-                    }
-
-                    currentColor = point.CurrentColor;
-                    sameColorRun = new List<PointD>();
-                    endTime = previous.Time;
-                    endPosition = point.LanePosition - positionDifference;
-                    TruncateLine(time, position, ref endTime, ref endPosition);
-                    sameColorRun.Add(new PointD(endTime, (endPosition + 4f) / 8f));
-
-                    void TruncateLine(double startX, float startY, ref double endX, ref float endY) {
-                        if (endY > 4f) {
-                            endX = MathU.Remap(4d, startY, endY, startX, endX);
-                            endY = 4f;
-                        }
-                        else if (endY < -4f) {
-                            endX = MathU.Remap(-4d, startY, endY, startX, endX);
-                            endY = -4f;
-                        }
-                    }
-                }
-
-                sameColorRun.Add(new PointD(time, (position + 4f) / 8f));
-            }
-
-            if (sameColorRun.Count > 1) {
-                var graph = new LineGraph(sameColorRun[0].X, sameColorRun[sameColorRun.Count - 1].X, chartBottom, chartTop, sameColorRun);
                 
-                graphicsPanel.AddDrawable(graph);
-                pathDrawables.Add(graph);
+                currentPath.Add(new PointD(time, (position + 4f) / 8f));
+
+                if (i == points.Count - 1 || points[i + 1].FirstInPath) {
+                    var graph = new LineGraph(currentPath[0].X, currentPath[currentPath.Count - 1].X, chartBottom, chartTop, new List<PointD>(currentPath));
+                
+                    graphicsPanel.AddDrawable(graph);
+                    pathDrawables.Add(graph);
+                    currentPath.Clear();
+                }
+                else if (point.CurrentColor != points[i + 1].CurrentColor) {
+                    var next = points[i + 1];
+                    float positionDifference = next.NetPosition - point.NetPosition;
+                    float endPosition = next.LanePosition + positionDifference;
+                    double endTime = next.Time;
+                    
+                    TruncateLine(time, position, ref endTime, ref endPosition);
+                    currentPath.Add(new PointD(endTime, (endPosition + 4f) / 8f));
+                    
+                    var graph = new LineGraph(currentPath[0].X, currentPath[currentPath.Count - 1].X, chartBottom, chartTop, new List<PointD>(currentPath));
+                
+                    graphicsPanel.AddDrawable(graph);
+                    pathDrawables.Add(graph);
+                    currentPath.Clear();
+                    endTime = point.Time;
+                    endPosition = next.LanePosition - positionDifference;
+                    TruncateLine(next.Time, next.LanePosition, ref endTime, ref endPosition);
+                    currentPath.Add(new PointD(endTime, (endPosition + 4f) / 8f));
+                }
             }
             
             graphicsPanel.Redraw();
+            
+            void TruncateLine(double startX, float startY, ref double endX, ref float endY) {
+                if (endY > 4f) {
+                    endX = MathU.Remap(4d, startY, endY, startX, endX);
+                    endY = 4f;
+                }
+                else if (endY < -4f) {
+                    endX = MathU.Remap(-4d, startY, endY, startX, endX);
+                    endY = -4f;
+                }
+            }
         }
 
         private void RateChart(string path, bool rateThis, SRTB.DifficultyType difficulty) {
@@ -312,7 +326,13 @@ namespace ChartStatistics {
             Console.WriteLine();
         }
         
-        private static bool TryLoadSrtb(string path, out SRTB srtb) {
+        private static bool TryLoadSrtb(string name, out SRTB srtb) {
+            if (!FileHelper.TryGetSrtbWithFileName(name, out string path)) {
+                srtb = null;
+
+                return false;
+            }
+            
             srtb = SRTB.DeserializeFromFile(path);
 
             return srtb != null;
