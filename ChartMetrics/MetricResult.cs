@@ -16,27 +16,24 @@ public class MetricResult {
     public double SampleRange(double startTime, double endTime) => GetValue(endTime) - GetValue(startTime);
 
     public MetricPlot GetPlot(double startTime, double endTime, double resolution) {
-        int timeIndex = 0;
         int pointIndex = 1;
-        var plotPoints = new List<double>();
 
         if (Points.Count == 0)
-            return new MetricPlot(plotPoints, startTime, endTime);
+            return new MetricPlot(new List<double>(), startTime, endTime);
         
         double previousValue = Points[0].Value;
+        int plotSize = (int) (resolution * (endTime - startTime));
+        var plotPoints = new List<double>(plotSize);
 
-        while (true) {
-            double time = startTime + timeIndex / resolution;
+        for (int i = 0; i < plotSize; i++) {
+            double time = MathU.Lerp(startTime, endTime, (double) i / (plotSize - 1));
             double value = GetValueLinear(time, ref pointIndex);
 
             plotPoints.Add(value - previousValue);
-
-            if (time > endTime)
-                return new MetricPlot(plotPoints, startTime, time);
-
             previousValue = value;
-            timeIndex++;
         }
+
+        return new MetricPlot(plotPoints, startTime, endTime);
     }
 
     public List<MetricSegment> GetSegments(double minDuration) {

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using ChartMetrics;
+using Newtonsoft.Json;
 
 namespace ModelTraining; 
 
@@ -20,28 +21,29 @@ internal class Program {
         string resourcesDirectory = Path.Combine(projectDirectory, "Resources");
         string datasetsDirectory = Path.Combine(resourcesDirectory, "Datasets");
         var datasets = new List<Dataset>();
-        var ratingMetrics = GetRatingMetrics();
 
         foreach (string directory in Directory.GetDirectories(datasetsDirectory)) {
-            var dataset = Dataset.CreateFromDirectory(directory, ratingMetrics);
+            Dataset dataset;
+            string cachePath = Path.Combine(directory, "cache.json");
+
+            if (File.Exists(cachePath))
+                dataset = JsonConvert.DeserializeObject<Dataset>(File.ReadAllText(cachePath));
+            else
+                dataset = Dataset.CreateFromDirectory(directory, METRICS);
+
+            if (dataset == null) {
+                Console.WriteLine($"Failed to get dataset for directory {directory}");
                 
-            if (dataset != null)
-                datasets.Add(dataset);
-                
-            Console.WriteLine();
-        }
+                continue;
+            }
             
-        Console.WriteLine();
-    }
-        
-    private static List<Metric> GetRatingMetrics() {
-        var ratingMetrics = new List<Metric>();
-
-        foreach (var metric in METRICS) {
-            if (metric is not PointValue)
-                ratingMetrics.Add(metric);
+            datasets.Add(dataset);
+            // File.WriteAllText(cachePath, JsonConvert.SerializeObject(dataset));
+            Console.WriteLine($"Successfully got dataset for directory {directory}");
         }
 
-        return ratingMetrics;
+        var model = Training.Train(datasets, METRICS, 1000000, 0.5d);
+        
+        Console.WriteLine();
     }
 }

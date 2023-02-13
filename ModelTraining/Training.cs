@@ -1,48 +1,15 @@
 ﻿using System;
 using System.Collections.Generic;
 using ChartMetrics;
+using Util;
 
 namespace ModelTraining; 
 
 public static class Training {
     private const int POOL_SIZE = 8;
-
-    public static double Rate(List<double> ratingData, TrainableModel model) {
-        double sum = 0d;
-        var parametersPerMetric = model.ParametersPerMetric;
-
-        for (int i = 0; i < parametersPerMetric.Count; i++) {
-            var parameters = parametersPerMetric[i];
-            
-            sum += Math.Pow(parameters.Coefficient * ratingData[i], parameters.Power);
-        }
-        
-        return sum;
-    }
     
-    public static double CalculateFitness(TrainableModel model, List<Dataset> datasets) {
-        int sum = 0;
-        int totalCount = 0;
-        
-        foreach (var dataset in datasets) {
-            var ratings = new List<double>(dataset.Elements.Count);
-        
-            foreach (var element in dataset.Elements)
-                ratings.Add(Rate(element.RatingData, model));
-
-            for (int i = 0; i < ratings.Count; i++) {
-                for (int j = i + 1; j < ratings.Count; j++)
-                    sum += ratings[j].CompareTo(ratings[i]);
-            }
-
-            totalCount += dataset.Elements.Count;
-        }
-
-        return (double) sum / totalCount;
-    }
-
-    public static ChartRatingModel Train(List<Dataset> datasets, List<Metric> metrics, int iterations, double mutationAmount) {
-        var initialModelParametersPerMetric = new List<TrainingParameters>();
+    public static ChartRatingModel Train(IReadOnlyList<Dataset> datasets, IReadOnlyList<Metric> metrics, int iterations, double mutationAmount) {
+        var best = new Parameters[metrics.Count];
         var random = new Random();
 
         for (int i = 0; i < metrics.Count; i++) {
@@ -56,35 +23,123 @@ public static class Training {
                         max = value;
                 }
             }
-            
-            initialModelParametersPerMetric.Add(new TrainingParameters(max, 1d, 0d));
+
+            best[i] = new Parameters(max, 1d, 0d);
         }
 
-        var pool = new TrainableModel[POOL_SIZE];
+        var pool = new List<Parameters[]>(POOL_SIZE);
 
-        for (int i = 0; i < POOL_SIZE; i++)
-            pool[i] = new TrainableModel(new List<TrainingParameters>(initialModelParametersPerMetric));
-        
-        var best = pool[0];
-
-        for (int i = 0; i < iterations; i++) {
-            double bestFitness = 0d;
+        for (int i = 0; i < POOL_SIZE; i++) {
+            var model = new Parameters[metrics.Count];
             
-            best = pool[0];
+            Array.Copy(best, model, best.Length);
+            pool.Add(model);
+        }
+
+        var ratings = new List<double>();
+        int bestFitness = CalculateFitness(best, datasets, ratings);
+        int totalPairCount = 0;
+
+        foreach (var dataset in datasets) {
+            int size = dataset.Elements.Count;
+
+            totalPairCount += size * (size - 1) / 2;
+        }
+
+        for (int i = 1; i <= iterations; i++) {
+            var bestInIteration = pool[0];
+            int bestFitnessInIteration = 0;
             
             foreach (var model in pool) {
-                model.Mutate(mutationAmount, random);
+                Mutate(best, model, mutationAmount, random);
 
-                double fitness = CalculateFitness(model, datasets);
+                int fitness = CalculateFitness(model, datasets, ratings);
                 
-                if (fitness <= bestFitness)
+                if (fitness <= bestFitnessInIteration)
                     continue;
 
-                best = model;
-                bestFitness = fitness;
+                bestInIteration = model;
+                bestFitnessInIteration = fitness;
+            }
+
+            if (bestFitnessInIteration >= bestFitness) {
+                Array.Copy(bestInIteration, best, bestInIteration.Length);
+                bestFitness = bestFitnessInIteration;
+            }
+
+            if (i % 1000 > 0)
+                continue;
+            
+            Console.WriteLine($"Generation: {i}, Fitness: {(float) bestFitness / totalPairCount:0.0000}");
+
+            for (int j = 0; j < metrics.Count; j++) {
+                var parameters = best[j];
+                
+                Console.WriteLine($"{metrics[j].Name}: Coeff = {parameters.Coefficient}, Power = {parameters.Power}");
+            }
+            
+            Console.WriteLine();
+        }
+
+        return ToChartRatingModel(best, metrics);
+    }
+    
+    private static void Mutate(Parameters[] model, Parameters[] target, double amount, Random random) {
+        for (int i = 0; i < model.Length; i++) {
+            var parameters = model[i];
+
+            target[i] = new Parameters(
+                parameters.Maximum,
+                MathU.Clamp(parameters.CoefficientParameter + amount * (2d * random.NextDouble() - 1d), 0d, 1d),
+                MathU.Clamp(parameters.PowerParameter + amount * (2d * random.NextDouble() - 1d), -1d, 1d));
+        }
+    }
+    
+    private static int CalculateFitness(Parameters[] model, IReadOnlyList<Dataset> datasets, List<double> ratings) {
+        int sum = 0;
+        
+        foreach (var dataset in datasets) {
+            var elements = dataset.Elements;
+            
+            ratings.Clear();
+
+            if (ratings.Capacity < elements.Count)
+                ratings.Capacity = elements.Count;
+        
+            foreach (var element in elements)
+                ratings.Add(Rate(element.RatingData, model));
+
+            for (int i = 0; i < ratings.Count; i++) {
+                for (int j = i + 1; j < ratings.Count; j++)
+                    sum += ratings[j].CompareTo(ratings[i]);
             }
         }
 
-        return best.ToChartRatingModel(metrics);
+        return sum;
+    }
+
+    private static double Rate(double[] ratingData, Parameters[] model) {
+        double sum = 0d;
+
+        for (int i = 0; i < model.Length; i++) {
+            var parameters = model[i];
+            
+            sum += Math.Pow(parameters.Coefficient * ratingData[i], parameters.Power);
+        }
+        
+        return sum;
+    }
+
+
+    private static ChartRatingModel ToChartRatingModel(Parameters[] model, IReadOnlyList<Metric> metrics) {
+        var modelParametersPerMetric = new Dictionary<string, ChartRatingModelParameters>();
+
+        for (int i = 0; i < model.Length; i++) {
+            var parameters = model[i];
+            
+            modelParametersPerMetric.Add(metrics[i].Name, new ChartRatingModelParameters(parameters.Coefficient, parameters.Power));
+        }
+
+        return new ChartRatingModel(modelParametersPerMetric);
     }
 }

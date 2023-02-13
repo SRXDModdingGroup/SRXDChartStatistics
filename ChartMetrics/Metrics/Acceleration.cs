@@ -24,5 +24,5 @@ public class Acceleration : PathMetric {
         points.Add(new MetricPoint(path[end].Time, sum, false));
     }
 
-    protected override double GetValueForSpin(Note note) => 80d;
+    protected override double GetValueForSpin(Note note) => 40d;
 }

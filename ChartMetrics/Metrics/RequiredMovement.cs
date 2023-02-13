@@ -19,5 +19,5 @@ public class RequiredMovement : PathMetric {
         }
     }
 
-    protected override double GetValueForSpin(Note note) => 8f;
+    protected override double GetValueForSpin(Note note) => 4f;
 }

@@ -70,7 +70,7 @@ public class ChartView {
                 RateAllCharts(diff);
         });
         Command.SetPossibleValues("show", 0, METRICS.Select(metric => $"{metric.Name.ToLower()}: {metric.Description}").ToArray());
-        LoadChart("Overthinker");
+        LoadChart("Air On Line");
         DisplayMetric("requiredmovement");
         DisplayPath("simplified");
     }
@@ -129,7 +129,7 @@ public class ChartView {
         for (int i = 0; i < points.Count; i++) {
             double value = points[i];
 
-            normalized[i] = new PointD(plot.StartTime + plot.EndTime * ((double) i / (points.Count - 1)), value / max);
+            normalized[i] = new PointD(MathU.Lerp(plot.StartTime, plot.EndTime, (double) i / (points.Count - 1)), value / max);
         }
 
         var metricGraph = new BarGraph(plot.StartTime, plot.EndTime, graphBottom, graphTop, normalized);

@@ -3,17 +3,23 @@ using System.Collections.Generic;
 using System.IO;
 using ChartHelper.Parsing;
 using ChartMetrics;
+using Newtonsoft.Json;
 
 namespace ModelTraining;
 
 public class Dataset {
-    public IReadOnlyList<DataElement> Elements => elements;
-
-    private List<DataElement> elements;
+    [JsonProperty(PropertyName = "directory")]
+    public string Directory { get; }
     
-    private Dataset(List<DataElement> elements) => this.elements = elements;
+    [JsonProperty(PropertyName = "elements")]
+    public List<DataElement> Elements { get; }
+    
+    public Dataset(string directory, List<DataElement> elements) {
+        Directory = directory;
+        Elements = elements;
+    }
 
-    public static Dataset CreateFromDirectory(string directory, List<Metric> metrics) {
+    public static Dataset CreateFromDirectory(string directory, IReadOnlyList<Metric> metrics) {
         string orderPath = Path.Combine(directory, "order.txt");
         
         if (!File.Exists(orderPath))
@@ -48,16 +54,18 @@ public class Dataset {
 
             var chartData = ChartData.Create(NoteConversion.ToCustomNotesList(trackData.Notes));
             var values = ChartRatingData.Create(chartData, metrics).Values;
-            var ratingData = new List<double>(values.Count);
+            double[] ratingData = new double[metrics.Count];
 
-            foreach (var metric in metrics)
-                ratingData.Add(values[metric.Name]);
+            for (int j = 0; j < metrics.Count; j++)
+                ratingData[j] = values[metrics[j].Name];
 
             elements.Add(new DataElement(id, srtb.GetTrackInfo().Title, ratingData));
-            Console.WriteLine($"Created rating data for chart {i} of {order.Count} in {directory}");
+            Console.WriteLine($"Created rating data for chart {i + 1} of {order.Count} in {directory}");
             Console.SetCursorPosition(0, Console.CursorTop - 1);
         }
+        
+        Console.WriteLine();
 
-        return new Dataset(elements);
+        return new Dataset(directory, elements);
     }
 }
