@@ -3,24 +3,9 @@
 namespace ChartMetrics; 
 
 public class ChartRatingModel {
-    public static ChartRatingModel Empty { get; }
-
-    static ChartRatingModel() {
-        var parametersPerMetric = new SortedDictionary<string, ChartRatingModelParameters>();
-
-        foreach (var metric in Metric.GetAllMetrics()) {
-            if (metric is PointValue)
-                continue;
-            
-            parametersPerMetric.Add(metric.Name, new ChartRatingModelParameters(0d, 1d));
-        }
-
-        Empty = new ChartRatingModel(parametersPerMetric);
-    }
+    public static ChartRatingModel Empty { get; } = new(new Dictionary<string, ChartRatingModelParameters>());
     
-    public IReadOnlyDictionary<string, ChartRatingModelParameters> ParametersPerMetric => parametersPerMetric;
+    public IReadOnlyDictionary<string, ChartRatingModelParameters> ParametersPerMetric { get; }
 
-    private SortedDictionary<string, ChartRatingModelParameters> parametersPerMetric;
-
-    public ChartRatingModel(SortedDictionary<string, ChartRatingModelParameters> parametersPerMetric) => this.parametersPerMetric = parametersPerMetric;
+    public ChartRatingModel(IReadOnlyDictionary<string, ChartRatingModelParameters> parametersPerMetric) => ParametersPerMetric = parametersPerMetric;
 }

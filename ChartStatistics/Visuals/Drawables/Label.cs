@@ -1,24 +1,24 @@
 ﻿using System.Drawing;
 
-namespace ChartStatistics {
-    public class Label : Drawable {
-        private static readonly Brush BRUSH = new SolidBrush(Color.Cyan);
-        private static readonly Font FONT = new("Consolas", 10);
+namespace ChartStatistics; 
 
-        private float x;
-        private float y;
-        private string label;
+public class Label : Drawable {
+    private static readonly Brush BRUSH = new SolidBrush(Color.Cyan);
+    private static readonly Font FONT = new("Consolas", 10);
 
-        public Label(float x, float y, string label) : base(0d, double.PositiveInfinity, DrawLayer.Label) {
-            this.x = x;
-            this.y = y;
-            this.label = label;
-        }
+    private float x;
+    private float y;
+    private string label;
 
-        public void SetLabel(string label) => this.label = label;
+    public Label(float x, float y, string label) : base(0d, double.PositiveInfinity, DrawLayer.Label) {
+        this.x = x;
+        this.y = y;
+        this.label = label;
+    }
+
+    public void SetLabel(string label) => this.label = label;
         
-        public override void Draw(GraphicsPanel panel, Graphics graphics) {
-            graphics.DrawString(label, FONT, BRUSH, x, panel.ValueToY(y) - 20f);
-        }
+    public override void Draw(GraphicsPanel panel, Graphics graphics) {
+        graphics.DrawString(label, FONT, BRUSH, x, panel.ValueToY(y) - 20f);
     }
 }

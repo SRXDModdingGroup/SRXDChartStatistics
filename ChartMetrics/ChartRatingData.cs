@@ -10,23 +10,19 @@ public class ChartRatingData {
 
     public ChartRatingData(SortedDictionary<string, double> values) => this.values = values;
 
-    public double Rate(ChartRatingModel model) {
+    public double Rate(ChartRatingModel model, IEnumerable<Metric> metrics) {
         double sum = 0d;
         var parametersPerMetric = model.ParametersPerMetric;
 
-        foreach (var metric in Metric.GetAllMetrics()) {
-            if (metric is PointValue)
-                continue;
-
-            var parameters = parametersPerMetric[metric.Name];
-
-            sum += Math.Pow(parameters.Coefficient * values[metric.Name], parameters.Power);
+        foreach (var metric in metrics) {
+            if (parametersPerMetric.TryGetValue(metric.Name, out var parameters))
+                sum += Math.Pow(parameters.Coefficient * values[metric.Name], parameters.Power);
         }
         
         return sum;
     }
 
-    public static ChartRatingData Create(ChartData chartData) {
+    public static ChartRatingData Create(ChartData chartData, IEnumerable<Metric> metrics) {
         var result = new PointValue().Calculate(chartData);
         var notes = chartData.Notes;
         double startTime;
@@ -44,22 +40,21 @@ public class ChartRatingData {
         var weights = result.GetPlot(startTime, endTime, 100d).Smooth(100).Points;
         double weightSum = 0d;
 
-        foreach (var point in weights)
-            weightSum += point.Value;
+        foreach (double weight in weights)
+            weightSum += weight;
 
         var ratings = new SortedDictionary<string, double>();
 
-        foreach (var metric in Metric.GetAllMetrics()) {
-            if (metric is PointValue)
-                continue;
-                
+        foreach (var metric in metrics) {
             result = metric.Calculate(chartData);
 
-            var points = result.GetPlot(startTime, endTime, 100d).Points;
+            var plot = result.GetPlot(startTime, endTime, 100d).Smooth(100);
+            var points = plot.Points;
+            double high = plot.GetQuantile(0.9d);
             double sum = 0d;
 
             for (int i = 0; i < points.Count && i < weights.Count; i++)
-                sum += weights[i].Value * points[i].Value;
+                sum += weights[i] * Math.Min(points[i], high);
                 
             ratings.Add(metric.Name, sum * 100d / weightSum);
         }

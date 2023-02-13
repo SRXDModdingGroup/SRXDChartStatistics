@@ -7,34 +7,32 @@ namespace ChartMetrics;
 public class MetricResult {
     public static MetricResult Empty { get; } = new(new List<MetricPoint>());
     
-    public IReadOnlyList<MetricPoint> Points => points;
+    public IReadOnlyList<MetricPoint> Points { get; }
 
-    private List<MetricPoint> points;
+    public MetricResult(IReadOnlyList<MetricPoint> points) => Points = points;
 
-    public MetricResult(IReadOnlyList<MetricPoint> points) => this.points = new List<MetricPoint>(points);
-
-    public double GetValue(double time) => GetValueBinary(time, 0, points.Count - 1);
+    public double GetValue(double time) => GetValueBinary(time, 0, Points.Count - 1);
 
     public double SampleRange(double startTime, double endTime) => GetValue(endTime) - GetValue(startTime);
 
     public MetricPlot GetPlot(double startTime, double endTime, double resolution) {
         int timeIndex = 0;
         int pointIndex = 1;
-        var plotPoints = new List<MetricPlotPoint>();
+        var plotPoints = new List<double>();
 
-        if (points.Count == 0)
-            return new MetricPlot(plotPoints);
+        if (Points.Count == 0)
+            return new MetricPlot(plotPoints, startTime, endTime);
         
-        double previousValue = points[0].Value;
+        double previousValue = Points[0].Value;
 
         while (true) {
             double time = startTime + timeIndex / resolution;
             double value = GetValueLinear(time, ref pointIndex);
 
-            plotPoints.Add(new MetricPlotPoint(time, value - previousValue));
+            plotPoints.Add(value - previousValue);
 
             if (time > endTime)
-                return new MetricPlot(plotPoints);
+                return new MetricPlot(plotPoints, startTime, time);
 
             previousValue = value;
             timeIndex++;
@@ -45,13 +43,13 @@ public class MetricResult {
         List<MetricPoint> simplifiedPoints;
 
         if (minDuration == 0d)
-            simplifiedPoints = points;
+            simplifiedPoints = new List<MetricPoint>(Points);
         else {
             simplifiedPoints = new List<MetricPoint>();
             
-            simplifiedPoints.Add(points[0]);
-            AddSimplifiedPoint(0, points.Count - 1);
-            simplifiedPoints.Add(points[points.Count - 1]);
+            simplifiedPoints.Add(Points[0]);
+            AddSimplifiedPoint(0, Points.Count - 1);
+            simplifiedPoints.Add(Points[Points.Count - 1]);
         }
 
         var segments = new List<MetricSegment>();
@@ -81,14 +79,14 @@ public class MetricResult {
         return segments;
 
         void AddSimplifiedPoint(int startIndex, int endIndex) {
-            var start = points[startIndex];
-            var end = points[endIndex];
+            var start = Points[startIndex];
+            var end = Points[endIndex];
             double slope = (end.Value - start.Value) / (end.Time - start.Time);
             double minDiff = double.MaxValue;
             int bestIndex = -1;
 
             for (int i = startIndex + 1; i < endIndex; i++) {
-                var mid = points[i];
+                var mid = Points[i];
                 
                 if (mid.Time - start.Time < minDuration || end.Time - mid.Time < minDuration)
                     continue;
@@ -106,7 +104,7 @@ public class MetricResult {
                 return;
             
             AddSimplifiedPoint(startIndex, bestIndex);
-            simplifiedPoints.Add(points[bestIndex]);
+            simplifiedPoints.Add(Points[bestIndex]);
             AddSimplifiedPoint(bestIndex, endIndex);
         }
     }
@@ -114,10 +112,10 @@ public class MetricResult {
     private double GetValueBinary(double time, int startIndex, int endIndex) {
         while (startIndex < endIndex) {
             int midIndex = (startIndex + endIndex) / 2;
-            double midTime = points[midIndex].Time;
+            double midTime = Points[midIndex].Time;
 
             if (midTime == time)
-                return points[midIndex].Value;
+                return Points[midIndex].Value;
 
             if (time > midTime)
                 startIndex = midIndex + 1;
@@ -125,11 +123,11 @@ public class MetricResult {
                 endIndex = midIndex - 1;
         }
 
-        if (startIndex == points.Count - 1)
-            return points[startIndex].Value;
+        if (startIndex == Points.Count - 1)
+            return Points[startIndex].Value;
 
-        var first = points[startIndex];
-        var second = points[startIndex + 1];
+        var first = Points[startIndex];
+        var second = Points[startIndex + 1];
 
         if (second.Interpolate)
             return MathU.Remap(time, first.Time, second.Time, first.Value, second.Value);
@@ -138,11 +136,11 @@ public class MetricResult {
     }
     
     private double GetValueLinear(double time, ref int startIndex) {
-        while (startIndex < points.Count) {
-            double pointTime = points[startIndex].Time;
+        while (startIndex < Points.Count) {
+            double pointTime = Points[startIndex].Time;
             
             if (pointTime == time)
-                return points[startIndex].Value;
+                return Points[startIndex].Value;
 
             if (pointTime > time)
                 break;
@@ -150,14 +148,14 @@ public class MetricResult {
             startIndex++;
         }
 
-        if (startIndex == points.Count)
-            return points[points.Count - 1].Value;
+        if (startIndex == Points.Count)
+            return Points[Points.Count - 1].Value;
 
         if (startIndex == 0)
-            return points[0].Value;
+            return Points[0].Value;
 
-        var first = points[startIndex - 1];
-        var second = points[startIndex];
+        var first = Points[startIndex - 1];
+        var second = Points[startIndex];
 
         if (second.Interpolate)
             return MathU.Remap(time, first.Time, second.Time, first.Value, second.Value);

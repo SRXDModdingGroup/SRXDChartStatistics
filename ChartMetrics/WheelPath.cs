@@ -13,26 +13,24 @@ public class WheelPath {
     private const float SIMPLIFY_APPROACH_RATE = 0.5f;
     private const double PREFERRED_STOP_BEFORE_TAP_TIME = 0.1d;
 
-    public IReadOnlyList<WheelPathPoint> Points => points;
+    public IReadOnlyList<WheelPathPoint> Points { get; }
 
-    private List<WheelPathPoint> points;
-
-    private WheelPath(List<WheelPathPoint> points) => this.points = points;
+    private WheelPath(IReadOnlyList<WheelPathPoint> points) => Points = points;
 
     public WheelPath Simplify(int iterations = 0) {
         if (iterations < 1)
             iterations = SIMPLIFY_ITERATIONS;
 
-        var newPositions = new List<float>(points.Count);
+        var newPositions = new List<float>(Points.Count);
 
-        foreach (var point in points)
+        foreach (var point in Points)
             newPositions.Add(point.NetPosition);
 
         for (int i = 0; i < iterations; i++) {
-            for (int j = 1; j < points.Count - 1; j++) {
-                var point = points[j];
-                var previous = points[j - 1];
-                var next = points[j + 1];
+            for (int j = 1; j < Points.Count - 1; j++) {
+                var point = Points[j];
+                var previous = Points[j - 1];
+                var next = Points[j + 1];
                 
                 if (point.FirstInPath || next.FirstInPath || point.CurrentColor != previous.CurrentColor || point.CurrentColor != next.CurrentColor)
                     continue;
@@ -46,8 +44,8 @@ public class WheelPath {
 
         var newPoints = new List<WheelPathPoint>(newPositions.Count);
 
-        for (int i = 0; i < points.Count; i++) {
-            var point = points[i];
+        for (int i = 0; i < Points.Count; i++) {
+            var point = Points[i];
             float netPosition = newPositions[i];
             
             newPoints.Add(new WheelPathPoint(point.Time, point.LanePosition + netPosition - point.NetPosition, netPosition, point.CurrentColor, point.FirstInPath));

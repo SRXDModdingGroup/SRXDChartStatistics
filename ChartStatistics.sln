@@ -10,6 +10,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ChartHelper.Parsing", "Char
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ChartHelper.Types", "ChartHelper.Types\ChartHelper.Types.csproj", "{EB2BBCF3-FD29-4762-BA8D-25667463111C}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ModelTraining", "ModelTraining\ModelTraining.csproj", "{07790D87-B534-4663-9D6E-FE3F633B7D4D}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -36,5 +38,9 @@ Global
 		{EB2BBCF3-FD29-4762-BA8D-25667463111C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{EB2BBCF3-FD29-4762-BA8D-25667463111C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{EB2BBCF3-FD29-4762-BA8D-25667463111C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{07790D87-B534-4663-9D6E-FE3F633B7D4D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{07790D87-B534-4663-9D6E-FE3F633B7D4D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{07790D87-B534-4663-9D6E-FE3F633B7D4D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{07790D87-B534-4663-9D6E-FE3F633B7D4D}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

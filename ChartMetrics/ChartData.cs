@@ -12,7 +12,7 @@ public class ChartData {
     
     public WheelPath SimplifiedPath { get; }
 
-    private ChartData(List<Note> notes, WheelPath exactPath, WheelPath simplifiedPath) {
+    private ChartData(IReadOnlyList<Note> notes, WheelPath exactPath, WheelPath simplifiedPath) {
         Notes = notes;
         ExactPath = exactPath;
         SimplifiedPath = simplifiedPath;
