@@ -56,7 +56,7 @@ public class ChartView {
         lastShownMetric = string.Empty;
         lastShownPath = string.Empty;
         chartData = ChartData.Empty;
-        graphicsPanel.AddDrawable(new Grid(chartTop, chartBottom, 7, 5));
+        graphicsPanel.AddDrawable(new Grid(chartTop, chartBottom, 9, 10));
         metricDrawables = new List<Drawable>();
         pathDrawables = new List<Drawable>();
         Command.AddListener("load", args => {
@@ -75,7 +75,7 @@ public class ChartView {
         });
         Command.SetPossibleValues("show", 0, METRICS.Select(metric => $"{metric.Name.ToLower()}: {metric.Description}").ToArray());
         LoadChart("C:\\Users\\domia\\Git\\SRXDChartStatistics\\ModelTraining\\Resources\\Datasets\\SpinSharePlaylist_SpeenOpen Winter 2022\\4538.srtb");
-        DisplayMetric("tapbeatdensity");
+        DisplayMetric("requiredmovement");
         DisplayPath("simplified");
     }
 
@@ -124,7 +124,7 @@ public class ChartView {
         double max = 0d;
 
         foreach (double value in points) {
-            if (value > max)
+            if (value > max && !double.IsNaN(value) && !double.IsInfinity(value))
                 max = value;
         }
             
@@ -133,7 +133,7 @@ public class ChartView {
         for (int i = 0; i < points.Count; i++) {
             double value = points[i];
 
-            normalized[i] = new PointD(MathU.Lerp(plot.StartTime, plot.EndTime, (double) i / (points.Count - 1)), value / max);
+            normalized[i] = new PointD(MathU.Lerp(plot.StartTime, plot.EndTime, (double) i / points.Count), value / max);
         }
 
         var metricGraph = new BarGraph(plot.StartTime, plot.EndTime, graphBottom, graphTop, normalized);
@@ -209,7 +209,7 @@ public class ChartView {
             else if (point.CurrentColor != points[i + 1].CurrentColor) {
                 var next = points[i + 1];
                 float positionDifference = next.NetPosition - point.NetPosition;
-                float endPosition = next.LanePosition + positionDifference;
+                float endPosition = point.LanePosition + positionDifference;
                 double endTime = next.Time;
                     
                 TruncateLine(time, position, ref endTime, ref endPosition);
@@ -276,7 +276,9 @@ public class ChartView {
         pathDrawables.Clear();
             
         var notes = chartData.Notes;
-            
+        Note previousHold = null;
+        var holdColor = NoteColor.Blue;
+
         foreach (var note in notes) {
             switch (note.Type) {
                 case NoteType.Match:
@@ -301,17 +303,21 @@ public class ChartView {
                 case NoteType.HoldPoint:
                 case NoteType.HoldEnd:
                 case NoteType.Liftoff:
-                    if (note.StartIndex < 0)
+                    if (previousHold == null)
                         break;
-                        
-                    var startNote = notes[note.StartIndex];
-                        
-                    graphicsPanel.AddDrawable(new HoldSegment(startNote.Time, note.Time, ColumnToY(startNote.Column), ColumnToY(note.Column), startNote.Color == NoteColor.Red, startNote.CurveType));
+                    
+                    graphicsPanel.AddDrawable(new HoldSegment(previousHold.Time, note.Time, ColumnToY(previousHold.Column), ColumnToY(note.Column), holdColor == NoteColor.Red, previousHold.CurveType));
+                    previousHold = note;
 
                     break;
                 case NoteType.Tap:
+                    graphicsPanel.AddDrawable(new Tap(note.Time, ColumnToY(note.Column), note.Color == NoteColor.Red));
+
+                    break;
                 case NoteType.Hold:
                     graphicsPanel.AddDrawable(new Tap(note.Time, ColumnToY(note.Column), note.Color == NoteColor.Red));
+                    previousHold = note;
+                    holdColor = note.Color;
 
                     break;
                 case NoteType.Scratch:

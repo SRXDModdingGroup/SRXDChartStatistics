@@ -26,7 +26,7 @@ public class MetricResult {
         var plotPoints = new List<double>(plotSize);
 
         for (int i = 0; i < plotSize; i++) {
-            double time = MathU.Lerp(startTime, endTime, (double) i / (plotSize - 1));
+            double time = MathU.Lerp(startTime, endTime, (double) (i + 1) / plotSize);
             double value = GetValueLinear(time, ref pointIndex);
 
             plotPoints.Add(value - previousValue);

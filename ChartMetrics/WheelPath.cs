@@ -35,7 +35,7 @@ public class WheelPath {
                 if (point.FirstInPath || next.FirstInPath || point.CurrentColor != previous.CurrentColor || point.CurrentColor != next.CurrentColor)
                     continue;
                 
-                float maxDeviation = 1f / (10f * Math.Abs((float) (previous.Time - next.Time)) + 1f);
+                float maxDeviation = 1.5f / (10f * Math.Abs((float) (previous.Time - next.Time)) + 1f);
                 float targetPosition = MathU.Lerp(newPositions[j], (float) MathU.Remap(point.Time, previous.Time, next.Time, newPositions[j - 1], newPositions[j + 1]), SIMPLIFY_APPROACH_RATE * maxDeviation);
                 
                 newPositions[j] = MathU.Clamp(targetPosition, point.NetPosition - maxDeviation, point.NetPosition + maxDeviation);
@@ -59,164 +59,97 @@ public class WheelPath {
 
         if (notes.Count == 0)
             return new WheelPath(points);
-        
-        bool holding = false;
-        bool newPath = true;
-        var targetType = TargetType.None;
-        double stackTime = notes[0].Time;
+
+        bool wasSpinning = true;
         float lanePosition = notes[0].Column;
         float netPosition = 0f;
-        float targetLanePosition = 0f;
         var currentColor = notes[0].Color;
-        var targetColor = currentColor;
         var matchesInStack = new List<Note>();
-        Note holdNote = null;
-        Note previousHoldNote = null;
+        int skipMatchesUntil = 0;
 
         for (int i = 0; i < notes.Count; i++) {
             var note = notes[i];
-            
-            UpdateTarget(note);
+            double time = note.Time;
+            var type = note.Type;
 
-            if (i < notes.Count - 1 && MathU.AlmostEquals(notes[i + 1].Time, stackTime))
-                continue;
-            
-            if (targetType == TargetType.Match)
-                GetTargetFromMatches();
+            switch (type) {
+                case NoteType.Match:
+                    for (int j = Math.Max(i, skipMatchesUntil); j < notes.Count; j++) {
+                        var other = notes[j];
 
-            switch (targetType) {
-                case TargetType.Spin:
-                    newPath = true;
-                    break;
-                case TargetType.Hold:
-                    GeneratePoint();
-                    previousHoldNote = holdNote;
-                    break;
-                case TargetType.HoldPoint:
-                case TargetType.HoldEnd:
-                    GenerateHoldPoints();
-                    GeneratePoint();
-                    break;
-                case TargetType.Tap:
-                case TargetType.Match:
-                    GeneratePoint();
-                    break;
-            }
+                        if (!MathU.AlmostEquals(other.Time, time))
+                            break;
+                        
+                        if (other.Type == NoteType.Match)
+                            matchesInStack.Add(other);
 
-            if (i == notes.Count - 1)
-                break;
+                        skipMatchesUntil = j + 1;
+                    }
 
-            switch (targetType) {
-                case TargetType.Hold:
-                    if (note.EndIndex >= 0)
-                        holding = true;
+                    if (matchesInStack.Count == 0)
+                        break;
+                    
+                    GetTargetFromMatches(matchesInStack, currentColor, out float targetLanePosition, out var targetColor);
+                    GeneratePoint(time, targetLanePosition, targetColor, false);
+                    matchesInStack.Clear();
                     
                     break;
-                case TargetType.Spin:
-                case TargetType.HoldEnd:
-                    holding = false;
+                case NoteType.SpinRight:
+                case NoteType.SpinLeft:
+                case NoteType.Scratch:
+                    wasSpinning = true;
+                    break;
+                case NoteType.Hold:
+                    GeneratePoint(time, note.Column, note.Color, true);
+
+                    int endIndex = note.EndIndex;
+                    
+                    if (endIndex < 0)
+                        break;
+
+                    for (; i <= endIndex; i++) {
+                        var other = notes[i];
+                        var otherType = other.Type;
+
+                        if (otherType != NoteType.HoldPoint && otherType != NoteType.HoldEnd && otherType != NoteType.Liftoff)
+                            continue;
+                        
+                        GenerateHoldPoints(note, other.Time, other.Column);
+                        GeneratePoint(other.Time, other.Column, currentColor, false);
+                        note = other;
+                    }
+
+                    i = endIndex;
+                    
+                    break;
+                case NoteType.Tap:
+                    GeneratePoint(time, note.Column, note.Color, true);
                     break;
             }
-
-            if (holdNote != null)
-                previousHoldNote = holdNote;
-
-            targetType = TargetType.None;
-            stackTime = notes[i + 1].Time;
-            matchesInStack.Clear();
-            holdNote = null;
         }
 
         return new WheelPath(points);
 
-        void UpdateTarget(Note note) {
-            var type = note.Type;
-
-            if (targetType == TargetType.Spin) { }
-            else if (type == NoteType.SpinRight || type == NoteType.SpinLeft || type == NoteType.Scratch)
-                targetType = TargetType.Spin;
-            else if (targetType == TargetType.Hold) { }
-            else if (type == NoteType.Hold) {
-                targetLanePosition = note.Column;
-                targetColor = note.Color;
-                targetType = TargetType.Hold;
-                holdNote = note;
-            }
-            else if (holding) {
-                if (type == NoteType.HoldEnd || type == NoteType.Liftoff) {
-                    targetLanePosition = note.Column;
-                    targetColor = currentColor;
-                    targetType = TargetType.HoldEnd;
-                    holdNote = note;
-                }
-                else if (targetType == TargetType.HoldEnd) { }
-                else if (type == NoteType.HoldPoint) {
-                    targetLanePosition = note.Column;
-                    targetColor = currentColor;
-                    targetType = TargetType.HoldPoint;
-                    holdNote = note;
-                }
-            }
-            else if (targetType == TargetType.Tap) { }
-            else if (type == NoteType.Tap) {
-                targetLanePosition = note.Column;
-                targetColor = note.Color;
-                targetType = TargetType.Tap;
-            }
-            else if (note.Type == NoteType.Match) {
-                matchesInStack.Add(note);
-                targetType = TargetType.Match;
-            }
-        }
-
-        void GetTargetFromMatches() {
-            bool anyInCurrentColor = false;
-            int columnSum = 0;
-
-            foreach (var note in matchesInStack) {
-                if (note.Color == currentColor) {
-                    columnSum += note.Column;
-                    anyInCurrentColor = true;
-                }
-                else
-                    columnSum += note.Column - 4 * Math.Sign(note.Column);
-            }
-
-            targetLanePosition = (float) columnSum / matchesInStack.Count;
-
-            if (anyInCurrentColor)
-                targetColor = currentColor;
-            else {
-                if (currentColor == NoteColor.Blue)
-                    targetColor = NoteColor.Red;
-                else
-                    targetColor = NoteColor.Blue;
-
-                targetLanePosition -= 4f * Math.Sign(targetLanePosition);
-            }
-
-            targetType = TargetType.Match;
-        }
-
-        void GenerateHoldPoints() {
-            if (!holding || previousHoldNote == null)
+        void GenerateHoldPoints(Note holdNote, double endTime, float endPosition) {
+            double startTime = holdNote.Time;
+            
+            if (MathU.AlmostEquals(startTime, endTime))
                 return;
             
-            double startTime = previousHoldNote.Time;
-            float startPosition = previousHoldNote.Column;
-            double timeDifference = stackTime - startTime;
+            float startPosition = holdNote.Column;
+            double timeDifference = endTime - startTime;
             int pointCount = (int) (HOLD_RESOLUTION * timeDifference);
             double pointInterval = timeDifference / pointCount;
 
             for (int j = 1; j < pointCount; j++) {
                 double pointTime = startTime + j * pointInterval;
-                float pointPosition = InterpolateHold(startTime, stackTime, startPosition, targetLanePosition, previousHoldNote.CurveType, pointTime);
+                float pointPosition = InterpolateHold(startTime, endTime, startPosition, endPosition, holdNote.CurveType, pointTime);
 
                 points.Add(new WheelPathPoint(pointTime, pointPosition, netPosition + pointPosition - startPosition, currentColor, false));
             }
         }
 
-        void GeneratePoint() {
+        void GeneratePoint(double time, float targetLanePosition, NoteColor targetColor, bool newPath) {
             float laneDifference = targetLanePosition - lanePosition;
             float oldNetPosition = netPosition;
 
@@ -235,11 +168,12 @@ public class WheelPath {
             else
                 netPosition += laneDifference + 4f;
 
-            if ((targetType == TargetType.Hold || targetType == TargetType.Tap) && !newPath && points.Count > 0) {
-                double time = Math.Max(stackTime - PREFERRED_STOP_BEFORE_TAP_TIME, 0.5f * (points[points.Count - 1].Time + stackTime));
+            if (newPath && !wasSpinning && points.Count > 0) {
+                double stopTime = Math.Max(time - PREFERRED_STOP_BEFORE_TAP_TIME, 0.5f * (points[points.Count - 1].Time + time));
 
-                if (targetColor == currentColor)
-                    points.Add(new WheelPathPoint(time, targetLanePosition, netPosition, currentColor, false));
+                if (stopTime <= points[points.Count - 1].Time) { }
+                else if (targetColor == currentColor)
+                    points.Add(new WheelPathPoint(stopTime, targetLanePosition, netPosition, currentColor, false));
                 else {
                     lanePosition += netPosition - oldNetPosition;
 
@@ -252,17 +186,44 @@ public class WheelPath {
                         currentColor = targetColor;
                     }
 
-                    points.Add(new WheelPathPoint(time, lanePosition, netPosition, currentColor, false));
+                    points.Add(new WheelPathPoint(stopTime, lanePosition, netPosition, currentColor, false));
                 }
-
-                newPath = true;
             }
 
             lanePosition = targetLanePosition;
             currentColor = targetColor;
-            previousHoldNote = null;
-            points.Add(new WheelPathPoint(stackTime, lanePosition, netPosition, targetColor, newPath));
-            newPath = false;
+            
+            if (points.Count == 0 || time > points[points.Count - 1].Time)
+                points.Add(new WheelPathPoint(time, lanePosition, netPosition, targetColor, newPath || wasSpinning));
+            
+            wasSpinning = false;
+        }
+    }
+    
+    private static void GetTargetFromMatches(List<Note> matches, NoteColor currentColor, out float targetLanePosition, out NoteColor targetColor) {
+        bool anyInCurrentColor = false;
+        int columnSum = 0;
+
+        foreach (var note in matches) {
+            if (note.Color == currentColor) {
+                columnSum += note.Column;
+                anyInCurrentColor = true;
+            }
+            else
+                columnSum += note.Column - 4 * Math.Sign(note.Column);
+        }
+
+        targetLanePosition = (float) columnSum / matches.Count;
+
+        if (anyInCurrentColor)
+            targetColor = currentColor;
+        else {
+            if (currentColor == NoteColor.Blue)
+                targetColor = NoteColor.Red;
+            else
+                targetColor = NoteColor.Blue;
+
+            targetLanePosition -= 4f * Math.Sign(targetLanePosition);
         }
     }
 
@@ -290,15 +251,5 @@ public class WheelPath {
         }
 
         return MathU.Lerp(startPosition, endPosition, interpValue);
-    }
-
-    private enum TargetType {
-        Spin,
-        Hold,
-        HoldEnd,
-        HoldPoint,
-        Tap,
-        Match,
-        None
     }
 }

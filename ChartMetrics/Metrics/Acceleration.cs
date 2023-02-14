@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using ChartHelper.Types;
+using Util;
 
 namespace ChartMetrics; 
 
@@ -9,11 +10,11 @@ public class Acceleration : PathMetric {
 
     protected override void AddPointsForPath(List<MetricPoint> points, ref double sum, IReadOnlyList<WheelPathPoint> path, int start, int end) {
         double speedBefore = 0d;
-            
+        
         for (int i = start; i < end; i++) {
             var current = path[i];
             var next = path[i + 1];
-            double speedAfter = (next.NetPosition - current.NetPosition) / (next.Time - current.Time);
+            double speedAfter = MathU.Clamp((next.NetPosition - current.NetPosition) / Math.Max(0.0001d, next.Time - current.Time), -1000d, 1000d);
 
             sum += Math.Abs(speedAfter - speedBefore);
             points.Add(new MetricPoint(current.Time, sum, false));
@@ -23,6 +24,4 @@ public class Acceleration : PathMetric {
         sum += Math.Abs(speedBefore);
         points.Add(new MetricPoint(path[end].Time, sum, false));
     }
-
-    protected override double GetValueForSpin(Note note) => 40d;
 }

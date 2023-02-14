@@ -10,12 +10,11 @@ namespace ModelTraining;
 internal class Program {
     private const double PLOT_RESOLUTION = 10d;
     private const int METRIC_SMOOTH = 5;
-    private const int WEIGHT_SMOOTH = 5;
     private const double HIGH_QUANTILE = 0.95d;
     
     private static readonly Metric[] METRICS = {
         new Acceleration(),
-        new RequiredMovement(),
+        new SpinDensity(),
         new TapBeatDensity()
     };
     
@@ -54,12 +53,12 @@ internal class Program {
             Console.WriteLine();
             
             foreach (var element in datasets.SelectMany(dataset => dataset.Elements).OrderByDescending(element => element.RatingData[i]))
-                Console.WriteLine($"{element.RatingData[i]:0.0000} - {element.Title}");
+                Console.WriteLine($"{element.RatingData[i]:0.0000} - {element.Id} {element.Title}");
             
             Console.WriteLine();
         }
         
-        var model = Training.Train(datasets, METRICS, 1000000, 0.1d);
+        var model = Training.Train(datasets, METRICS, 1000000, 1d);
 
         foreach ((var element, double rating) in
                  datasets.SelectMany(dataset => dataset.Elements)

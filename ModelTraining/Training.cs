@@ -7,6 +7,9 @@ namespace ModelTraining;
 
 public static class Training {
     private const int POOL_SIZE = 32;
+    private const double COEFFICIENT_MIN = 0.01d;
+    private const double POWER_MIN = 0.25d;
+    private const double POWER_MAX = 4d;
 
     public static double Rate(double[] ratingData, Parameters[] model) {
         double sum = 0d;
@@ -23,17 +26,20 @@ public static class Training {
     public static Parameters[] Train(IReadOnlyList<Dataset> datasets, IReadOnlyList<Metric> metrics, int iterations, double mutationAmount) {
         var random = new Random();
         var pool = new List<ModelFitnessPair>(POOL_SIZE);
+        var ratings = new List<double>();
 
         for (int i = 0; i < POOL_SIZE; i++) {
             var model = new Parameters[metrics.Count];
             
             for (int j = 0; j < metrics.Count; j++)
-                model[j] = new Parameters(1d, 1d);
-
-            pool.Add(new ModelFitnessPair(model, 0d));
+                model[j] = new Parameters(MathU.Lerp(COEFFICIENT_MIN, 1d, random.NextDouble()), MathU.Lerp(POWER_MIN, POWER_MAX, random.NextDouble()));
+            
+            Normalize(model);
+            pool.Add(new ModelFitnessPair(model, CalculateFitness(model, datasets, ratings)));
         }
+        
+        pool.Sort();
 
-        var ratings = new List<double>();
         int totalPairCount = 0;
 
         foreach (var dataset in datasets) {
@@ -89,14 +95,14 @@ public static class Training {
             vector[i] = new Parameters(coefficient, power);
         }
 
-        double factor = amount / sum;
+        double factor = random.NextDouble() * amount / sum;
         
         for (int i = 0; i < model.Length; i++) {
             var parameters = model[i];
             var delta = vector[i];
 
-            target[i] = new Parameters(MathU.Clamp(parameters.Coefficient + factor * delta.Coefficient, 0.1d, 1d),
-                MathU.Clamp(parameters.Power + factor * delta.Power, 0.25d, 4d));
+            target[i] = new Parameters(MathU.Clamp(parameters.Coefficient + factor * delta.Coefficient, COEFFICIENT_MIN, 1d),
+                MathU.Clamp(parameters.Power + factor * delta.Power, POWER_MIN, POWER_MAX));
         }
     }
 
@@ -136,7 +142,7 @@ public static class Training {
             }
         }
 
-        return 101d * sum;
+        return sum;
     }
     
     private static ChartRatingModel ToChartRatingModel(Parameters[] model, double[] normalizationFactors, IReadOnlyList<Metric> metrics) {

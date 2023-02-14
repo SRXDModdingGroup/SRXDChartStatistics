@@ -18,6 +18,4 @@ public class RequiredMovement : PathMetric {
             points.Add(new MetricPoint(current.Time, sum, true));
         }
     }
-
-    protected override double GetValueForSpin(Note note) => 4f;
 }
