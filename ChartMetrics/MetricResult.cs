@@ -21,7 +21,7 @@ public class MetricResult {
         if (Points.Count == 0)
             return new MetricPlot(new List<double>(), startTime, endTime);
         
-        double previousValue = Points[0].Value;
+        double previousValue = 0d;
         int plotSize = (int) (resolution * (endTime - startTime));
         var plotPoints = new List<double>(plotSize);
 

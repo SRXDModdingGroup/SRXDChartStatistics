@@ -108,10 +108,10 @@ public class Note {
         int sustainedNoteStartIndex = -1;
         int lastHoldPointIndex = -1;
         int lastBeatIndex = -1;
-        bool holding = false;
         bool spinning = false;
         bool beatHolding = false;
         bool readyToSnap = false;
+        Note lastHold = null;
 
         for (int i = 0; i < notes.Count; i++) {
             var note = notes[i];
@@ -121,7 +121,7 @@ public class Note {
                 case NoteTypeRaw.SpinRight:
                 case NoteTypeRaw.SpinLeft:
                 case NoteTypeRaw.Scratch:
-                    EndHold();
+                    SetLastHold(null);
                     EndSpin(i, note);
                     sustainedNoteStartIndex = i;
                     spinning = true;
@@ -158,7 +158,7 @@ public class Note {
 
                     break;
                 case NoteTypeRaw.Hold:
-                    EndHold();
+                    SetLastHold(note);
                     EndSpin(i, note);
 
                     if (readyToSnap) {
@@ -203,9 +203,9 @@ public class Note {
             i--;
         }
 
-        EndHold();
+        SetLastHold(null);
             
-        void EndHold() {
+        void SetLastHold(Note note) {
             if (!holding || lastHoldPointIndex < 0)
                 return;
                 

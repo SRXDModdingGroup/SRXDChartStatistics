@@ -6,9 +6,21 @@ using Util;
 namespace ModelTraining; 
 
 public static class Training {
-    private const int POOL_SIZE = 8;
+    private const int POOL_SIZE = 32;
+
+    public static double Rate(double[] ratingData, Parameters[] model) {
+        double sum = 0d;
+
+        for (int i = 0; i < model.Length; i++) {
+            var parameters = model[i];
+            
+            sum += parameters.Coefficient * Math.Pow(ratingData[i], parameters.Power);
+        }
+        
+        return sum;
+    }
     
-    public static ChartRatingModel Train(IReadOnlyList<Dataset> datasets, double[] normalizationFactors, IReadOnlyList<Metric> metrics, int iterations, double mutationAmount) {
+    public static Parameters[] Train(IReadOnlyList<Dataset> datasets, IReadOnlyList<Metric> metrics, int iterations, double mutationAmount) {
         var random = new Random();
         var pool = new List<ModelFitnessPair>(POOL_SIZE);
 
@@ -33,9 +45,9 @@ public static class Training {
         var vector = new Parameters[metrics.Count];
 
         for (int i = 1; i <= iterations; i++) {
-            for (int j = 0; j < 4; j++) {
+            for (int j = 0; j < POOL_SIZE / 2; j++) {
                 var source = pool[j];
-                var target = pool[j + 4];
+                var target = pool[j + POOL_SIZE / 2];
                 
                 Mutate(source.Model, target.Model, mutationAmount, vector, random);
                 Normalize(target.Model);
@@ -43,6 +55,9 @@ public static class Training {
             }
             
             pool.Sort();
+            
+            if (Console.KeyAvailable && Console.ReadKey(true).Key == ConsoleKey.Enter)
+                break;
 
             if (i % 1000 > 0)
                 continue;
@@ -60,7 +75,7 @@ public static class Training {
             Console.WriteLine();
         }
 
-        return ToChartRatingModel(pool[0].Model, normalizationFactors, metrics);
+        return pool[0].Model;
     }
     
     private static void Mutate(Parameters[] model, Parameters[] target, double amount, Parameters[] vector, Random random) {
@@ -80,8 +95,8 @@ public static class Training {
             var parameters = model[i];
             var delta = vector[i];
 
-            target[i] = new Parameters(MathU.Clamp(parameters.Coefficient + factor * delta.Coefficient, 0d, 1d),
-                MathU.Clamp(parameters.Power + factor * delta.Power, 0.5d, 2d));
+            target[i] = new Parameters(MathU.Clamp(parameters.Coefficient + factor * delta.Coefficient, 0.1d, 1d),
+                MathU.Clamp(parameters.Power + factor * delta.Power, 0.25d, 4d));
         }
     }
 
@@ -115,25 +130,13 @@ public static class Training {
             for (int i = 0; i < ratings.Count; i++) {
                 for (int j = i + 1; j < ratings.Count; j++) {
                     double diff = ratings[j] - ratings[i];
-                    
-                    sum += diff / (Math.Abs(diff) + 1d);
+
+                    sum += MathU.Clamp(0.01d * diff + 0.99d * Math.Sign(diff), -1d, 1d);
                 }
             }
         }
 
-        return 2d * sum;
-    }
-
-    private static double Rate(double[] ratingData, Parameters[] model) {
-        double sum = 0d;
-
-        for (int i = 0; i < model.Length; i++) {
-            var parameters = model[i];
-            
-            sum += parameters.Coefficient * Math.Pow(ratingData[i], parameters.Power);
-        }
-        
-        return sum;
+        return 101d * sum;
     }
     
     private static ChartRatingModel ToChartRatingModel(Parameters[] model, double[] normalizationFactors, IReadOnlyList<Metric> metrics) {

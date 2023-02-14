@@ -6,7 +6,7 @@ using ChartHelper.Types;
 using ChartMetrics;
 using Util;
 
-namespace ChartStatistics; 
+namespace ChartStatistics;
 
 public class ChartView {
     private const double PLOT_RESOLUTION = 10d;
@@ -74,8 +74,8 @@ public class ChartView {
                 RateAllCharts(diff);
         });
         Command.SetPossibleValues("show", 0, METRICS.Select(metric => $"{metric.Name.ToLower()}: {metric.Description}").ToArray());
-        LoadChart("Air On Line");
-        DisplayMetric("requiredmovement");
+        LoadChart("C:\\Users\\domia\\Git\\SRXDChartStatistics\\ModelTraining\\Resources\\Datasets\\SpinSharePlaylist_SpeenOpen Winter 2022\\4538.srtb");
+        DisplayMetric("tapbeatdensity");
         DisplayPath("simplified");
     }
 
@@ -142,10 +142,10 @@ public class ChartView {
         metricDrawables.Add(metricGraph);
             
         double upperQuantile = plot.GetQuantile(HIGH_QUANTILE);
-            
-        var valueLabel = new ValueLabel(MathU.Lerp(graphBottom, graphTop, (float) (upperQuantile / max)), $"High ({upperQuantile:0.00})");
+        var valueLabel = new ValueLabel(MathU.Lerp(graphBottom, graphTop, (float) (upperQuantile / max)), $"High ({PLOT_RESOLUTION * upperQuantile:0.00})");
         
         graphicsPanel.AddDrawable(valueLabel);
+        metricDrawables.Add(valueLabel);
             
         var metricLabel = new Label(0f, graphTop, metric.Name);
             
