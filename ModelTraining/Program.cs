@@ -7,6 +7,10 @@ using Newtonsoft.Json;
 namespace ModelTraining; 
 
 internal class Program {
+    private const double PLOT_RESOLUTION = 10d;
+    private const int PLOT_SMOOTH = 5;
+    private const double HIGH_QUANTILE = 0.95d;
+    
     private static readonly Metric[] METRICS = {
         new Acceleration(),
         new MovementNoteDensity(),
@@ -29,7 +33,7 @@ internal class Program {
             if (File.Exists(cachePath))
                 dataset = JsonConvert.DeserializeObject<Dataset>(File.ReadAllText(cachePath));
             else
-                dataset = Dataset.CreateFromDirectory(directory, METRICS);
+                dataset = Dataset.CreateFromDirectory(directory, METRICS, PLOT_RESOLUTION, PLOT_SMOOTH, HIGH_QUANTILE);
 
             if (dataset == null) {
                 Console.WriteLine($"Failed to get dataset for directory {directory}");
@@ -42,7 +46,8 @@ internal class Program {
             Console.WriteLine($"Successfully got dataset for directory {directory}");
         }
 
-        var model = Training.Train(datasets, METRICS, 1000000, 0.5d);
+        double[] normalizationFactors = Dataset.Normalize(datasets, METRICS.Length);
+        var model = Training.Train(datasets, normalizationFactors, METRICS, 1000000, 0.5d);
         
         Console.WriteLine();
     }

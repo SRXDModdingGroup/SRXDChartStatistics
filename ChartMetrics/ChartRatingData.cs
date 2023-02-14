@@ -16,13 +16,13 @@ public class ChartRatingData {
 
         foreach (var metric in metrics) {
             if (parametersPerMetric.TryGetValue(metric.Name, out var parameters))
-                sum += Math.Pow(parameters.Coefficient * values[metric.Name], parameters.Power);
+                sum += parameters.Coefficient * Math.Pow(Math.Min(parameters.NormalizationFactor * values[metric.Name], 1d), parameters.Power);
         }
         
         return sum;
     }
 
-    public static ChartRatingData Create(ChartData chartData, IEnumerable<Metric> metrics) {
+    public static ChartRatingData Create(ChartData chartData, IEnumerable<Metric> metrics, double plotResolution, int plotSmooth, double highQuantile) {
         var result = new PointValue().Calculate(chartData);
         var notes = chartData.Notes;
         double startTime;
@@ -37,7 +37,7 @@ public class ChartRatingData {
             endTime = notes[notes.Count - 1].Time;
         }
         
-        var weights = result.GetPlot(startTime, endTime, 100d).Smooth(100).Points;
+        var weights = result.GetPlot(startTime, endTime, plotResolution).Smooth(plotSmooth).Points;
         double weightSum = 0d;
 
         foreach (double weight in weights)
@@ -48,15 +48,15 @@ public class ChartRatingData {
         foreach (var metric in metrics) {
             result = metric.Calculate(chartData);
 
-            var plot = result.GetPlot(startTime, endTime, 100d).Smooth(100);
+            var plot = result.GetPlot(startTime, endTime, plotResolution).Smooth(plotSmooth);
             var points = plot.Points;
-            double high = plot.GetQuantile(0.9d);
+            double high = plot.GetQuantile(highQuantile);
             double sum = 0d;
 
             for (int i = 0; i < points.Count && i < weights.Count; i++)
                 sum += weights[i] * Math.Min(points[i], high);
                 
-            ratings.Add(metric.Name, sum * 100d / weightSum);
+            ratings.Add(metric.Name, sum / weightSum);
         }
 
         return new ChartRatingData(ratings);

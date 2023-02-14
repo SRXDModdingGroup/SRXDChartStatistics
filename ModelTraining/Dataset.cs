@@ -19,7 +19,38 @@ public class Dataset {
         Elements = elements;
     }
 
-    public static Dataset CreateFromDirectory(string directory, IReadOnlyList<Metric> metrics) {
+    public static double[] Normalize(IReadOnlyList<Dataset> datasets, int metricCount) {
+        double[] normalizationFactors = new double[metricCount];
+
+        foreach (var dataset in datasets) {
+            foreach (var element in dataset.Elements) {
+                double[] ratingData = element.RatingData;
+                
+                for (int i = 0; i < metricCount; i++) {
+                    double value = ratingData[i];
+
+                    if (value > normalizationFactors[i])
+                        normalizationFactors[i] = value;
+                }
+            }
+        }
+        
+        foreach (var dataset in datasets) {
+            foreach (var element in dataset.Elements) {
+                double[] ratingData = element.RatingData;
+                
+                for (int i = 0; i < metricCount; i++)
+                    ratingData[i] /= normalizationFactors[i];
+            }
+        }
+        
+        for (int i = 0; i < metricCount; i++)
+            normalizationFactors[i] = 1d / normalizationFactors[i];
+
+        return normalizationFactors;
+    }
+
+    public static Dataset CreateFromDirectory(string directory, IReadOnlyList<Metric> metrics, double plotResolution, int plotSmooth, double highQuantile) {
         string orderPath = Path.Combine(directory, "order.txt");
         
         if (!File.Exists(orderPath))
@@ -53,7 +84,7 @@ public class Dataset {
             }
 
             var chartData = ChartData.Create(NoteConversion.ToCustomNotesList(trackData.Notes));
-            var values = ChartRatingData.Create(chartData, metrics).Values;
+            var values = ChartRatingData.Create(chartData, metrics, plotResolution, plotSmooth, highQuantile).Values;
             double[] ratingData = new double[metrics.Count];
 
             for (int j = 0; j < metrics.Count; j++)

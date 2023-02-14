@@ -9,6 +9,10 @@ using Util;
 namespace ChartStatistics; 
 
 public class ChartView {
+    private const double PLOT_RESOLUTION = 10d;
+    private const int PLOT_SMOOTH = 5;
+    private const double HIGH_QUANTILE = 0.95d;
+    
     private static readonly Metric[] METRICS = {
         new Acceleration(),
         new MovementNoteDensity(),
@@ -115,7 +119,7 @@ public class ChartView {
 
         var result = metric.Calculate(chartData);
         var notes = chartData.Notes;
-        var plot = result.GetPlot(notes[0].Time, notes[notes.Count - 1].Time, 100d).Smooth(100);
+        var plot = result.GetPlot(notes[0].Time, notes[notes.Count - 1].Time, PLOT_RESOLUTION).Smooth(PLOT_SMOOTH);
         var points = plot.Points;
         double max = 0d;
 
@@ -137,15 +141,10 @@ public class ChartView {
         graphicsPanel.AddDrawable(metricGraph);
         metricDrawables.Add(metricGraph);
             
-        double lowerQuantile = plot.GetQuantile(0.1d);
-        var valueLabel = new ValueLabel(MathU.Lerp(graphBottom, graphTop, (float) (lowerQuantile / max)), $"Low ({lowerQuantile:0.00})");
+        double upperQuantile = plot.GetQuantile(HIGH_QUANTILE);
             
-        graphicsPanel.AddDrawable(valueLabel);
-        metricDrawables.Add(valueLabel);
-            
-        double upperQuantile = plot.GetQuantile(0.9d);
-            
-        valueLabel = new ValueLabel(MathU.Lerp(graphBottom, graphTop, (float) (upperQuantile / max)), $"High ({upperQuantile:0.00})");
+        var valueLabel = new ValueLabel(MathU.Lerp(graphBottom, graphTop, (float) (upperQuantile / max)), $"High ({upperQuantile:0.00})");
+        
         graphicsPanel.AddDrawable(valueLabel);
             
         var metricLabel = new Label(0f, graphTop, metric.Name);
@@ -260,7 +259,7 @@ public class ChartView {
         else
             chartDataToRate = ChartData.Create(NoteConversion.ToCustomNotesList(trackData.Notes));
 
-        var ratingData = ChartRatingData.Create(chartDataToRate, RATING_METRICS);
+        var ratingData = ChartRatingData.Create(chartDataToRate, RATING_METRICS, PLOT_RESOLUTION, PLOT_SMOOTH, HIGH_QUANTILE);
 
         foreach (var metric in RATING_METRICS)
             Console.WriteLine($"{metric.Name}: {ratingData.Values[metric.Name]:F}");
@@ -342,7 +341,7 @@ public class ChartView {
 
             try {
                 var chartData = ChartData.Create(NoteConversion.ToCustomNotesList(trackData.Notes));
-                var ratingData = ChartRatingData.Create(chartData, RATING_METRICS);
+                var ratingData = ChartRatingData.Create(chartData, RATING_METRICS, PLOT_RESOLUTION, PLOT_SMOOTH, HIGH_QUANTILE);
                     
                 diff = ratingData.Rate(ChartRatingModel.Empty, RATING_METRICS);
             }
