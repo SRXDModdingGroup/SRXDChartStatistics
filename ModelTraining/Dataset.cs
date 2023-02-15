@@ -13,41 +13,12 @@ public class Dataset {
     
     [JsonProperty(PropertyName = "elements")]
     public List<DataElement> Elements { get; }
+
+    public int PairCount => Elements.Count * (Elements.Count - 1) / 2;
     
     public Dataset(string directory, List<DataElement> elements) {
         Directory = directory;
         Elements = elements;
-    }
-
-    public static double[] Normalize(IReadOnlyList<Dataset> datasets, int metricCount) {
-        double[] normalizationFactors = new double[metricCount];
-
-        foreach (var dataset in datasets) {
-            foreach (var element in dataset.Elements) {
-                double[] ratingData = element.RatingData;
-                
-                for (int i = 0; i < metricCount; i++) {
-                    double value = ratingData[i];
-
-                    if (value > normalizationFactors[i])
-                        normalizationFactors[i] = value;
-                }
-            }
-        }
-        
-        foreach (var dataset in datasets) {
-            foreach (var element in dataset.Elements) {
-                double[] ratingData = element.RatingData;
-                
-                for (int i = 0; i < metricCount; i++)
-                    ratingData[i] /= normalizationFactors[i];
-            }
-        }
-        
-        for (int i = 0; i < metricCount; i++)
-            normalizationFactors[i] = 1d / normalizationFactors[i];
-
-        return normalizationFactors;
     }
 
     public static Dataset CreateFromDirectory(string directory, IReadOnlyList<Metric> metrics, double plotResolution, int plotSmooth, double highQuantile) {
