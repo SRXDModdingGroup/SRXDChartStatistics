@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 using ChartMetrics;
 using Util;
@@ -10,8 +11,8 @@ public static class Training {
     private const int POPULATION_SIZE = 128;
     private const int HALF_POPULATION_SIZE = POPULATION_SIZE / 2;
     private const double COEFFICIENT_MIN = 0.01d;
-    private const double POWER_MIN = 0.25d;
-    private const double POWER_MAX = 4d;
+    private const double POWER_MIN = 0.5d;
+    private const double POWER_MAX = 2d;
     private const int THREAD_COUNT = 4;
 
     public static double Rate(DataElement element, Parameters[] model) => Rate(element.RatingData, model);
@@ -30,11 +31,12 @@ public static class Training {
             totalPairCount += count * (count - 1) / 2;
         }
 
-        return CalculateFitness(model, datasets, new double[largest]) / totalPairCount;
+        return 0.5d * ((double) CalculateFitnessFlat(model, datasets, new double[largest]) / totalPairCount + 1d);
     }
     
-    public static Parameters[] TrainGenetic(Superset superset, IReadOnlyList<Metric> metrics, int iterations, double mutationAmount) {
+    public static Parameters[] TrainGenetic(Superset superset, int iterations, double mutationAmount) {
         var datasets = superset.Datasets;
+        int metricCount = superset.MetricCount;
         var random = new Random();
         var population = new ModelFitnessPair[POPULATION_SIZE];
         var threadInfos = new ThreadInfo[THREAD_COUNT];
@@ -48,12 +50,12 @@ public static class Training {
         }
 
         for (int i = 0; i < THREAD_COUNT; i++)
-            threadInfos[i] = new ThreadInfo(metrics.Count, largest, 0);
+            threadInfos[i] = new ThreadInfo(metricCount, largest, 0);
 
         for (int i = 0; i < POPULATION_SIZE; i++) {
-            var model = new Parameters[metrics.Count];
+            var model = new Parameters[metricCount];
             
-            for (int j = 0; j < metrics.Count; j++)
+            for (int j = 0; j < model.Length; j++)
                 model[j] = new Parameters(MathU.Lerp(COEFFICIENT_MIN, 1d, random.NextDouble()), MathU.Lerp(POWER_MIN, POWER_MAX, random.NextDouble()));
             
             NormalizeModel(model);
@@ -98,29 +100,18 @@ public static class Training {
 
             if (i % 1000 > 0)
                 continue;
-
-            var best = population[0];
-            
-            Console.WriteLine($"Generation: {i}, Fitness: {CalculateFitness(best.Model, datasets, threadInfos[0].Ratings) / totalPairCount:0.0000}");
-
-            for (int j = 0; j < metrics.Count; j++) {
-                var parameters = best.Model[j];
-                
-                Console.WriteLine($"{metrics[j].Name}: Coeff = {parameters.Coefficient}, Power = {parameters.Power}");
-            }
-            
-            Console.WriteLine();
         }
 
         return population[0].Model;
     }
     
-    public static Parameters[] TrainGradient(Superset superset, IReadOnlyList<Metric> metrics, int iterations, double acceleration, double minTimestep, double maxTimestep, out bool quit) {
+    public static Parameters[] TrainGradient(Superset superset, int iterations, double acceleration, double startTimestep, double endTimestep, CancellationToken ct) {
         var datasets = superset.Datasets;
-        var random = new Random();
-        var model = new Parameters[metrics.Count];
-        double fitness = 0d;
-        double timestep = maxTimestep;
+        int metricCount = superset.MetricCount;
+        var model = GetInitialModel(superset);
+        
+        Console.WriteLine(CalculateFitness(model, superset));
+        
         int largest = 0;
         int totalPairCount = 0;
         
@@ -139,49 +130,16 @@ public static class Training {
         for (int i = 0; i < largest; i++)
             dRatings_dParams.Add(new Parameters[model.Length]);
 
-        for (int i = 0; i < metrics.Count; i++)
-            model[i] = new Parameters(MathU.Lerp(COEFFICIENT_MIN, 1d, random.NextDouble()), MathU.Lerp(POWER_MIN, POWER_MAX, random.NextDouble()));
-        
-        NormalizeModel(model);
+        var vector = new Parameters[metricCount];
+        var momentum = new Parameters[metricCount];
 
-        var vector = new Parameters[metrics.Count];
-        var momentum = new Parameters[metrics.Count];
-
-        for (int i = 1; i <= iterations; i++) {
+        for (int i = 1; i <= iterations && !ct.IsCancellationRequested; i++) {
+            double timestep = MathU.Remap(i, 1d, iterations, startTimestep, endTimestep);
+            
             CalculateGradient(model, datasets, vector, ratings, dRatings_dParams);
-            InterpolateVector(vector, momentum, momentum, Math.Exp(-timestep * acceleration));
+            InterpolateVector(momentum, vector, momentum, acceleration);
             AddToModel(model, momentum, model, timestep / totalPairCount);
-
-            double newFitness = CalculateFitness(model, datasets, ratings);
-
-            if (newFitness > fitness)
-                timestep = Math.Min(1.0001d * timestep, maxTimestep);
-            else
-                timestep = Math.Max(minTimestep, timestep / 1.0001d);
-
-            fitness = newFitness;
-            
-            if (Console.KeyAvailable && Console.ReadKey(true).Key == ConsoleKey.Enter) {
-                quit = true;
-
-                return model;
-            }
-
-            // if (i % 1000 > 0)
-            //     continue;
-            
-            // Console.WriteLine($"Generation: {i}, Fitness: {fitness / totalPairCount:0.00000}, VectorAmount: {timestep:0.00000}");
-            //
-            // for (int j = 0; j < metrics.Count; j++) {
-            //     var parameters = model[j];
-            //     
-            //     Console.WriteLine($"{metrics[j].Name}: Coeff = {parameters.Coefficient:0.00000}, Power = {parameters.Power:0.00000}");
-            // }
-            //
-            // Console.WriteLine();
         }
-
-        quit = false;
         
         return model;
     }
@@ -201,21 +159,15 @@ public static class Training {
     private static void NormalizeModel(Parameters[] model) {
         double sum = 0d;
 
-        for (int i = 0; i < model.Length; i++) {
-            var parameters = model[i];
-
-            parameters = new Parameters(
-                MathU.Clamp(parameters.Coefficient, COEFFICIENT_MIN, 1d),
-                MathU.Clamp(parameters.Power, POWER_MIN, POWER_MAX));
-
-            model[i] = parameters;
+        foreach (var parameters in model)
             sum += parameters.Coefficient;
-        }
 
         for (int i = 0; i < model.Length; i++) {
             var parameters = model[i];
             
-            model[i] = new Parameters(parameters.Coefficient / sum, parameters.Power);
+            model[i] = new Parameters(
+                MathU.Clamp(parameters.Coefficient / sum, COEFFICIENT_MIN, 1d),
+                MathU.Clamp(parameters.Power, POWER_MIN, POWER_MAX));
         }
     }
 
@@ -242,7 +194,7 @@ public static class Training {
         NormalizeVector(vector);
     }
 
-    private static void CalculateGradient(Parameters[] model, IReadOnlyList<Dataset> datasets, Parameters[] vector, double[] ratings, List<Parameters[]> dRatings_dParams) {
+    private static void CalculateGradient(Parameters[] model, List<Dataset> datasets, Parameters[] vector, double[] ratings, List<Parameters[]> dRatings_dParams) {
         for (int i = 0; i < vector.Length; i++)
             vector[i] = new Parameters();
 
@@ -268,18 +220,52 @@ public static class Training {
                 double firstRating = ratings[i];
                 var dFirstRating_dParams = dRatings_dParams[i];
                     
-                for (int j = i + 1; j < elements.Count; j++) {
+                for (int j = 0; j < i; j++) {
                     double secondRating = ratings[j];
-                    double dFitness_dDiff = DSoftSign(secondRating - firstRating);
+                    double dFitness_dDiff = DSoftSign(firstRating - secondRating);
                     var dSecondRating_dParams = dRatings_dParams[j];
                     
                     for (int k = 0; k < vector.Length; k++)
-                        vector[k] += dFitness_dDiff * (dSecondRating_dParams[k] - dFirstRating_dParams[k]);
+                        vector[k] += dFitness_dDiff * (dFirstRating_dParams[k] - dSecondRating_dParams[k]);
                 }
             }
         }
     }
-    
+
+    private static int CalculateFitnessFlat(Parameters[] model, List<Dataset> datasets, double[] ratings) {
+        int sum = 0;
+        
+        foreach (var dataset in datasets) {
+            var elements = dataset.Elements;
+
+            for (int i = 0; i < elements.Count; i++) {
+                ratings[i] = Rate(elements[i].RatingData, model);
+                
+                for (int j = 0; j < i; j++)
+                    sum += ratings[i].CompareTo(ratings[j]);
+            }
+        }
+
+        return sum;
+    }
+
+    private static double CalculateFitnessSmooth(Parameters[] model, List<Dataset> datasets, double[] ratings) {
+        double sum = 0;
+        
+        foreach (var dataset in datasets) {
+            var elements = dataset.Elements;
+
+            for (int i = 0; i < elements.Count; i++) {
+                ratings[i] = Rate(elements[i].RatingData, model);
+                
+                for (int j = 0; j < i; j++)
+                    sum += SoftSign(ratings[i] - ratings[j]);
+            }
+        }
+
+        return sum;
+    }
+
     private static double Rate(double[] ratingData, Parameters[] model) {
         double sum = 0d;
 
@@ -291,46 +277,48 @@ public static class Training {
         
         return sum;
     }
-    
-    private static double CalculateFitness(Parameters[] model, IReadOnlyList<Dataset> datasets, double[] ratings) {
-        double sum = 0;
-        
-        foreach (var dataset in datasets) {
-            var elements = dataset.Elements;
-
-            for (int i = 0; i < elements.Count; i++)
-                ratings[i] = Rate(elements[i].RatingData, model);
-
-            for (int i = 0; i < elements.Count; i++) {
-                for (int j = i + 1; j < elements.Count; j++)
-                    sum += ratings[j].CompareTo(ratings[i]);
-            }
-        }
-
-        return sum;
-    }
-    
-    private static double CalculateFitnessSmooth(Parameters[] model, IReadOnlyList<Dataset> datasets, double[] ratings) {
-        double sum = 0;
-        
-        foreach (var dataset in datasets) {
-            var elements = dataset.Elements;
-
-            for (int i = 0; i < elements.Count; i++)
-                ratings[i] = Rate(elements[i].RatingData, model);
-
-            for (int i = 0; i < elements.Count; i++) {
-                for (int j = i + 1; j < elements.Count; j++)
-                    sum += SoftSign(ratings[j] - ratings[i]);
-            }
-        }
-
-        return sum;
-    }
 
     private static double SoftSign(double x) => 2d * x / (Math.Abs(x) + 1d);
     
     private static double DSoftSign(double x) => 2d / ((Math.Abs(x) + 1d) * (Math.Abs(x) + 1d));
+
+    private static Parameters[] GetInitialModel(Superset superset) {
+        var model = new Parameters[superset.MetricCount];
+        var datasets = superset.Datasets;
+
+        for (int i = 0; i < model.Length; i++) {
+            int totalCount = 0;
+            double sumX = 0d;
+            double sumY = 0d;
+            double sumXX = 0d;
+            double sumXY = 0d;
+
+            foreach (var dataset in datasets) {
+                var elements = dataset.Elements;
+
+                foreach (var element in elements) {
+                    double rating = element.RatingData[i];
+                    double difficulty = element.Difficulty;
+
+                    sumX += rating;
+                    sumY += difficulty;
+                    sumXX += rating * rating;
+                    sumXY += rating * difficulty;
+                }
+
+                totalCount += elements.Count;
+            }
+            
+            double meanX = sumX / totalCount;
+            double meanY = sumY / totalCount;
+
+            model[i] = new Parameters((sumXY - totalCount * meanX * meanY) / (sumXX - totalCount * meanX * meanX), 1d);
+        }
+        
+        NormalizeModel(model);
+
+        return model;
+    }
 
     private static ChartRatingModel ToChartRatingModel(Parameters[] model, double[] normalizationFactors, IReadOnlyList<Metric> metrics) {
         var modelParametersPerMetric = new Dictionary<string, ChartRatingModelParameters>();

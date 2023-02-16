@@ -19,11 +19,15 @@ public class Superset {
     }
     
     public double[] Normalize() {
+        double maxDifficulty = 0d;
         double[] normalizationFactors = new double[MetricCount];
 
         foreach (var dataset in Datasets) {
             foreach (var element in dataset.Elements) {
                 double[] ratingData = element.RatingData;
+
+                if (element.Difficulty > maxDifficulty)
+                    maxDifficulty = element.Difficulty;
                 
                 for (int i = 0; i < MetricCount; i++) {
                     double value = ratingData[i];
@@ -36,6 +40,8 @@ public class Superset {
         
         foreach (var dataset in Datasets) {
             foreach (var element in dataset.Elements) {
+                element.Difficulty /= maxDifficulty;
+                
                 double[] ratingData = element.RatingData;
                 
                 for (int i = 0; i < MetricCount; i++)

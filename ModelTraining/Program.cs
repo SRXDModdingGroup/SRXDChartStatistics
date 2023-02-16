@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using ChartMetrics;
 using Newtonsoft.Json;
 
@@ -19,7 +21,7 @@ internal class Program {
         new TapBeatDensity()
     };
     
-    public static void Main(string[] args) {
+    public static async Task Main(string[] args) {
         string projectDirectory = new DirectoryInfo(AppDomain.CurrentDomain.BaseDirectory).Parent.Parent.FullName;
         string resourcesDirectory = Path.Combine(projectDirectory, "Resources");
         string datasetsDirectory = Path.Combine(resourcesDirectory, "Datasets");
@@ -39,31 +41,14 @@ internal class Program {
             Console.WriteLine();
         }
 
-        Parameters[] best = null;
-        double bestFitness = 0d;
-        bool quit = false;
+        var cts = new CancellationTokenSource();
+        var task = Task.Run(() => Train(superset, cts.Token), cts.Token);
+
+        while (!task.IsCompleted && (!Console.KeyAvailable || Console.ReadKey(true).Key != ConsoleKey.Enter)) { }
         
-        // var model = Training.TrainGenetic(superset, METRICS, 1000000, 0.01d);
+        cts.Cancel();
 
-        while (!quit) {
-            var model = Training.TrainGradient(superset, METRICS, 1000, 2d, 0.0025d, 0.01d, out quit);
-            double fitness = Training.CalculateFitness(model, superset);
-
-            if (fitness > bestFitness) {
-                bestFitness = fitness;
-                best = model;
-                
-                Console.WriteLine($"Fitness: {bestFitness:0.00000}");
-
-                for (int j = 0; j < METRICS.Length; j++) {
-                    var parameters = best[j];
-                
-                    Console.WriteLine($"{METRICS[j].Name}: Coeff = {parameters.Coefficient:0.00000}, Power = {parameters.Power:0.00000}");
-                }
-            
-                Console.WriteLine();
-            }
-        }
+        var best = await task;
 
         foreach ((var element, double rating) in
                  datasets.SelectMany(dataset => dataset.Elements)
@@ -72,5 +57,14 @@ internal class Program {
             Console.WriteLine($"{rating:0.0000} - {element.Id} {element.Title}");
 
         Console.WriteLine();
+        Console.WriteLine($"Fitness: {Training.CalculateFitness(best, superset):0.00000}");
+
+        for (int j = 0; j < METRICS.Length; j++) {
+            var parameters = best[j];
+
+            Console.WriteLine($"{METRICS[j].Name}: Coeff = {parameters.Coefficient:0.00000}, Power = {parameters.Power:0.00000}");
+        }
     }
+
+    private static Parameters[] Train(Superset superset, CancellationToken ct) => Training.TrainGradient(superset, 10000, 0.5d, 0.01d, 0.0001d, ct);
 }

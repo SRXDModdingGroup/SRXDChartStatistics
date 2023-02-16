@@ -27,17 +27,19 @@ public class Dataset {
         if (!File.Exists(orderPath))
             return null;
 
-        var order = new List<int>();
+        var order = new List<(int, int)>();
 
         foreach (string line in File.ReadLines(orderPath)) {
-            if (int.TryParse(line, out int id) && !order.Contains(id))
-                order.Add(id);
+            string[] split = line.Split(' ');
+
+            if (split.Length >= 2 && int.TryParse(split[0], out int id) && int.TryParse(split[1], out int diff))
+                order.Add((id, diff));
         }
 
         var elements = new List<DataElement>(order.Count);
 
         for (int i = 0; i < order.Count; i++) {
-            int id = order[i];
+            (int id, int diff) = order[i];
             var srtb = SRTB.DeserializeFromFile(Path.Combine(directory, $"{id}.srtb"));
 
             if (srtb == null) {
@@ -61,7 +63,7 @@ public class Dataset {
             for (int j = 0; j < metrics.Count; j++)
                 ratingData[j] = values[metrics[j].Name];
 
-            elements.Add(new DataElement(id, srtb.GetTrackInfo().Title, ratingData));
+            elements.Add(new DataElement(id, srtb.GetTrackInfo().Title, diff, ratingData));
             Console.WriteLine($"Created rating data for chart {i + 1} of {order.Count} in {directory}");
             Console.SetCursorPosition(0, Console.CursorTop - 1);
         }
