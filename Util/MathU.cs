@@ -3,7 +3,7 @@
 namespace Util; 
 
 public static class MathU {
-    private static readonly float ALMOST_EQUALS_THRESHOLD = 0.00048828125f;
+    private static readonly double ALMOST_EQUALS_THRESHOLD = 0.00048828125d;
 
     public static bool AlmostEquals(float a, float b) => Math.Abs(a - b) < ALMOST_EQUALS_THRESHOLD;
 

@@ -13,8 +13,6 @@ public class Dataset {
     
     [JsonProperty(PropertyName = "elements")]
     public List<DataElement> Elements { get; }
-
-    public int PairCount => Elements.Count * (Elements.Count - 1) / 2;
     
     public Dataset(string directory, List<DataElement> elements) {
         Directory = directory;

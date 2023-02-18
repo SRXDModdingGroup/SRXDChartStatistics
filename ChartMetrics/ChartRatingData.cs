@@ -16,14 +16,14 @@ public class ChartRatingData {
 
         foreach (var metric in metrics) {
             if (parametersPerMetric.TryGetValue(metric.Name, out var parameters))
-                sum += parameters.Coefficient * Math.Pow(Math.Min(parameters.NormalizationFactor * values[metric.Name], 1d), parameters.Power);
+                sum += parameters.Coefficient * Math.Min(parameters.NormalizationFactor * values[metric.Name], 1d);
         }
         
         return sum;
     }
 
     public static ChartRatingData Create(ChartData chartData, IEnumerable<Metric> metrics, double plotResolution, int plotSmooth, double highQuantile) {
-        var result = new PointValue().Calculate(chartData);
+        var pointValue = new PointValue().Calculate(chartData);
         var notes = chartData.Notes;
         double startTime;
         double endTime;
@@ -37,7 +37,7 @@ public class ChartRatingData {
             endTime = notes[notes.Count - 1].Time;
         }
         
-        var weights = result.GetPlot(startTime, endTime, plotResolution).Smooth(plotSmooth).Points;
+        var weights = pointValue.GetPlot(startTime, endTime, plotResolution).Smooth(plotSmooth).Points;
         double weightSum = 0d;
 
         foreach (double weight in weights)
@@ -46,9 +46,9 @@ public class ChartRatingData {
         var ratings = new SortedDictionary<string, double>();
 
         foreach (var metric in metrics) {
-            result = metric.Calculate(chartData);
+            pointValue = metric.Calculate(chartData);
 
-            var plot = result.GetPlot(startTime, endTime, plotResolution).Smooth(plotSmooth);
+            var plot = pointValue.GetPlot(startTime, endTime, plotResolution).Smooth(plotSmooth);
             var points = plot.Points;
             double high = plot.GetQuantile(highQuantile);
             double sum = 0d;

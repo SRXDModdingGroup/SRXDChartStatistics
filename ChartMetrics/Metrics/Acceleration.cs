@@ -14,7 +14,7 @@ public class Acceleration : PathMetric {
         for (int i = start; i < end; i++) {
             var current = path[i];
             var next = path[i + 1];
-            double speedAfter = MathU.Clamp((next.NetPosition - current.NetPosition) / Math.Max(0.0001d, next.Time - current.Time), -1000d, 1000d);
+            double speedAfter = MathU.Clamp((next.NetPosition - current.NetPosition) / Math.Max(0.0001d, next.Time - current.Time), -100d, 100d);
 
             sum += Math.Abs(speedAfter - speedBefore);
             points.Add(new MetricPoint(current.Time, sum, false));

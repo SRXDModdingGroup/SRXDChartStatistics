@@ -9,7 +9,7 @@ using Newtonsoft.Json;
 
 namespace ModelTraining; 
 
-internal class Program {
+internal static class Program {
     private const double PLOT_RESOLUTION = 10d;
     private const int PLOT_SMOOTH = 5;
     private const double HIGH_QUANTILE = 0.95d;
@@ -48,23 +48,21 @@ internal class Program {
         
         cts.Cancel();
 
-        var best = await task;
+        double[] best = await task;
 
         foreach ((var element, double rating) in
                  datasets.SelectMany(dataset => dataset.Elements)
-                     .Select(element => (element, Training.Rate(element, best)))
+                     .Select(element => (element, Training.Rate(best, element)))
                      .OrderByDescending(pair => pair.Item2))
             Console.WriteLine($"{rating:0.0000} - {element.Id} {element.Title}");
 
         Console.WriteLine();
-        Console.WriteLine($"Fitness: {Training.CalculateFitness(best, superset):0.00000}");
+        Console.WriteLine($"Cost: {Training.CalculateCost(best, superset):0.00000}");
 
-        for (int j = 0; j < METRICS.Length; j++) {
-            var parameters = best[j];
-
-            Console.WriteLine($"{METRICS[j].Name}: Coeff = {parameters.Coefficient:0.00000}, Power = {parameters.Power:0.00000}");
-        }
+        for (int j = 0; j < METRICS.Length; j++)
+            Console.WriteLine($"{METRICS[j].Name}: Coeff = {best[j]:0.00000}");
     }
 
-    private static Parameters[] Train(Superset superset, CancellationToken ct) => Training.TrainGradient(superset, 10000, 0.5d, 0.01d, 0.0001d, ct);
+    private static double[] Train(Superset superset, CancellationToken ct) => Training.TrainGradient(superset, 10000, 0.01d, 0.0001d, ct);
+    // private static double[] Train(Superset superset, CancellationToken ct) => Training.TrainGenetic(superset, 10000, 0.01d, ct);
 }

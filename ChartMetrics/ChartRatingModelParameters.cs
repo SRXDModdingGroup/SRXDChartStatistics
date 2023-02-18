@@ -4,12 +4,9 @@ public class ChartRatingModelParameters {
     public double NormalizationFactor { get; }
     
     public double Coefficient { get; }
-    
-    public double Power { get; }
 
-    public ChartRatingModelParameters(double normalizationFactor, double coefficient, double power) {
+    public ChartRatingModelParameters(double normalizationFactor, double coefficient) {
         NormalizationFactor = normalizationFactor;
         Coefficient = coefficient;
-        Power = power;
     }
 }

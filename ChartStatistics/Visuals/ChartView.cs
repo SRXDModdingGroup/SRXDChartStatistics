@@ -74,7 +74,7 @@ public class ChartView {
                 RateAllCharts(diff);
         });
         Command.SetPossibleValues("show", 0, METRICS.Select(metric => $"{metric.Name.ToLower()}: {metric.Description}").ToArray());
-        LoadChart("C:\\Users\\domia\\Git\\SRXDChartStatistics\\ModelTraining\\Resources\\Datasets\\SpinSharePlaylist_SpeenOpen Winter 2022\\4538.srtb");
+        LoadChart("Fellow Feeling");
         DisplayMetric("requiredmovement");
         DisplayPath("simplified");
     }
@@ -195,9 +195,9 @@ public class ChartView {
         for (int i = 0; i < points.Count; i++) {
             var point = points[i];
             double time = point.Time;
-            float position = point.LanePosition;
+            double position = point.LanePosition;
                 
-            currentPath.Add(new PointD(time, (position + 4f) / 8f));
+            currentPath.Add(new PointD(time, (position + 4d) / 8d));
 
             if (i == points.Count - 1 || points[i + 1].FirstInPath) {
                 var graph = new LineGraph(currentPath[0].X, currentPath[currentPath.Count - 1].X, chartBottom, chartTop, new List<PointD>(currentPath));
@@ -208,12 +208,12 @@ public class ChartView {
             }
             else if (point.CurrentColor != points[i + 1].CurrentColor) {
                 var next = points[i + 1];
-                float positionDifference = next.NetPosition - point.NetPosition;
-                float endPosition = point.LanePosition + positionDifference;
+                double positionDifference = next.NetPosition - point.NetPosition;
+                double endPosition = point.LanePosition + positionDifference;
                 double endTime = next.Time;
                     
                 TruncateLine(time, position, ref endTime, ref endPosition);
-                currentPath.Add(new PointD(endTime, (endPosition + 4f) / 8f));
+                currentPath.Add(new PointD(endTime, (endPosition + 4d) / 8d));
                     
                 var graph = new LineGraph(currentPath[0].X, currentPath[currentPath.Count - 1].X, chartBottom, chartTop, new List<PointD>(currentPath));
                 
@@ -223,20 +223,20 @@ public class ChartView {
                 endTime = point.Time;
                 endPosition = next.LanePosition - positionDifference;
                 TruncateLine(next.Time, next.LanePosition, ref endTime, ref endPosition);
-                currentPath.Add(new PointD(endTime, (endPosition + 4f) / 8f));
+                currentPath.Add(new PointD(endTime, (endPosition + 4d) / 8d));
             }
         }
             
         graphicsPanel.Redraw();
             
-        void TruncateLine(double startX, float startY, ref double endX, ref float endY) {
-            if (endY > 4f) {
+        void TruncateLine(double startX, double startY, ref double endX, ref double endY) {
+            if (endY > 4d) {
                 endX = MathU.Remap(4d, startY, endY, startX, endX);
-                endY = 4f;
+                endY = 4d;
             }
-            else if (endY < -4f) {
+            else if (endY < -4d) {
                 endX = MathU.Remap(-4d, startY, endY, startX, endX);
-                endY = -4f;
+                endY = -4d;
             }
         }
     }
@@ -293,11 +293,11 @@ public class ChartView {
 
                     break;
                 case NoteType.SpinRight:
-                    graphicsPanel.AddDrawable(new Zone(note.Time, note.EndIndex >= 0 ? notes[note.EndIndex].Time : note.Time + 1f, Drawable.DrawLayer.Zone, Zone.ZoneType.RightSpin, chartTop, chartBottom));
+                    graphicsPanel.AddDrawable(new Zone(note.Time, note.EndIndex >= 0 ? notes[note.EndIndex].Time : note.Time + 1d, Drawable.DrawLayer.Zone, Zone.ZoneType.RightSpin, chartTop, chartBottom));
 
                     break;
                 case NoteType.SpinLeft:
-                    graphicsPanel.AddDrawable(new Zone(note.Time, note.EndIndex >= 0 ? notes[note.EndIndex].Time : note.Time + 1f, Drawable.DrawLayer.Zone, Zone.ZoneType.LeftSpin, chartTop, chartBottom));
+                    graphicsPanel.AddDrawable(new Zone(note.Time, note.EndIndex >= 0 ? notes[note.EndIndex].Time : note.Time + 1d, Drawable.DrawLayer.Zone, Zone.ZoneType.LeftSpin, chartTop, chartBottom));
 
                     break;
                 case NoteType.HoldPoint:
@@ -321,7 +321,7 @@ public class ChartView {
 
                     break;
                 case NoteType.Scratch:
-                    graphicsPanel.AddDrawable(new Zone(note.Time, note.EndIndex >= 0 ? notes[note.EndIndex].Time : note.Time + 1f, Drawable.DrawLayer.Zone, Zone.ZoneType.Scratch, chartTop, chartBottom));
+                    graphicsPanel.AddDrawable(new Zone(note.Time, note.EndIndex >= 0 ? notes[note.EndIndex].Time : note.Time + 1d, Drawable.DrawLayer.Zone, Zone.ZoneType.Scratch, chartTop, chartBottom));
 
                     break;
             }
